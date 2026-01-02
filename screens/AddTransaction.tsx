@@ -89,7 +89,7 @@ export const AddTransaction: React.FC = () => {
     }
   };
 
-  const handleSave = (stayOnPage: boolean = false) => {
+  const handleSave = async (stayOnPage: boolean = false) => {
     // Fix: Validate form before saving
     const amountNum = parseFloat(amount);
     if (!selectedFriend) {
@@ -116,18 +116,24 @@ export const AddTransaction: React.FC = () => {
     selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
     
     const transaction: Transaction = {
-      id: `t${Date.now()}`,
+      id: crypto.randomUUID(),
       title: transactionTitle,
       amount: amountNum,
       date: selectedDate.toISOString(),
       type: transactionType,
-      payerId: direction === 'owe' ? selectedFriend : 'me',
-      friendId: direction === 'owe' ? 'me' : selectedFriend,
+      payerId: direction === 'owe' ? selectedFriend! : 'me',
+      friendId: direction === 'owe' ? 'me' : selectedFriend!,
       note: note || undefined,
       isSettlement: false,
     };
 
-    addTransaction(transaction);
+    try {
+      await addTransaction(transaction);
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+      alert('Failed to add transaction. Please try again.');
+      return;
+    }
 
     if (stayOnPage) {
       // Fix: Reset form for "Save & Add +"

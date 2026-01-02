@@ -1,60 +1,142 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Friend, Transaction } from '../types';
-import { MOCK_FRIENDS, MOCK_TRANSACTIONS } from '../constants';
 import { calculateFriendBalance, getLastActivity } from '../utils/calculations';
+import { supabase } from '../utils/supabase';
+import { AuthContext } from './AuthContext';
 
 interface AppContextType {
   friends: Friend[];
   transactions: Transaction[];
-  addTransaction: (transaction: Transaction) => void;
-  updateFriend: (friendId: string, updates: Partial<Friend>) => void;
-  deleteTransaction: (transactionId: string) => void;
-  addFriend: (friend: Omit<Friend, 'balance' | 'lastActivity' | 'status'>) => void;
+  loading: boolean;
+  addTransaction: (transaction: Transaction) => Promise<void>;
+  updateFriend: (friendId: string, updates: Partial<Friend>) => Promise<void>;
+  deleteTransaction: (transactionId: string) => Promise<void>;
+  addFriend: (friend: Omit<Friend, 'id' | 'balance' | 'lastActivity' | 'status'>) => Promise<void>;
   getFriendById: (friendId: string) => Friend | undefined;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const STORAGE_KEYS = {
-  FRIENDS: 'squareone_friends',
-  TRANSACTIONS: 'squareone_transactions',
-};
-
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const authContext = useContext(AuthContext);
+  const user = authContext?.user || null;
+  const session = authContext?.session || null;
   const [friends, setFriends] = useState<Friend[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Load data from localStorage on mount
+  // Load data from Supabase when user is authenticated
   useEffect(() => {
-    try {
-      const storedFriends = localStorage.getItem(STORAGE_KEYS.FRIENDS);
-      const storedTransactions = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
-
-      if (storedFriends && storedTransactions) {
-        setFriends(JSON.parse(storedFriends));
-        setTransactions(JSON.parse(storedTransactions));
-      } else {
-        // Initialize with mock data
-        setFriends(MOCK_FRIENDS);
-        setTransactions(MOCK_TRANSACTIONS);
-        // Save initial data
-        localStorage.setItem(STORAGE_KEYS.FRIENDS, JSON.stringify(MOCK_FRIENDS));
-        localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(MOCK_TRANSACTIONS));
-      }
-    } catch (error) {
-      console.error('Error loading data from localStorage:', error);
-      // Fallback to mock data
-      setFriends(MOCK_FRIENDS);
-      setTransactions(MOCK_TRANSACTIONS);
-    } finally {
-      setIsInitialized(true);
+    if (!user || !session) {
+      setFriends([]);
+      setTransactions([]);
+      setLoading(false);
+      return;
     }
-  }, []);
+
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        // Load friends
+        const { data: friendsData, error: friendsError } = await supabase
+          .from('friends')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (friendsError) {
+          console.error('Error loading friends:', friendsError);
+        }
+
+        // Load transactions
+        const { data: transactionsData, error: transactionsError } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('date', { ascending: false });
+
+        if (transactionsError) {
+          console.error('Error loading transactions:', transactionsError);
+        }
+
+        // Map database format to app format
+        const mappedFriends: Friend[] = (friendsData || []).map(f => ({
+          id: f.id,
+          user_id: f.user_id,
+          name: f.name,
+          handle: f.handle || '',
+          avatar: f.avatar || '',
+          balance: 0, // Will be calculated
+          lastActivity: 'Never', // Will be calculated
+          status: 'active', // Will be calculated
+        }));
+
+        const mappedTransactions: Transaction[] = (transactionsData || []).map(t => ({
+          id: t.id,
+          user_id: t.user_id,
+          title: t.title,
+          amount: parseFloat(t.amount),
+          date: t.date,
+          type: t.type,
+          payerId: t.payer_id,
+          friendId: t.friend_id,
+          note: t.note || undefined,
+          isSettlement: t.is_settlement || false,
+        }));
+
+        setFriends(mappedFriends);
+        setTransactions(mappedTransactions);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+
+    // Set up real-time subscriptions
+    const friendsChannel = supabase
+      .channel('friends-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'friends',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          loadData();
+        }
+      )
+      .subscribe();
+
+    const transactionsChannel = supabase
+      .channel('transactions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transactions',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          loadData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(friendsChannel);
+      supabase.removeChannel(transactionsChannel);
+    };
+  }, [user, session]);
 
   // Update friend balances whenever transactions change
   useEffect(() => {
-    if (!isInitialized) return;
+    if (loading) return;
 
     setFriends(prevFriends => {
       return prevFriends.map(friend => {
@@ -70,58 +152,138 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
       });
     });
-  }, [transactions, isInitialized]);
+  }, [transactions, loading]);
 
-  // Persist friends to localStorage whenever they change
-  useEffect(() => {
-    if (!isInitialized) return;
+  const addTransaction = useCallback(async (transaction: Transaction) => {
+    if (!user) return;
+
     try {
-      localStorage.setItem(STORAGE_KEYS.FRIENDS, JSON.stringify(friends));
-    } catch (error) {
-      console.error('Error saving friends to localStorage:', error);
-    }
-  }, [friends, isInitialized]);
+      const dbTransaction = {
+        id: transaction.id,
+        user_id: user.id,
+        title: transaction.title,
+        amount: transaction.amount,
+        date: transaction.date,
+        type: transaction.type,
+        payer_id: transaction.payerId,
+        friend_id: transaction.friendId,
+        note: transaction.note || null,
+        is_settlement: transaction.isSettlement || false,
+      };
 
-  // Persist transactions to localStorage whenever they change
-  useEffect(() => {
-    if (!isInitialized) return;
-    try {
-      localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
-    } catch (error) {
-      console.error('Error saving transactions to localStorage:', error);
-    }
-  }, [transactions, isInitialized]);
+      const { error } = await supabase
+        .from('transactions')
+        .upsert(dbTransaction, { onConflict: 'id' });
 
-  const addTransaction = useCallback((transaction: Transaction) => {
-    setTransactions(prev => {
-      // Check if transaction with this ID already exists
-      const exists = prev.find(t => t.id === transaction.id);
-      if (exists) {
-        // Update existing transaction
-        return prev.map(t => t.id === transaction.id ? transaction : t);
+      if (error) {
+        console.error('Error saving transaction:', error);
+        throw error;
       }
-      // Add new transaction
-      return [...prev, transaction];
-    });
-  }, []);
 
-  const updateFriend = useCallback((friendId: string, updates: Partial<Friend>) => {
-    setFriends(prev => prev.map(f => f.id === friendId ? { ...f, ...updates } : f));
-  }, []);
+      // Update local state optimistically
+      setTransactions(prev => {
+        const exists = prev.find(t => t.id === transaction.id);
+        if (exists) {
+          return prev.map(t => t.id === transaction.id ? transaction : t);
+        }
+        return [...prev, transaction];
+      });
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+      throw error;
+    }
+  }, [user]);
 
-  const deleteTransaction = useCallback((transactionId: string) => {
-    setTransactions(prev => prev.filter(t => t.id !== transactionId));
-  }, []);
+  const updateFriend = useCallback(async (friendId: string, updates: Partial<Friend>) => {
+    if (!user) return;
 
-  const addFriend = useCallback((friendData: Omit<Friend, 'balance' | 'lastActivity' | 'status'>) => {
-    const newFriend: Friend = {
-      ...friendData,
-      balance: 0,
-      lastActivity: 'Never',
-      status: 'active',
-    };
-    setFriends(prev => [...prev, newFriend]);
-  }, []);
+    try {
+      const dbUpdates: any = {};
+      if (updates.name !== undefined) dbUpdates.name = updates.name;
+      if (updates.handle !== undefined) dbUpdates.handle = updates.handle;
+      if (updates.avatar !== undefined) dbUpdates.avatar = updates.avatar;
+
+      const { error } = await supabase
+        .from('friends')
+        .update(dbUpdates)
+        .eq('id', friendId)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error updating friend:', error);
+        throw error;
+      }
+
+      // Update local state
+      setFriends(prev => prev.map(f => f.id === friendId ? { ...f, ...updates } : f));
+    } catch (error) {
+      console.error('Error updating friend:', error);
+      throw error;
+    }
+  }, [user]);
+
+  const deleteTransaction = useCallback(async (transactionId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('id', transactionId)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error deleting transaction:', error);
+        throw error;
+      }
+
+      // Update local state
+      setTransactions(prev => prev.filter(t => t.id !== transactionId));
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+      throw error;
+    }
+  }, [user]);
+
+  const addFriend = useCallback(async (friendData: Omit<Friend, 'balance' | 'lastActivity' | 'status'>) => {
+    if (!user) return;
+
+    try {
+      const dbFriend = {
+        user_id: user.id,
+        name: friendData.name,
+        handle: friendData.handle || null,
+        avatar: friendData.avatar || null,
+      };
+
+      const { data, error } = await supabase
+        .from('friends')
+        .insert(dbFriend)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding friend:', error);
+        throw error;
+      }
+
+      // Update local state
+      const newFriend: Friend = {
+        id: data.id,
+        user_id: data.user_id,
+        name: data.name,
+        handle: data.handle || '',
+        avatar: data.avatar || '',
+        balance: 0,
+        lastActivity: 'Never',
+        status: 'active',
+      };
+      setFriends(prev => [...prev, newFriend]);
+    } catch (error) {
+      console.error('Error adding friend:', error);
+      throw error;
+    }
+  }, [user]);
 
   const getFriendById = useCallback((friendId: string): Friend | undefined => {
     return friends.find(f => f.id === friendId);
@@ -130,6 +292,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const value: AppContextType = {
     friends,
     transactions,
+    loading,
     addTransaction,
     updateFriend,
     deleteTransaction,

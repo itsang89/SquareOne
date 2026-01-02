@@ -42,23 +42,27 @@ export const Friends: React.FC = () => {
     return sorted;
   }, [friends, filter]);
 
-  const handleAddFriend = () => {
+  const handleAddFriend = async () => {
     if (!newFriendName.trim()) {
       alert('Please enter a name');
       return;
     }
     
-    addFriend({
-      id: `f${Date.now()}`,
-      name: newFriendName.trim(),
-      handle: newFriendHandle.trim() || `@${newFriendName.toLowerCase().replace(/\s+/g, '')}`,
-      avatar: newFriendAvatar.trim() || `https://picsum.photos/seed/${newFriendName}/200/200`,
-    });
-    
-    setNewFriendName('');
-    setNewFriendHandle('');
-    setNewFriendAvatar('');
-    setShowAddFriend(false);
+    try {
+      await addFriend({
+        name: newFriendName.trim(),
+        handle: newFriendHandle.trim() || `@${newFriendName.toLowerCase().replace(/\s+/g, '')}`,
+        avatar: newFriendAvatar.trim() || `https://picsum.photos/seed/${newFriendName}/200/200`,
+      });
+      
+      setNewFriendName('');
+      setNewFriendHandle('');
+      setNewFriendAvatar('');
+      setShowAddFriend(false);
+    } catch (error) {
+      console.error('Error adding friend:', error);
+      alert('Failed to add friend. Please try again.');
+    }
   };
 
   return (

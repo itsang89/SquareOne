@@ -6,7 +6,8 @@ export interface User {
 }
 
 export interface Friend {
-  id: string;
+  id: string; // UUID
+  user_id?: string; // UUID - for database (optional for backward compatibility)
   name: string;
   handle: string;
   avatar: string;
@@ -18,13 +19,14 @@ export interface Friend {
 export type TransactionType = 'Meal' | 'Poker' | 'Transport' | 'Loan' | 'Shopping' | 'General' | string;
 
 export interface Transaction {
-  id: string;
+  id: string; // UUID
+  user_id?: string; // UUID - for database (optional for backward compatibility)
   title: string;
   amount: number;
   date: string; // ISO date string
   type: TransactionType;
   payerId: string; // 'me' or friendId
-  friendId: string; // The other person involved
+  friendId: string; // UUID - The other person involved (friend ID)
   note?: string;
   isSettlement?: boolean;
 }

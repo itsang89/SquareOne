@@ -43,7 +43,7 @@ export const SettleUp: React.FC = () => {
     }
   };
   
-  const handleConfirmSettle = () => {
+  const handleConfirmSettle = async () => {
     if (!friend) return;
     
     const amountNum = parseFloat(amount);
@@ -68,7 +68,7 @@ export const SettleUp: React.FC = () => {
     selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
     
     const settlement: Transaction = {
-      id: `settle_${Date.now()}`,
+      id: crypto.randomUUID(),
       title: 'Settlement',
       amount: Math.abs(settlementAmount),
       date: selectedDate.toISOString(),
@@ -79,8 +79,13 @@ export const SettleUp: React.FC = () => {
       isSettlement: true,
     };
     
-    addTransaction(settlement);
-    navigate(`/friends/${friend.id}`);
+    try {
+      await addTransaction(settlement);
+      navigate(`/friends/${friend.id}`);
+    } catch (error) {
+      console.error('Error adding settlement:', error);
+      alert('Failed to add settlement. Please try again.');
+    }
   };
   
   if (!friend) {

@@ -1,0 +1,7 @@
+{
+  "name": "SquareOne",
+  "description": "A neo-brutalist debt splitting app for friends. Track expenses, poker nights, and settle up with style.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

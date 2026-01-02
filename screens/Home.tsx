@@ -1,0 +1,258 @@
+import React, { useMemo, useState } from 'react';
+import { Bell, ArrowUpRight, ArrowDownLeft, Trash2 } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { NeoCard, Avatar } from '../components/NeoComponents';
+import { CURRENT_USER } from '../constants';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAppContext } from '../context/AppContext';
+import { calculateTotalOwed, calculateTotalOwing, calculateNetBalance, calculateDebtOrigins, shouldGrayTransaction } from '../utils/calculations';
+import { Transaction } from '../types';
+
+export const Home: React.FC = () => {
+  const navigate = useNavigate();
+  const { friends, transactions, deleteTransaction } = useAppContext();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDelete = (tx: Transaction) => {
+    if (deletingId === tx.id) {
+      // Confirm deletion
+      deleteTransaction(tx.id);
+      setDeletingId(null);
+    } else {
+      // First click - show confirmation
+      setDeletingId(tx.id);
+      // Auto-cancel after 3 seconds
+      setTimeout(() => setDeletingId(null), 3000);
+    }
+  };
+  
+  // Fix: Calculate totals from actual transactions instead of hardcoded values
+  const totalOwed = useMemo(() => calculateTotalOwed(transactions), [transactions]);
+  const totalOwing = useMemo(() => calculateTotalOwing(transactions), [transactions]);
+  const netBalance = useMemo(() => calculateNetBalance(transactions), [transactions]);
+  
+  // Fix: Calculate debt origins from actual transactions
+  const debtOriginsData = useMemo(() => calculateDebtOrigins(transactions), [transactions]);
+  
+  // Fix: Get top friends by absolute balance, sorted high to low
+  const topFriends = useMemo(() => {
+    return [...friends]
+      .filter(f => f.balance !== 0)
+      .sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance))
+      .slice(0, 5);
+  }, [friends]);
+  
+  // Fix: Get recent transactions, sorted by date descending
+  const recentTransactions = useMemo(() => {
+    return [...transactions]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 10);
+  }, [transactions]);
+  
+  // Fix: Count unsettled transactions for notification badge
+  const unsettledCount = useMemo(() => {
+    return transactions.filter(tx => !tx.isSettlement).length;
+  }, [transactions]);
+
+  return (
+    <div className="min-h-screen pb-24 bg-neo-bg">
+      {/* Header */}
+      <header className="sticky top-0 z-20 bg-neo-bg/95 backdrop-blur-sm border-b-2 border-black px-5 py-4 flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold uppercase leading-none">Hello, {CURRENT_USER.name}</h2>
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">Dashboard</p>
+        </div>
+        <button className="relative w-12 h-12 bg-neo-yellow border-2 border-black rounded-lg shadow-neo-sm active:shadow-none active:translate-y-1 flex items-center justify-center">
+            <Bell size={24} className="text-black" />
+            {unsettledCount > 0 && (
+              <span className="absolute top-2 right-2 w-3 h-3 bg-neo-red border-2 border-white rounded-full"></span>
+            )}
+        </button>
+      </header>
+
+      <div className="p-5 space-y-8">
+        {/* Net Position Widget */}
+        <section>
+            <div className="relative bg-neo-yellow border-2 border-black p-6 shadow-neo overflow-hidden rounded-lg">
+                <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/20 rounded-full blur-2xl pointer-events-none"></div>
+                
+                <div className="relative z-10 mb-6">
+                    <p className="text-black/70 text-xs font-bold uppercase tracking-widest mb-1">Total Net Position</p>
+                    <p className="text-5xl font-bold tracking-tighter">
+                      {netBalance >= 0 ? '+' : ''}${Math.abs(netBalance).toFixed(2)}
+                    </p>
+                </div>
+
+                <div className="relative z-10 flex gap-4 pt-4 border-t-2 border-black/10">
+                    <div className="flex-1">
+                        <p className="text-black/60 text-[10px] font-black uppercase mb-1">You Owe</p>
+                        <p className="text-neo-red font-black text-xl tracking-tight">${totalOwing.toFixed(2)}</p>
+                    </div>
+                    <div className="w-[2px] bg-black/10"></div>
+                    <div className="flex-1">
+                        <p className="text-black/60 text-[10px] font-black uppercase mb-1">Owed To You</p>
+                        <p className="text-neo-greenDark font-black text-xl tracking-tight">${totalOwed.toFixed(2)}</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {/* Top Sharks */}
+        <section>
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-black uppercase border-l-4 border-black pl-2">Top Sharks</h3>
+                <Link to="/friends" className="text-xs font-bold uppercase underline decoration-2">View All</Link>
+            </div>
+            
+            {topFriends.length > 0 ? (
+              <div className="flex overflow-x-auto no-scrollbar gap-4 pb-4 -mx-5 px-5 snap-x">
+                  {topFriends.map(friend => (
+                      <div 
+                        key={friend.id} 
+                        onClick={() => navigate(`/friends/${friend.id}`)}
+                        className="snap-start shrink-0 w-32 bg-white border-2 border-black p-3 rounded-lg shadow-neo-sm flex flex-col items-center gap-2 cursor-pointer hover:shadow-neo hover:-translate-y-1 transition-all active:shadow-neo-pressed active:translate-y-0"
+                      >
+                          <div className="relative">
+                              <Avatar src={friend.avatar} alt={friend.name} size="md" />
+                              <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center ${friend.balance >= 0 ? 'bg-neo-greenDark' : 'bg-neo-red'}`}>
+                                  {friend.balance >= 0 ? <ArrowUpRight size={12} className="text-white"/> : <ArrowDownLeft size={12} className="text-white"/>}
+                              </div>
+                          </div>
+                          <div className="text-center w-full">
+                              <p className="text-sm font-bold truncate w-full">{friend.name.split(' ')[0]}</p>
+                              <p className={`text-xs font-bold ${friend.balance >= 0 ? 'text-neo-greenDark' : 'text-neo-red'}`}>
+                                  {friend.balance >= 0 ? '+' : ''}${Math.abs(friend.balance).toFixed(2)}
+                              </p>
+                          </div>
+                      </div>
+                  ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-400 text-sm font-bold uppercase">
+                No active balances
+              </div>
+            )}
+        </section>
+
+        {/* Debt Origins & Event Insights */}
+        <section>
+            <h3 className="text-lg font-black uppercase border-l-4 border-black pl-2 mb-4">Debt Origins</h3>
+            <NeoCard className="bg-[#F7E8FF] flex flex-row items-center gap-4">
+                <div className="h-32 w-32 shrink-0 relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                            <Pie
+                                data={debtOriginsData}
+                                innerRadius={35}
+                                outerRadius={60}
+                                paddingAngle={0}
+                                dataKey="value"
+                                stroke="black"
+                                strokeWidth={2}
+                            >
+                                {debtOriginsData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                            </Pie>
+                        </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                         <div className="w-2 h-2 bg-black rounded-full"></div>
+                    </div>
+                </div>
+                
+                <div className="flex-1 flex flex-col gap-2">
+                    {debtOriginsData.map((entry) => (
+                        <div key={entry.name} className="flex items-center justify-between bg-white border border-black p-1.5 rounded shadow-sm">
+                            <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 border border-black" style={{ backgroundColor: entry.color }}></div>
+                                <span className="text-xs font-bold uppercase">{entry.name}</span>
+                            </div>
+                            <span className="text-xs font-mono">{entry.value}%</span>
+                        </div>
+                    ))}
+                </div>
+            </NeoCard>
+        </section>
+
+        {/* Recent Activity */}
+        <section>
+             <h3 className="text-lg font-black uppercase border-l-4 border-black pl-2 mb-4">Recent Moves</h3>
+             {recentTransactions.length > 0 ? (
+               <div className="flex flex-col gap-3">
+                  {recentTransactions.map(tx => {
+                    // Fix: Get friend name from friends array
+                    let friend = null;
+                    let friendIdForGraying = null;
+                    if (tx.friendId !== 'me') {
+                      friend = friends.find(f => f.id === tx.friendId);
+                      friendIdForGraying = tx.friendId;
+                    } else if (tx.payerId !== 'me') {
+                      friend = friends.find(f => f.id === tx.payerId);
+                      friendIdForGraying = tx.payerId;
+                    }
+                    const friendName = friend ? friend.name : 'Unknown';
+                    
+                    // Fix: Check if transaction should be grayed (when friend balance is zero)
+                    const isGrayed = friendIdForGraying ? shouldGrayTransaction(tx, friendIdForGraying, transactions) : false;
+                    
+                    return (
+                      <div key={tx.id} className={`group bg-white border-2 border-transparent hover:border-black hover:shadow-neo-sm p-3 rounded-lg flex items-center justify-between transition-all ${isGrayed ? 'opacity-50 grayscale' : tx.isSettlement ? 'opacity-75' : ''} ${deletingId === tx.id ? 'border-neo-red' : ''}`}>
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className={`w-10 h-10 border-2 border-black rounded flex items-center justify-center shadow-sm shrink-0 ${
+                                  isGrayed ? 'bg-gray-300' :
+                                  tx.isSettlement ? 'bg-neo-green' :
+                                  tx.type === 'Meal' ? 'bg-neo-orange' : 
+                                  tx.type === 'Transport' ? 'bg-neo-yellow' : 
+                                  tx.type === 'Loan' ? 'bg-neo-green' : 
+                                  tx.type === 'Poker' ? 'bg-neo-purple' : 'bg-neo-blue'
+                              }`}>
+                                  <span className="text-lg font-bold">
+                                      {tx.isSettlement ? '✓' : tx.type === 'Meal' ? '🍕' : tx.type === 'Transport' ? '🚕' : tx.type === 'Loan' ? '💸' : tx.type === 'Poker' ? '🃏' : '📝'}
+                                  </span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                  <p className={`font-bold text-sm leading-tight ${isGrayed ? 'text-gray-500' : ''}`}>
+                                    {tx.isSettlement ? '✓ Settlement' : tx.title}
+                                  </p>
+                                  <p className={`text-[10px] font-bold uppercase tracking-wide ${isGrayed ? 'text-gray-400' : 'text-gray-400'}`}>
+                                      {tx.isSettlement 
+                                        ? `Settled with ${friendName}` 
+                                        : tx.payerId === 'me' ? 'You paid' : `${friendName} paid`
+                                      } • {new Date(tx.date).toLocaleDateString(undefined, {month:'short', day:'numeric'})} {new Date(tx.date).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                                  </p>
+                              </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                               <p className={`font-black text-sm ${isGrayed ? 'text-gray-500' : tx.isSettlement ? 'text-neo-greenDark' : tx.payerId === 'me' ? 'text-neo-greenDark' : 'text-neo-red'}`}>
+                                  {tx.isSettlement ? '✓ ' : ''}{tx.payerId === 'me' ? '+' : '-'}${tx.amount.toFixed(2)}
+                               </p>
+                               <button
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   handleDelete(tx);
+                                 }}
+                                 className={`p-1.5 rounded-md border-2 border-black transition-all ${
+                                   deletingId === tx.id 
+                                     ? 'bg-neo-red text-white shadow-neo-sm' 
+                                     : 'bg-white hover:bg-neo-red/20 opacity-0 group-hover:opacity-100'
+                                 }`}
+                                 title={deletingId === tx.id ? 'Click again to confirm delete' : 'Delete transaction'}
+                               >
+                                 <Trash2 size={14} />
+                               </button>
+                          </div>
+                      </div>
+                    );
+                  })}
+               </div>
+             ) : (
+               <div className="text-center py-8 text-gray-400 text-sm font-bold uppercase">
+                 No recent transactions
+               </div>
+             )}
+        </section>
+      </div>
+    </div>
+  );
+};

@@ -2,15 +2,16 @@ import React, { useMemo, useState } from 'react';
 import { Bell, ArrowUpRight, ArrowDownLeft, Trash2 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { NeoCard, Avatar } from '../components/NeoComponents';
-import { CURRENT_USER } from '../constants';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { calculateTotalOwed, calculateTotalOwing, calculateNetBalance, calculateDebtOrigins, shouldGrayTransaction } from '../utils/calculations';
 import { Transaction } from '../types';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
   const { friends, transactions, deleteTransaction } = useAppContext();
+  const { user } = useAuth();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleDelete = (tx: Transaction) => {
@@ -59,7 +60,7 @@ export const Home: React.FC = () => {
       {/* Header */}
       <header className="sticky top-0 z-20 bg-neo-bg/95 backdrop-blur-sm border-b-2 border-black px-5 py-4 flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold uppercase leading-none">Hello, {CURRENT_USER.name}</h2>
+          <h2 className="text-xl font-bold uppercase leading-none">Hello, {user?.name || 'User'}</h2>
           <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">Dashboard</p>
         </div>
         <button className="relative w-12 h-12 bg-neo-yellow border-2 border-black rounded-lg shadow-neo-sm active:shadow-none active:translate-y-1 flex items-center justify-center">
@@ -115,7 +116,7 @@ export const Home: React.FC = () => {
                           <div className="relative">
                               <Avatar src={friend.avatar} alt={friend.name} size="md" />
                               <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center ${friend.balance >= 0 ? 'bg-neo-greenDark' : 'bg-neo-red'}`}>
-                                  {friend.balance >= 0 ? <ArrowUpRight size={12} className="text-white"/> : <ArrowDownLeft size={12} className="text-white"/>}
+                                  {friend.balance >= 0 ? <ArrowDownLeft size={12} className="text-white"/> : <ArrowUpRight size={12} className="text-white"/>}
                               </div>
                           </div>
                           <div className="text-center w-full">
@@ -137,42 +138,48 @@ export const Home: React.FC = () => {
         {/* Debt Origins & Event Insights */}
         <section>
             <h3 className="text-lg font-black uppercase border-l-4 border-black pl-2 mb-4">Debt Origins</h3>
-            <NeoCard className="bg-[#F7E8FF] flex flex-row items-center gap-4">
-                <div className="h-32 w-32 shrink-0 relative">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie
-                                data={debtOriginsData}
-                                innerRadius={35}
-                                outerRadius={60}
-                                paddingAngle={0}
-                                dataKey="value"
-                                stroke="black"
-                                strokeWidth={2}
-                            >
-                                {debtOriginsData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                ))}
-                            </Pie>
-                        </PieChart>
-                    </ResponsiveContainer>
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                         <div className="w-2 h-2 bg-black rounded-full"></div>
-                    </div>
-                </div>
-                
-                <div className="flex-1 flex flex-col gap-2">
-                    {debtOriginsData.map((entry) => (
-                        <div key={entry.name} className="flex items-center justify-between bg-white border border-black p-1.5 rounded shadow-sm">
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 border border-black" style={{ backgroundColor: entry.color }}></div>
-                                <span className="text-xs font-bold uppercase">{entry.name}</span>
-                            </div>
-                            <span className="text-xs font-mono">{entry.value}%</span>
+            {debtOriginsData.length > 0 ? (
+                <NeoCard className="bg-[#F7E8FF] flex flex-row items-center gap-4">
+                    <div className="h-32 w-32 shrink-0 relative">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={debtOriginsData}
+                                    innerRadius={35}
+                                    outerRadius={60}
+                                    paddingAngle={0}
+                                    dataKey="value"
+                                    stroke="black"
+                                    strokeWidth={2}
+                                >
+                                    {debtOriginsData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                </Pie>
+                            </PieChart>
+                        </ResponsiveContainer>
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                             <div className="w-2 h-2 bg-black rounded-full"></div>
                         </div>
-                    ))}
-                </div>
-            </NeoCard>
+                    </div>
+                    
+                    <div className="flex-1 flex flex-col gap-2">
+                        {debtOriginsData.map((entry) => (
+                            <div key={entry.name} className="flex items-center justify-between bg-white border border-black p-1.5 rounded shadow-sm">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 border border-black" style={{ backgroundColor: entry.color }}></div>
+                                    <span className="text-xs font-bold uppercase">{entry.name}</span>
+                                </div>
+                                <span className="text-xs font-mono">{entry.value}%</span>
+                            </div>
+                        ))}
+                    </div>
+                </NeoCard>
+            ) : (
+                <NeoCard className="bg-gray-50 flex items-center justify-center py-10">
+                    <p className="text-xs font-bold uppercase text-gray-400">No debt data available</p>
+                </NeoCard>
+            )}
         </section>
 
         {/* Recent Activity */}

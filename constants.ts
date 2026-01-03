@@ -1,17 +1,9 @@
 import { Friend, Transaction, ExpenseChartData, User } from './types';
 
-export const CURRENT_USER: User = {
-  id: 'me',
-  name: 'Alex',
-  email: 'alex@squareone.app',
-  avatar: 'https://picsum.photos/id/64/200/200'
-};
-
 export const MOCK_FRIENDS: Friend[] = [
   {
     id: '1',
     name: 'Sarah Jenkins',
-    handle: '@sarahj',
     avatar: 'https://picsum.photos/id/338/200/200',
     balance: 124.50,
     lastActivity: 'Yesterday',
@@ -20,7 +12,6 @@ export const MOCK_FRIENDS: Friend[] = [
   {
     id: '2',
     name: 'Mike Ross',
-    handle: '@mikeross',
     avatar: 'https://picsum.photos/id/305/200/200',
     balance: -12.50,
     lastActivity: 'Oct 24',
@@ -29,7 +20,6 @@ export const MOCK_FRIENDS: Friend[] = [
   {
     id: '3',
     name: 'Charlie Day',
-    handle: '@greenman',
     avatar: 'https://picsum.photos/id/237/200/200',
     balance: 0,
     lastActivity: 'Oct 20',
@@ -38,7 +28,6 @@ export const MOCK_FRIENDS: Friend[] = [
   {
     id: '4',
     name: 'David Lee',
-    handle: '@davidl',
     avatar: 'https://picsum.photos/id/1005/200/200',
     balance: 120.00,
     lastActivity: '2 days ago',
@@ -95,16 +84,23 @@ export const MOCK_TRANSACTIONS: Transaction[] = [
   }
 ];
 
-export const DEBT_ORIGINS_DATA: ExpenseChartData[] = [
-  { name: 'Dining', value: 45, color: '#FF4D4D' }, // red
-  { name: 'Rent', value: 30, color: '#C3F53C' },  // green
-  { name: 'Travel', value: 25, color: '#FFDE59' }, // yellow
-];
-
 export const TRANSACTION_TAGS = [
   { label: 'Meal', color: 'bg-neo-pink', icon: 'pizza' },
   { label: 'Transport', color: 'bg-neo-yellow', icon: 'car' },
   { label: 'Groceries', color: 'bg-neo-blue', icon: 'shopping-bag' },
   { label: 'Poker', color: 'bg-neo-green', icon: 'club' },
   { label: 'Movies', color: 'bg-neo-purple', icon: 'film' },
+];
+
+export const PRESET_AVATARS = [
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Buddy',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Midnight',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Peanut',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Luna',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Oliver',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Sophie',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Jack',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Milo',
 ];

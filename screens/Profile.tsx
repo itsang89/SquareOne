@@ -5,18 +5,14 @@ import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 import { useNavigate } from 'react-router-dom';
+import { PRESET_AVATARS } from '../constants';
 
-type Currency = 'HKD' | 'USD' | 'GBP';
 type Theme = 'light' | 'dark' | 'system';
 
 export const Profile: React.FC = () => {
   const { transactions, friends } = useAppContext();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const [currency, setCurrency] = useState<Currency>(() => {
-    const stored = localStorage.getItem('squareone_currency');
-    return (stored as Currency) || 'HKD';
-  });
   const [theme, setTheme] = useState<Theme>(() => {
     const stored = localStorage.getItem('squareone_theme');
     return (stored as Theme) || 'light';
@@ -61,11 +57,6 @@ export const Profile: React.FC = () => {
     }
     // System theme would require media query listener, simplified for now
   }, [theme]);
-
-  // Fix: Persist currency
-  useEffect(() => {
-    localStorage.setItem('squareone_currency', currency);
-  }, [currency]);
 
   // Fix: Persist theme
   useEffect(() => {
@@ -197,18 +188,24 @@ export const Profile: React.FC = () => {
                                 type="text"
                                 value={profileName}
                                 onChange={(e) => setProfileName(e.target.value)}
-                                className="w-full h-12 bg-gray-50 border-2 border-black px-4 text-lg font-bold focus:outline-none focus:bg-neo-yellow/20 focus:shadow-neo"
+                                className="w-full h-12 bg-white border-2 border-black px-4 text-lg font-bold focus:outline-none focus:bg-neo-yellow/20 focus:shadow-neo"
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-bold uppercase mb-2">Avatar URL</label>
-                            <input
-                                type="text"
-                                value={profileAvatar}
-                                onChange={(e) => setProfileAvatar(e.target.value)}
-                                placeholder="https://..."
-                                className="w-full h-12 bg-gray-50 border-2 border-black px-4 text-lg font-bold focus:outline-none focus:bg-neo-yellow/20 focus:shadow-neo"
-                            />
+                            <label className="block text-xs font-bold uppercase mb-2">Select Avatar</label>
+                            <div className="flex flex-wrap gap-2 mb-3">
+                                {PRESET_AVATARS.map((avatarUrl, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => setProfileAvatar(avatarUrl)}
+                                        className={`w-10 h-10 border-2 transition-all hover:scale-110 active:scale-95 ${
+                                            profileAvatar === avatarUrl ? 'border-neo-yellow shadow-neo-sm scale-110' : 'border-black opacity-60 hover:opacity-100'
+                                        }`}
+                                    >
+                                        <img src={avatarUrl} alt={`Preset ${idx}`} className="w-full h-full object-cover" />
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                         <div className="flex gap-3">
                             <button
@@ -257,33 +254,6 @@ export const Profile: React.FC = () => {
                     <Settings size={16} /> User Preferences
                 </h3>
                 <NeoCard className="flex flex-col gap-6">
-                    <div>
-                        <div className="flex justify-between items-baseline mb-2">
-                            <label className="block text-xs font-bold uppercase">Primary Currency</label>
-                            <span className="text-[10px] font-bold bg-neo-green px-1 border border-black uppercase text-black">Auto-convert</span>
-                        </div>
-                        <div className="grid grid-cols-3 gap-0 border-2 border-black bg-gray-100 p-1">
-                            <button 
-                              onClick={() => setCurrency('HKD')}
-                              className={`py-2 border border-black font-bold text-sm transition-colors ${currency === 'HKD' ? 'bg-neo-blue text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' : 'hover:bg-white text-gray-500 hover:text-black'}`}
-                            >
-                              HKD
-                            </button>
-                            <button 
-                              onClick={() => setCurrency('USD')}
-                              className={`py-2 border border-black font-bold text-sm transition-colors ${currency === 'USD' ? 'bg-neo-blue text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' : 'hover:bg-white text-gray-500 hover:text-black'}`}
-                            >
-                              USD
-                            </button>
-                            <button 
-                              onClick={() => setCurrency('GBP')}
-                              className={`py-2 border border-black font-bold text-sm transition-colors ${currency === 'GBP' ? 'bg-neo-blue text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' : 'hover:bg-white text-gray-500 hover:text-black'}`}
-                            >
-                              GBP
-                            </button>
-                        </div>
-                    </div>
-
                     <div>
                          <label className="block text-xs font-bold uppercase mb-2">Appearance</label>
                          <div className="grid grid-cols-3 gap-0 border-2 border-black bg-gray-100 p-1">

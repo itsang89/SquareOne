@@ -9,7 +9,6 @@ export interface Friend {
   id: string; // UUID
   user_id?: string; // UUID - for database (optional for backward compatibility)
   name: string;
-  handle: string;
   avatar: string;
   balance: number; // Positive = they owe you, Negative = you owe them
   lastActivity: string;

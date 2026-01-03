@@ -1,17 +1,33 @@
 import React, { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MessageCircle, HandCoins, Trash2 } from 'lucide-react';
+import { MessageCircle, HandCoins, Trash2, Edit3, X, Check } from 'lucide-react';
 import { NeoButton, BackButton, Avatar } from '../components/NeoComponents';
 import { useAppContext } from '../context/AppContext';
 import { calculateFriendBalance, shouldGrayTransaction } from '../utils/calculations';
 import { Transaction } from '../types';
+import { PRESET_AVATARS } from '../constants';
 
 export const FriendDetail: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { friends, transactions: allTransactions, getFriendById, deleteTransaction } = useAppContext();
+  const { friends, transactions: allTransactions, getFriendById, deleteTransaction, updateFriend, deleteFriend } = useAppContext();
   const friend = getFriendById(id || '') || friends[0];
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showOptions, setShowOptions] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
+  // Edit states
+  const [editName, setEditName] = useState(friend?.name || '');
+  const [editAvatar, setEditAvatar] = useState(friend?.avatar || '');
+
+  // Update edit states when friend changes
+  React.useEffect(() => {
+    if (friend) {
+      setEditName(friend.name);
+      setEditAvatar(friend.avatar);
+    }
+  }, [friend]);
 
   const handleDelete = (tx: Transaction) => {
     if (deletingId === tx.id) {
@@ -50,6 +66,33 @@ export const FriendDetail: React.FC = () => {
     return shouldGrayTransaction(tx, friend.id, allTransactions);
   };
 
+  const handleUpdateFriend = async () => {
+    if (!friend || !editName.trim()) return;
+    
+    try {
+      await updateFriend(friend.id, {
+        name: editName.trim(),
+        avatar: editAvatar,
+      });
+      setShowEditModal(false);
+    } catch (error) {
+      console.error('Error updating friend:', error);
+      alert('Failed to update friend');
+    }
+  };
+
+  const handleDeleteFriend = async () => {
+    if (!friend) return;
+    
+    try {
+      await deleteFriend(friend.id);
+      navigate('/friends');
+    } catch (error) {
+      console.error('Error deleting friend:', error);
+      alert('Failed to delete friend');
+    }
+  };
+
   const handleSettle = () => {
     navigate(`/settle/${friend.id}`);
   };
@@ -72,12 +115,117 @@ export const FriendDetail: React.FC = () => {
     <div className="min-h-screen bg-neo-bg flex flex-col pb-24">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-neo-bg/95 backdrop-blur-sm px-5 py-4 flex items-center justify-between border-b-2 border-black">
-        <BackButton />
+        <BackButton to="/friends" />
         <h1 className="text-lg font-bold uppercase tracking-widest">Friend Detail</h1>
-        <button className="w-10 h-10 bg-white border-2 border-black shadow-neo-sm flex items-center justify-center hover:bg-neo-yellow active:shadow-none">
-            <span className="font-black text-xl">:</span>
-        </button>
+        <div className="relative">
+          <button 
+            onClick={() => setShowOptions(!showOptions)}
+            className="w-10 h-10 bg-white border-2 border-black shadow-neo-sm flex items-center justify-center hover:bg-neo-yellow active:shadow-none"
+          >
+              <span className="font-black text-xl">:</span>
+          </button>
+          
+          {showOptions && (
+            <div className="absolute right-0 mt-2 w-40 bg-white border-2 border-black shadow-neo z-50">
+              <button 
+                onClick={() => {
+                  setShowEditModal(true);
+                  setShowOptions(false);
+                }}
+                className="w-full text-left px-4 py-3 font-bold uppercase text-sm hover:bg-neo-yellow border-b-2 border-black flex items-center gap-2"
+              >
+                <Edit3 size={16} /> Edit
+              </button>
+              <button 
+                onClick={() => {
+                  setShowDeleteConfirm(true);
+                  setShowOptions(false);
+                }}
+                className="w-full text-left px-4 py-3 font-bold uppercase text-sm hover:bg-neo-red hover:text-white flex items-center gap-2"
+              >
+                <Trash2 size={16} /> Delete
+              </button>
+            </div>
+          )}
+        </div>
       </header>
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowEditModal(false)}>
+          <div className="bg-white border-2 border-black shadow-neo-lg p-6 rounded-lg w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-black uppercase">Edit Friend</h3>
+              <button onClick={() => setShowEditModal(false)} className="w-8 h-8 flex items-center justify-center border-2 border-black hover:bg-gray-100">
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="block text-sm font-bold uppercase mb-2">Name *</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full h-12 border-2 border-black bg-white px-4 text-base font-bold focus:outline-none focus:shadow-neo"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-bold uppercase mb-2">Select Avatar</label>
+                <div className="flex flex-wrap gap-2">
+                  {PRESET_AVATARS.map((avatarUrl, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setEditAvatar(avatarUrl)}
+                      className={`w-10 h-10 border-2 transition-all hover:scale-110 active:scale-95 ${
+                        editAvatar === avatarUrl ? 'border-neo-yellow shadow-neo-sm scale-110' : 'border-black opacity-60 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={avatarUrl} alt={`Preset ${idx}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <button
+                onClick={handleUpdateFriend}
+                className="w-full h-12 bg-neo-green border-2 border-black text-black font-black uppercase shadow-neo-sm active:shadow-none active:translate-y-1 mt-2"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="bg-white border-2 border-black shadow-neo-lg p-6 rounded-lg w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-xl font-black uppercase mb-2">Delete Friend?</h3>
+            <p className="text-sm font-bold text-gray-500 uppercase mb-6 tracking-wide">
+              This will permanently delete {friend.name} and all associated transactions. This action cannot be undone.
+            </p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 h-12 bg-white border-2 border-black text-black font-black uppercase shadow-neo-sm active:shadow-none active:translate-y-1"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteFriend}
+                className="flex-1 h-12 bg-neo-red border-2 border-black text-white font-black uppercase shadow-neo-sm active:shadow-none active:translate-y-1"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Profile Section */}
       <section className="px-6 pt-8 pb-6 flex flex-col items-center text-center relative overflow-hidden bg-white border-b-2 border-black">

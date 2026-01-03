@@ -9,6 +9,25 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
+    storage: {
+      getItem: (key: string) => {
+        const value = localStorage.getItem(key);
+        if (value) return value;
+        return sessionStorage.getItem(key);
+      },
+      setItem: (key: string, value: string) => {
+        const rememberMe = localStorage.getItem('squareone_remember_me') !== 'false';
+        if (rememberMe) {
+          localStorage.setItem(key, value);
+        } else {
+          sessionStorage.setItem(key, value);
+        }
+      },
+      removeItem: (key: string) => {
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
+      }
+    },
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true

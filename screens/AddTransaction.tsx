@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, ChevronDown, Calendar, FileText, Camera, Plus, Delete, Check } from 'lucide-react';
+import { X, ChevronDown, Calendar, FileText, Camera, Plus, Delete, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { TRANSACTION_TAGS } from '../constants';
 import { useAppContext } from '../context/AppContext';
 import { Transaction, TransactionType } from '../types';
@@ -9,12 +9,25 @@ import { Avatar } from '../components/NeoComponents';
 export const AddTransaction: React.FC = () => {
   const navigate = useNavigate();
   const { friends, addTransaction } = useAppContext();
+
+  const formatDate = (d: Date) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [amount, setAmount] = useState('0');
   const [direction, setDirection] = useState<'owe' | 'they-owe'>('owe');
   const [selectedFriend, setSelectedFriend] = useState<string | null>(null);
   const [selectedTag, setSelectedTag] = useState<TransactionType | null>(null);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(formatDate(new Date()));
   const [note, setNote] = useState('');
+  const [viewDate, setViewDate] = useState(new Date());
+
+  const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
+
   const [showFriendPicker, setShowFriendPicker] = useState(false);
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [noteInput, setNoteInput] = useState('');
@@ -22,6 +35,7 @@ export const AddTransaction: React.FC = () => {
   const [customTypeInput, setCustomTypeInput] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showNumpad, setShowNumpad] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [customTypes, setCustomTypes] = useState<string[]>(() => {
     // Load custom types from localStorage
     try {
@@ -105,6 +119,13 @@ export const AddTransaction: React.FC = () => {
       return;
     }
 
+    // Fix: Prevent future dates
+    const today = formatDate(new Date());
+    if (date > today) {
+      alert('Future dates are not allowed');
+      return;
+    }
+
     // Fix: Create transaction object based on direction
     // Use selectedTag as title, or fallback to type name
     const transactionTitle = selectedTag || 'General';
@@ -128,10 +149,11 @@ export const AddTransaction: React.FC = () => {
     };
 
     try {
+      console.log('Attempting to add transaction:', transaction);
       await addTransaction(transaction);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding transaction:', error);
-      alert('Failed to add transaction. Please try again.');
+      alert(`Failed to add transaction: ${error.message || 'Please try again.'}`);
       return;
     }
 
@@ -140,9 +162,13 @@ export const AddTransaction: React.FC = () => {
       setAmount('0');
       setSelectedFriend(null);
       setSelectedTag(null);
-      setDate(new Date().toISOString().split('T')[0]);
+      setDate(formatDate(new Date()));
       setNote('');
       setNoteInput('');
+      
+      // Show success message
+      setShowSuccessToast(true);
+      setTimeout(() => setShowSuccessToast(false), 2000);
     } else {
       navigate('/dashboard');
     }
@@ -156,6 +182,7 @@ export const AddTransaction: React.FC = () => {
   const selectedFriendData = friends.find(f => f.id === selectedFriend);
 
   return (
+    <>
     <div className="fixed inset-0 bg-white z-50 flex flex-col">
         {/* Header */}
         <div className="flex flex-col items-center pt-2 pb-2 shrink-0 border-b-2 border-black">
@@ -172,7 +199,6 @@ export const AddTransaction: React.FC = () => {
           className="flex-1 overflow-y-auto no-scrollbar flex flex-col px-5 pt-4 space-y-6 pb-20"
           onClick={handleContainerClick}
         >
-            
             {/* Direction Toggle */}
             <div className="flex w-full h-14 rounded-none border-2 border-black bg-white shadow-neo">
                 <label className="flex-1 relative cursor-pointer group">
@@ -268,7 +294,7 @@ export const AddTransaction: React.FC = () => {
               className="flex flex-col items-center justify-center py-12 bg-[#E0F2FE] border-2 border-black shadow-neo-sm relative overflow-hidden min-h-[180px] cursor-pointer hover:bg-[#D0E8F8] transition-colors active:shadow-neo-pressed active:translate-y-[2px]"
             >
                 <div className="absolute top-0 left-0 w-full h-2 bg-black opacity-5"></div>
-                <span className="text-xs font-bold uppercase text-gray-500 mb-2 tracking-widest">Amount (HKD)</span>
+                <span className="text-xs font-bold uppercase text-gray-500 mb-2 tracking-widest">Amount</span>
                 <div className="relative w-full text-center">
                     <h1 className="text-7xl font-black tracking-tighter text-black break-all">
                         <span className="text-4xl align-top opacity-40 font-medium mr-1">$</span>
@@ -363,7 +389,7 @@ export const AddTransaction: React.FC = () => {
                       }
                     }}
                     placeholder="Enter custom type (e.g., Rent, Utilities...)"
-                    className="w-full h-12 border-2 border-black px-4 text-base font-bold focus:outline-none focus:shadow-neo"
+                    className="w-full h-12 border-2 border-black bg-white px-4 text-base font-bold focus:outline-none focus:shadow-neo"
                     autoFocus
                   />
                   <div className="flex gap-3 mt-4">
@@ -406,37 +432,106 @@ export const AddTransaction: React.FC = () => {
                   setShowDatePicker(false);
                 }}
               >
-                <div className="bg-white border-2 border-black shadow-neo-lg p-6 rounded-lg w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-                  <h3 className="text-lg font-black uppercase mb-4">Select Date</h3>
-                  <input
-                    ref={dateInputRef}
-                    type="date"
-                    value={date}
-                    onChange={(e) => handleDateChange(e.target.value)}
-                    className="w-full h-12 border-2 border-black px-4 text-base font-bold focus:outline-none focus:shadow-neo"
-                    autoFocus
-                  />
+                <div className="bg-white border-2 border-black shadow-neo-lg p-6 rounded-lg w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-black uppercase">Select Date</h3>
+                    <button 
+                      onClick={() => setShowDatePicker(false)}
+                      className="w-8 h-8 flex items-center justify-center border-2 border-black hover:bg-gray-100"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  {/* Calendar Header */}
+                  <div className="flex items-center justify-between mb-4 bg-gray-50 border-2 border-black p-2">
+                    <button 
+                      onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1))}
+                      className="w-8 h-8 flex items-center justify-center hover:bg-white border border-transparent hover:border-black transition-all"
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    <span className="font-black uppercase text-sm tracking-tight">
+                      {viewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                    </span>
+                    <button 
+                      onClick={() => {
+                        const nextMonth = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1);
+                        if (nextMonth <= new Date() || nextMonth.getMonth() === new Date().getMonth() && nextMonth.getFullYear() === new Date().getFullYear()) {
+                          setViewDate(nextMonth);
+                        }
+                      }}
+                      className={`w-8 h-8 flex items-center justify-center transition-all ${
+                        new Date(viewDate.getFullYear(), viewDate.getMonth() + 1) > new Date() && viewDate.getMonth() === new Date().getMonth()
+                        ? 'opacity-20 cursor-not-allowed' 
+                        : 'hover:bg-white border border-transparent hover:border-black'
+                      }`}
+                    >
+                      <ChevronRight size={20} />
+                    </button>
+                  </div>
+
+                  {/* Calendar Grid */}
+                  <div className="grid grid-cols-7 gap-1 mb-4">
+                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(day => (
+                      <div key={day} className="text-center text-[10px] font-black text-gray-400 pb-2">{day}</div>
+                    ))}
+                    
+                    {/* Empty slots for days of previous month */}
+                    {Array.from({ length: getFirstDayOfMonth(viewDate.getFullYear(), viewDate.getMonth()) }).map((_, i) => (
+                      <div key={`empty-${i}`} className="h-10 w-10" />
+                    ))}
+                    
+                    {/* Actual days */}
+                    {Array.from({ length: getDaysInMonth(viewDate.getFullYear(), viewDate.getMonth()) }).map((_, i) => {
+                      const day = i + 1;
+                      const d = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
+                      const dateStr = formatDate(d);
+                      const todayStr = formatDate(new Date());
+                      const isToday = dateStr === todayStr;
+                      const isSelected = dateStr === date;
+                      
+                      // Check if future date
+                      const now = new Date();
+                      now.setHours(23, 59, 59, 999); // End of today
+                      const isFuture = d > now;
+                      
+                      return (
+                        <button
+                          key={day}
+                          disabled={isFuture}
+                          onClick={() => handleDateChange(dateStr)}
+                          className={`h-10 w-10 flex items-center justify-center font-bold text-xs transition-all border-2 
+                            ${isSelected 
+                              ? 'bg-neo-yellow border-black shadow-neo-sm -translate-y-0.5' 
+                              : isToday 
+                                ? 'border-neo-blue text-neo-blue hover:bg-neo-blue/5' 
+                                : isFuture 
+                                  ? 'text-gray-200 border-transparent cursor-not-allowed' 
+                                  : 'border-transparent hover:border-black hover:bg-gray-50'
+                            }`}
+                        >
+                          {day}
+                        </button>
+                      );
+                    })}
+                  </div>
+
                   <div className="flex gap-3 mt-4">
                     <button
                       onClick={() => {
-                        // Set to today
-                        const today = new Date().toISOString().split('T')[0];
+                        const today = formatDate(new Date());
                         handleDateChange(today);
                       }}
-                      className="flex-1 h-12 bg-neo-blue border-2 border-black text-black font-black uppercase shadow-neo-sm active:shadow-none active:translate-y-1"
+                      className="flex-1 h-12 bg-neo-blue border-2 border-black text-black font-black uppercase text-xs shadow-neo-sm active:shadow-none active:translate-y-1"
                     >
                       Today
                     </button>
                     <button
-                      onClick={() => {
-                        if (dateInputRef.current) {
-                          dateInputRef.current.blur();
-                        }
-                        setShowDatePicker(false);
-                      }}
-                      className="flex-1 h-12 bg-white border-2 border-black text-black font-black uppercase shadow-neo-sm active:shadow-none active:translate-y-1"
+                      onClick={() => setShowDatePicker(false)}
+                      className="flex-1 h-12 bg-white border-2 border-black text-black font-black uppercase text-xs shadow-neo-sm active:shadow-none active:translate-y-1"
                     >
-                      Cancel
+                      Close
                     </button>
                   </div>
                 </div>
@@ -453,6 +548,10 @@ export const AddTransaction: React.FC = () => {
                       activeElement.blur();
                     }
                     setShowNumpad(false);
+                    const currentSelectedDate = new Date(date);
+                    if (!isNaN(currentSelectedDate.getTime())) {
+                      setViewDate(currentSelectedDate);
+                    }
                     setShowDatePicker(true);
                   }}
                   className="flex-1 flex items-center justify-center gap-2 h-12 border-2 border-black bg-white text-sm font-bold shadow-neo-sm active:shadow-none active:translate-y-1 hover:bg-gray-50 transition-all"
@@ -509,7 +608,7 @@ export const AddTransaction: React.FC = () => {
                       }, 100);
                     }}
                     placeholder="Enter note..."
-                    className="w-full h-12 border-2 border-black px-4 text-base font-bold focus:outline-none focus:shadow-neo"
+                    className="w-full h-12 border-2 border-black bg-white px-4 text-base font-bold focus:outline-none focus:shadow-neo"
                     autoFocus
                   />
                   <div className="flex gap-3 mt-4">
@@ -582,5 +681,16 @@ export const AddTransaction: React.FC = () => {
             </div>
         </div>
     </div>
+
+    {/* Success Message - Top of screen, non-blocking */}
+    {showSuccessToast && (
+      <div className="fixed top-24 left-5 right-5 z-[100] flex justify-center pointer-events-none">
+        <div className="bg-neo-green border-2 border-black px-6 py-4 shadow-neo flex items-center justify-center gap-3 animate-in slide-in-from-top-4 duration-300 pointer-events-auto">
+          <Check size={24} strokeWidth={4} className="text-black" />
+          <span className="font-black uppercase text-base tracking-tight">Transaction Saved!</span>
+        </div>
+      </div>
+    )}
+  </>
   );
 };

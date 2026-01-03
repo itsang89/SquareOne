@@ -47,11 +47,11 @@ export const NeoCard: React.FC<{ children: React.ReactNode; className?: string; 
   );
 };
 
-export const BackButton: React.FC = () => {
+export const BackButton: React.FC<{ to?: string }> = ({ to }) => {
   const navigate = useNavigate();
   return (
     <button 
-      onClick={() => navigate(-1)}
+      onClick={() => to ? navigate(to) : navigate(-1)}
       className="w-10 h-10 bg-white border-2 border-black shadow-neo-sm flex items-center justify-center hover:bg-gray-100 active:shadow-neo-pressed active:translate-x-[1px] active:translate-y-[1px] transition-all"
     >
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>

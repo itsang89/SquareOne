@@ -12,6 +12,7 @@ interface AppContextType {
   updateFriend: (friendId: string, updates: Partial<Friend>) => Promise<void>;
   deleteTransaction: (transactionId: string) => Promise<void>;
   addFriend: (friend: Omit<Friend, 'id' | 'balance' | 'lastActivity' | 'status'>) => Promise<void>;
+  deleteFriend: (friendId: string) => Promise<void>;
   getFriendById: (friendId: string) => Friend | undefined;
 }
 
@@ -64,7 +65,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           id: f.id,
           user_id: f.user_id,
           name: f.name,
-          handle: f.handle || '',
           avatar: f.avatar || '',
           balance: 0, // Will be calculated
           lastActivity: 'Never', // Will be calculated
@@ -75,11 +75,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           id: t.id,
           user_id: t.user_id,
           title: t.title,
-          amount: parseFloat(t.amount),
+          amount: typeof t.amount === 'string' ? parseFloat(t.amount) : t.amount,
           date: t.date,
           type: t.type,
-          payerId: t.payer_id,
-          friendId: t.friend_id,
+          // If the payer in DB is the current user, app payer is 'me', and friend is the friend_id
+          // If the payer in DB is NOT the current user, app payer is the friend_id, and friend is 'me'
+          payerId: t.payer_id === user.id ? 'me' : t.friend_id,
+          friendId: t.payer_id === user.id ? t.friend_id : 'me',
           note: t.note || undefined,
           isSettlement: t.is_settlement || false,
         }));
@@ -165,8 +167,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         amount: transaction.amount,
         date: transaction.date,
         type: transaction.type,
-        payer_id: transaction.payerId,
-        friend_id: transaction.friendId,
+        // payer_id can be the user's UUID (if 'me') or the friend's UUID
+        payer_id: transaction.payerId === 'me' ? user.id : (transaction.friendId === 'me' ? transaction.payerId : transaction.payerId),
+        // friend_id MUST always be the friend's UUID from the friends table
+        friend_id: transaction.friendId === 'me' ? transaction.payerId : transaction.friendId,
         note: transaction.note || null,
         is_settlement: transaction.isSettlement || false,
       };
@@ -200,7 +204,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const dbUpdates: any = {};
       if (updates.name !== undefined) dbUpdates.name = updates.name;
-      if (updates.handle !== undefined) dbUpdates.handle = updates.handle;
       if (updates.avatar !== undefined) dbUpdates.avatar = updates.avatar;
 
       const { error } = await supabase
@@ -252,7 +255,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const dbFriend = {
         user_id: user.id,
         name: friendData.name,
-        handle: friendData.handle || null,
         avatar: friendData.avatar || null,
       };
 
@@ -272,7 +274,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: data.id,
         user_id: data.user_id,
         name: data.name,
-        handle: data.handle || '',
         avatar: data.avatar || '',
         balance: 0,
         lastActivity: 'Never',
@@ -281,6 +282,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setFriends(prev => [...prev, newFriend]);
     } catch (error) {
       console.error('Error adding friend:', error);
+      throw error;
+    }
+  }, [user]);
+
+  const deleteFriend = useCallback(async (friendId: string) => {
+    if (!user) return;
+
+    try {
+      // First delete all transactions related to this friend
+      const { error: txError } = await supabase
+        .from('transactions')
+        .delete()
+        .or(`payer_id.eq.${friendId},friend_id.eq.${friendId}`)
+        .eq('user_id', user.id);
+
+      if (txError) {
+        console.error('Error deleting friend transactions:', txError);
+        throw txError;
+      }
+
+      // Then delete the friend
+      const { error } = await supabase
+        .from('friends')
+        .delete()
+        .eq('id', friendId)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error deleting friend:', error);
+        throw error;
+      }
+
+      // Update local state
+      setFriends(prev => prev.filter(f => f.id !== friendId));
+      setTransactions(prev => prev.filter(t => t.payerId !== friendId && t.friendId !== friendId));
+    } catch (error) {
+      console.error('Error deleting friend:', error);
       throw error;
     }
   }, [user]);
@@ -297,6 +335,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updateFriend,
     deleteTransaction,
     addFriend,
+    deleteFriend,
     getFriendById,
   };
 

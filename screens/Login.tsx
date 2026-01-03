@@ -14,6 +14,7 @@ export const Login: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Redirect if already logged in
@@ -29,6 +30,9 @@ export const Login: React.FC = () => {
 
     setLoading(true);
     setMessage(null);
+    
+    // Save remember me preference
+    localStorage.setItem('squareone_remember_me', rememberMe.toString());
 
     if (loginMode === 'magic') {
       const { error } = await signInWithEmail(email);
@@ -68,6 +72,7 @@ export const Login: React.FC = () => {
   const handleGoogleLogin = async () => {
     setLoading(true);
     setMessage(null);
+    localStorage.setItem('squareone_remember_me', rememberMe.toString());
     const { error } = await signInWithGoogle();
     if (error) {
       setMessage({ type: 'error', text: error.message || 'Failed to sign in with Google' });
@@ -78,6 +83,7 @@ export const Login: React.FC = () => {
   const handleAppleLogin = async () => {
     setLoading(true);
     setMessage(null);
+    localStorage.setItem('squareone_remember_me', rememberMe.toString());
     const { error } = await signInWithApple();
     if (error) {
       setMessage({ type: 'error', text: error.message || 'Failed to sign in with Apple' });
@@ -155,7 +161,7 @@ export const Login: React.FC = () => {
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     disabled={loading}
-                                    className="w-full h-14 bg-gray-50 border-2 border-black px-4 text-lg font-bold placeholder:text-gray-400 focus:outline-none focus:bg-neo-yellow/20 focus:shadow-neo transition-all disabled:opacity-50"
+                                    className="w-full h-14 bg-white border-2 border-black px-4 text-lg font-bold placeholder:text-gray-400 focus:outline-none focus:bg-neo-yellow/20 focus:shadow-neo transition-all disabled:opacity-50"
                                 />
                             </div>
                         </div>
@@ -171,7 +177,7 @@ export const Login: React.FC = () => {
                                 onChange={(e) => setEmail(e.target.value)}
                                 disabled={loading}
                                 required
-                                className="w-full h-14 bg-gray-50 border-2 border-black px-4 text-lg font-bold placeholder:text-gray-400 focus:outline-none focus:bg-neo-yellow/20 focus:shadow-neo transition-all disabled:opacity-50"
+                                className="w-full h-14 bg-white border-2 border-black px-4 text-lg font-bold placeholder:text-gray-400 focus:outline-none focus:bg-neo-yellow/20 focus:shadow-neo transition-all disabled:opacity-50"
                             />
                             <Mail className="absolute right-4 top-1/2 -translate-y-1/2 text-black pointer-events-none" />
                         </div>
@@ -188,7 +194,7 @@ export const Login: React.FC = () => {
                                     onChange={(e) => setPassword(e.target.value)}
                                     disabled={loading}
                                     required
-                                    className="w-full h-14 bg-gray-50 border-2 border-black px-4 pr-12 text-lg font-bold placeholder:text-gray-400 focus:outline-none focus:bg-neo-yellow/20 focus:shadow-neo transition-all disabled:opacity-50"
+                                    className="w-full h-14 bg-white border-2 border-black px-4 pr-12 text-lg font-bold placeholder:text-gray-400 focus:outline-none focus:bg-neo-yellow/20 focus:shadow-neo transition-all disabled:opacity-50"
                                 />
                                 <button
                                     type="button"
@@ -200,6 +206,23 @@ export const Login: React.FC = () => {
                             </div>
                         </div>
                     )}
+
+                    <div className="flex items-center gap-2 mb-6 ml-1">
+                        <div 
+                            className={`w-6 h-6 border-2 border-black flex items-center justify-center cursor-pointer transition-all ${
+                                rememberMe ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' : 'bg-white'
+                            }`}
+                            onClick={() => setRememberMe(!rememberMe)}
+                        >
+                            {rememberMe && <Zap size={14} className="fill-black" />}
+                        </div>
+                        <label 
+                            className="text-xs font-bold uppercase tracking-widest cursor-pointer select-none"
+                            onClick={() => setRememberMe(!rememberMe)}
+                        >
+                            Remember Me
+                        </label>
+                    </div>
 
                     <NeoButton fullWidth type="submit" disabled={loading} className="group">
                         <span>

@@ -4,6 +4,7 @@ import { Search, UserPlus, ArrowUpRight, ArrowDownLeft, Check, X } from 'lucide-
 import { Avatar } from '../components/NeoComponents';
 import { useAppContext } from '../context/AppContext';
 import { Friend } from '../types';
+import { PRESET_AVATARS } from '../constants';
 
 export const Friends: React.FC = () => {
   const navigate = useNavigate();
@@ -11,7 +12,6 @@ export const Friends: React.FC = () => {
   const [filter, setFilter] = useState<'A-Z' | 'High-Low' | 'Recent'>('High-Low');
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [newFriendName, setNewFriendName] = useState('');
-  const [newFriendHandle, setNewFriendHandle] = useState('');
   const [newFriendAvatar, setNewFriendAvatar] = useState('');
 
   // Fix: Implement filter logic
@@ -51,12 +51,10 @@ export const Friends: React.FC = () => {
     try {
       await addFriend({
         name: newFriendName.trim(),
-        handle: newFriendHandle.trim() || `@${newFriendName.toLowerCase().replace(/\s+/g, '')}`,
-        avatar: newFriendAvatar.trim() || `https://picsum.photos/seed/${newFriendName}/200/200`,
+        avatar: newFriendAvatar.trim() || PRESET_AVATARS[0],
       });
       
       setNewFriendName('');
-      setNewFriendHandle('');
       setNewFriendAvatar('');
       setShowAddFriend(false);
     } catch (error) {
@@ -134,7 +132,7 @@ export const Friends: React.FC = () => {
                                 friend.balance > 0 ? 'bg-neo-green text-black' : 'bg-neo-red text-white'
                              }`}>
                                 <span className="text-[10px] font-bold uppercase leading-none">{friend.balance > 0 ? 'Incoming' : 'Outgoing'}</span>
-                                {friend.balance > 0 ? <ArrowUpRight size={10} strokeWidth={4} /> : <ArrowDownLeft size={10} strokeWidth={4}/>}
+                                {friend.balance > 0 ? <ArrowDownLeft size={10} strokeWidth={4} /> : <ArrowUpRight size={10} strokeWidth={4}/>}
                             </div>
                         ) : (
                             <div className="flex items-center justify-center gap-1 bg-gray-200 border-2 border-black px-2 py-0.5 mt-1">
@@ -172,31 +170,26 @@ export const Friends: React.FC = () => {
                   value={newFriendName}
                   onChange={(e) => setNewFriendName(e.target.value)}
                   placeholder="John Doe"
-                  className="w-full h-12 border-2 border-black px-4 text-base font-bold focus:outline-none focus:shadow-neo"
+                  className="w-full h-12 border-2 border-black bg-white px-4 text-base font-bold focus:outline-none focus:shadow-neo"
                   autoFocus
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-bold uppercase mb-2">Handle</label>
-                <input
-                  type="text"
-                  value={newFriendHandle}
-                  onChange={(e) => setNewFriendHandle(e.target.value)}
-                  placeholder="@johndoe"
-                  className="w-full h-12 border-2 border-black px-4 text-base font-bold focus:outline-none focus:shadow-neo"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-bold uppercase mb-2">Avatar URL (optional)</label>
-                <input
-                  type="text"
-                  value={newFriendAvatar}
-                  onChange={(e) => setNewFriendAvatar(e.target.value)}
-                  placeholder="https://..."
-                  className="w-full h-12 border-2 border-black px-4 text-base font-bold focus:outline-none focus:shadow-neo"
-                />
+                <label className="block text-sm font-bold uppercase mb-2">Select Avatar</label>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {PRESET_AVATARS.map((avatarUrl, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setNewFriendAvatar(avatarUrl)}
+                      className={`w-10 h-10 border-2 transition-all hover:scale-110 active:scale-95 ${
+                        newFriendAvatar === avatarUrl ? 'border-neo-yellow shadow-neo-sm scale-110' : 'border-black opacity-60 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={avatarUrl} alt={`Preset ${idx}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
               </div>
               
               <button

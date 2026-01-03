@@ -58,7 +58,17 @@ export const History: React.FC = () => {
     // Apply type filter
     if (activeFilter !== 'All') {
       if (activeFilter === 'Unsettled') {
-        filtered = filtered.filter(tx => !tx.isSettlement);
+        filtered = filtered.filter(tx => {
+          // If it's a settlement transaction, it's considered "settled"
+          if (tx.isSettlement) return false;
+          
+          // Determine the friend ID involved in this transaction
+          let friendId = tx.friendId !== 'me' ? tx.friendId : tx.payerId;
+          
+          // If the transaction should be grayed out, it's considered settled
+          const isGrayed = shouldGrayTransaction(tx, friendId, transactions);
+          return !isGrayed;
+        });
       } else {
         const typeMap: Record<string, string> = {
           'Poker': 'Poker',
@@ -175,7 +185,7 @@ export const History: React.FC = () => {
   return (
     <div className="min-h-screen bg-neo-bg flex flex-col pb-24 relative overflow-hidden">
         <header className="flex items-center justify-between p-4 bg-neo-bg border-b-2 border-black z-20 shrink-0">
-            <BackButton />
+            <BackButton to="/dashboard" />
             <h1 className="text-xl font-bold tracking-tight uppercase">History</h1>
             <button className="flex items-center justify-center w-10 h-10 rounded-md border-2 border-transparent hover:bg-black/5 transition-colors">
                 <MoreVertical className="text-black" />

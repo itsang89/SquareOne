@@ -125,52 +125,39 @@ export function calculateDebtOrigins(transactions: Transaction[]): ExpenseChartD
   const typeTotals = new Map<string, number>();
   
   // Only count non-settlement transactions
-  transactions
-    .filter(tx => !tx.isSettlement)
-    .forEach(tx => {
-      const current = typeTotals.get(tx.type) || 0;
-      typeTotals.set(tx.type, current + tx.amount);
-    });
+  const activeTransactions = transactions.filter(tx => !tx.isSettlement);
+  
+  activeTransactions.forEach(tx => {
+    const current = typeTotals.get(tx.type) || 0;
+    typeTotals.set(tx.type, current + tx.amount);
+  });
   
   const total = Array.from(typeTotals.values()).reduce((sum, val) => sum + val, 0);
   
   if (total === 0) {
-    // Return default empty data
-    return [
-      { name: 'Dining', value: 0, color: '#FF4D4D' },
-      { name: 'Rent', value: 0, color: '#C3F53C' },
-      { name: 'Travel', value: 0, color: '#FFDE59' },
-    ];
+    return [];
   }
   
-  // Map transaction types to chart categories
-  const typeMap: Record<string, { name: string; color: string }> = {
-    'Meal': { name: 'Dining', color: '#FF4D4D' },
-    'Poker': { name: 'Dining', color: '#FF4D4D' },
-    'Shopping': { name: 'Dining', color: '#FF4D4D' },
-    'Loan': { name: 'Rent', color: '#C3F53C' },
-    'Transport': { name: 'Travel', color: '#FFDE59' },
-    'General': { name: 'Travel', color: '#FFDE59' },
+  // Hex colors from tailwind config in index.html
+  const colorMap: Record<string, string> = {
+    'Meal': '#FF99C8',      // neo-pink
+    'Transport': '#FFDE59', // neo-yellow
+    'Groceries': '#5CE1E6', // neo-blue
+    'Poker': '#C3F53C',     // neo-green
+    'Movies': '#C3B1E1',    // neo-purple
+    'General': '#FF914D',   // neo-orange
+    'Loan': '#FF4D4D',      // neo-red
+    'Shopping': '#FF99C8',  // neo-pink (alias for Meal/Shopping)
   };
   
-  const categoryTotals = new Map<string, { value: number; color: string }>();
-  
-  typeTotals.forEach((amount, type) => {
-    const category = typeMap[type] || { name: 'Travel', color: '#FFDE59' };
-    const current = categoryTotals.get(category.name) || { value: 0, color: category.color };
-    categoryTotals.set(category.name, {
-      value: current.value + amount,
-      color: category.color,
-    });
-  });
-  
   // Convert to array and calculate percentages
-  return Array.from(categoryTotals.entries())
-    .map(([name, data]) => ({
-      name,
-      value: Math.round((data.value / total) * 100),
-      color: data.color,
+  return Array.from(typeTotals.entries())
+    .map(([type, amount]) => ({
+      name: type,
+      value: Math.round((amount / total) * 100),
+      color: colorMap[type] || '#FF914D', // Default to neo-orange for custom types
     }))
+    .filter(item => item.value > 0)
     .sort((a, b) => b.value - a.value);
 }
 

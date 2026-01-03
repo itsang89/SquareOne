@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Handshake, Wallet, QrCode, Calendar, ArrowRight, CheckCircle } from 'lucide-react';
+import { Handshake, Wallet, QrCode, Calendar, ArrowRight, CheckCircle, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { BackButton } from '../components/NeoComponents';
 import { useAppContext } from '../context/AppContext';
 import { calculateFriendBalance } from '../utils/calculations';
@@ -13,6 +13,13 @@ export const SettleUp: React.FC = () => {
   const { friends, transactions, addTransaction, getFriendById } = useAppContext();
   const friend = getFriendById(id || '') || friends[0];
   
+  const formatDate = (d: Date) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Fix: Calculate actual balance from transactions
   const balance = useMemo(() => {
     if (!friend) return 0;
@@ -21,8 +28,13 @@ export const SettleUp: React.FC = () => {
   
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'digital'>('cash');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(formatDate(new Date()));
   const [note, setNote] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [viewDate, setViewDate] = useState(new Date());
+
+  const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
   
   // Fix: Set default amount to full balance
   React.useEffect(() => {
@@ -56,6 +68,13 @@ export const SettleUp: React.FC = () => {
       alert('Amount cannot exceed balance');
       return;
     }
+
+    // Fix: Prevent future dates
+    const today = formatDate(new Date());
+    if (date > today) {
+      alert('Future dates are not allowed');
+      return;
+    }
     
     // Fix: Create settlement transaction
     // If balance is positive (they owe you), settlement reduces it (negative amount)
@@ -70,7 +89,7 @@ export const SettleUp: React.FC = () => {
     const settlement: Transaction = {
       id: crypto.randomUUID(),
       title: 'Settlement',
-      amount: Math.abs(settlementAmount),
+      amount: Math.abs(amountNum),
       date: selectedDate.toISOString(),
       type: 'General',
       payerId: balance >= 0 ? friend.id : 'me',
@@ -80,11 +99,12 @@ export const SettleUp: React.FC = () => {
     };
     
     try {
+      console.log('Attempting to add settlement:', settlement);
       await addTransaction(settlement);
       navigate(`/friends/${friend.id}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding settlement:', error);
-      alert('Failed to add settlement. Please try again.');
+      alert(`Failed to add settlement: ${error.message || 'Unknown error'}`);
     }
   };
   
@@ -99,7 +119,7 @@ export const SettleUp: React.FC = () => {
   return (
     <div className="min-h-screen bg-neo-bg flex flex-col font-display pb-6">
         <header className="w-full max-w-md mx-auto p-6 flex items-center justify-between">
-            <BackButton />
+            <BackButton to={`/friends/${friend.id}`} />
             <div className="bg-neo-yellow text-black px-4 py-2 border-2 border-black shadow-neo-sm transform rotate-1">
                 <h1 className="text-xl font-black uppercase tracking-wide">Settle Up</h1>
             </div>
@@ -118,7 +138,6 @@ export const SettleUp: React.FC = () => {
                          <Avatar src={friend.avatar} alt={friend.name} size="lg" />
                         <div>
                             <h2 className="text-2xl font-black uppercase leading-none">{friend.name}</h2>
-                            <span className="inline-block mt-1 px-2 py-0.5 bg-gray-100 border border-black text-[10px] font-bold uppercase">{friend.handle}</span>
                         </div>
                     </div>
                 </div>
@@ -146,7 +165,7 @@ export const SettleUp: React.FC = () => {
                             type="number" 
                             value={amount}
                             onChange={(e) => setAmount(e.target.value)}
-                            className="w-full h-20 bg-white border-2 border-black pl-10 pr-4 text-5xl font-black focus:outline-none focus:shadow-neo-lg focus:bg-green-50 transition-all placeholder:text-gray-300"
+                            className="w-full h-20 bg-white border-2 border-black pl-10 pr-4 text-5xl font-black focus:outline-none focus:shadow-neo-lg focus:bg-white transition-all placeholder:text-gray-300"
                         />
                         <button 
                           onClick={handleMax}
@@ -221,13 +240,19 @@ export const SettleUp: React.FC = () => {
                     <label className="block">
                         <span className="text-sm font-bold uppercase tracking-widest ml-1">Date</span>
                         <div className="relative mt-1">
-                            <input 
-                              type="date" 
-                              value={date}
-                              onChange={(e) => setDate(e.target.value)}
-                              className="w-full h-12 bg-white border-2 border-black px-3 text-base font-bold focus:outline-none focus:shadow-neo focus:bg-purple-50 transition-all" 
-                            />
-                            <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" size={18} />
+                            <button 
+                              onClick={() => {
+                                const currentSelectedDate = new Date(date);
+                                if (!isNaN(currentSelectedDate.getTime())) {
+                                  setViewDate(currentSelectedDate);
+                                }
+                                setShowDatePicker(true);
+                              }}
+                              className="w-full h-12 bg-white border-2 border-black px-3 text-left text-base font-bold focus:outline-none focus:shadow-neo transition-all flex items-center justify-between"
+                            >
+                              <span>{new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                              <Calendar size={18} />
+                            </button>
                         </div>
                     </label>
                 </div>
@@ -239,7 +264,7 @@ export const SettleUp: React.FC = () => {
                           value={note}
                           onChange={(e) => setNote(e.target.value)}
                           placeholder="Dinner..." 
-                          className="w-full h-12 mt-1 bg-white border-2 border-black px-3 text-base font-bold focus:outline-none focus:shadow-neo focus:bg-purple-50 transition-all" 
+                          className="w-full h-12 mt-1 bg-white border-2 border-black px-3 text-base font-bold focus:outline-none focus:shadow-neo focus:bg-white transition-all" 
                         />
                     </label>
                 </div>
@@ -258,6 +283,119 @@ export const SettleUp: React.FC = () => {
                 </p>
             </div>
         </main>
+
+        {/* Custom Date Picker Modal */}
+        {showDatePicker && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" 
+            onClick={() => setShowDatePicker(false)}
+          >
+            <div className="bg-white border-2 border-black shadow-neo-lg p-6 rounded-lg w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-black uppercase">Select Date</h3>
+                <button 
+                  onClick={() => setShowDatePicker(false)}
+                  className="w-8 h-8 flex items-center justify-center border-2 border-black hover:bg-gray-100"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Calendar Header */}
+              <div className="flex items-center justify-between mb-4 bg-gray-50 border-2 border-black p-2">
+                <button 
+                  onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1))}
+                  className="w-8 h-8 flex items-center justify-center hover:bg-white border border-transparent hover:border-black transition-all"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <span className="font-black uppercase text-sm tracking-tight">
+                  {viewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                </span>
+                <button 
+                  onClick={() => {
+                    const nextMonth = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1);
+                    if (nextMonth <= new Date() || nextMonth.getMonth() === new Date().getMonth() && nextMonth.getFullYear() === new Date().getFullYear()) {
+                      setViewDate(nextMonth);
+                    }
+                  }}
+                  className={`w-8 h-8 flex items-center justify-center transition-all ${
+                    new Date(viewDate.getFullYear(), viewDate.getMonth() + 1) > new Date() && viewDate.getMonth() === new Date().getMonth()
+                    ? 'opacity-20 cursor-not-allowed' 
+                    : 'hover:bg-white border border-transparent hover:border-black'
+                  }`}
+                >
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+
+              {/* Calendar Grid */}
+              <div className="grid grid-cols-7 gap-1 mb-4">
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(day => (
+                  <div key={day} className="text-center text-[10px] font-black text-gray-400 pb-2">{day}</div>
+                ))}
+                
+                {Array.from({ length: getFirstDayOfMonth(viewDate.getFullYear(), viewDate.getMonth()) }).map((_, i) => (
+                  <div key={`empty-${i}`} className="h-10 w-10" />
+                ))}
+                
+                {Array.from({ length: getDaysInMonth(viewDate.getFullYear(), viewDate.getMonth()) }).map((_, i) => {
+                  const day = i + 1;
+                  const d = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
+                  const dateStr = formatDate(d);
+                  const todayStr = formatDate(new Date());
+                  const isToday = dateStr === todayStr;
+                  const isSelected = dateStr === date;
+                  
+                  const now = new Date();
+                  now.setHours(23, 59, 59, 999);
+                  const isFuture = d > now;
+                  
+                  return (
+                    <button
+                      key={day}
+                      disabled={isFuture}
+                      onClick={() => {
+                        setDate(dateStr);
+                        setShowDatePicker(false);
+                      }}
+                      className={`h-10 w-10 flex items-center justify-center font-bold text-xs transition-all border-2 
+                        ${isSelected 
+                          ? 'bg-neo-yellow border-black shadow-neo-sm -translate-y-0.5' 
+                          : isToday 
+                            ? 'border-neo-blue text-neo-blue hover:bg-neo-blue/5' 
+                            : isFuture 
+                              ? 'text-gray-200 border-transparent cursor-not-allowed' 
+                              : 'border-transparent hover:border-black hover:bg-gray-50'
+                        }`}
+                    >
+                      {day}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={() => {
+                    const today = formatDate(new Date());
+                    setDate(today);
+                    setShowDatePicker(false);
+                  }}
+                  className="flex-1 h-12 bg-neo-blue border-2 border-black text-black font-black uppercase text-xs shadow-neo-sm active:shadow-none active:translate-y-1"
+                >
+                  Today
+                </button>
+                <button
+                  onClick={() => setShowDatePicker(false)}
+                  className="flex-1 h-12 bg-white border-2 border-black text-black font-black uppercase text-xs shadow-neo-sm active:shadow-none active:translate-y-1"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   );
 };

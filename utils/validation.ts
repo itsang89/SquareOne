@@ -1,3 +1,5 @@
+import { evaluateExpression } from './calculator';
+
 /**
  * Simple email validation
  */
@@ -10,7 +12,12 @@ export function isValidEmail(email: string): boolean {
  * Validate transaction amount
  */
 export function isValidAmount(amount: string | number): boolean {
-  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  if (typeof amount === 'number') {
+    return !isNaN(amount) && amount > 0;
+  }
+
+  const evaluated = evaluateExpression(amount);
+  const num = parseFloat(evaluated);
   return !isNaN(num) && num > 0;
 }
 

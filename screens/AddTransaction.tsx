@@ -11,6 +11,7 @@ import { DatePicker } from '../components/AddTransaction/DatePicker';
 import { useToast } from '../components/ToastContext';
 import { useForm } from '../hooks/useForm';
 import { isValidAmount } from '../utils/validation';
+import { evaluateExpression } from '../utils/calculator';
 
 export const AddTransaction: React.FC = () => {
   const navigate = useNavigate();
@@ -55,7 +56,7 @@ export const AddTransaction: React.FC = () => {
       return errors;
     },
     onSubmit: async (v) => {
-      const amountNum = parseFloat(v.amount);
+      const amountNum = parseFloat(evaluateExpression(v.amount));
       const selectedDate = new Date(v.date);
       const now = new Date();
       selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());

@@ -1,24 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Zap, Mail, UserCircle, Apple, Lock, Eye, EyeOff } from 'lucide-react';
-import { NeoButton, NeoCard } from '../components/NeoComponents';
+import { Mail, Apple, Lock, Eye, EyeOff, UserCircle } from 'lucide-react';
+import { NeoButton, NeoCard, NeoInput } from '../components/NeoComponents';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/ToastContext';
+import { isValidEmail } from '../utils/validation';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { signInWithEmail, signInWithPassword, signUp, signInWithGoogle, signInWithApple, user } = useAuth();
+  const { 
+    signInWithPassword, 
+    signUp, 
+    signInWithGoogle, 
+    signInWithApple, 
+    signInAsGuest,
+    user, 
+    isProcessing 
+  } = useAuth();
+  const { success, error: showError } = useToast();
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [loginMode, setLoginMode] = useState<'magic' | 'password'>('magic');
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [emailError, setEmailError] = useState('');
 
   // Redirect if already logged in
-  React.useEffect(() => {
+  useEffect(() => {
     if (user) {
       navigate('/dashboard');
     }
@@ -26,72 +36,49 @@ export const Login: React.FC = () => {
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
-
-    setLoading(true);
-    setMessage(null);
     
+    setEmailError('');
+    if (!isValidEmail(email)) {
+      setEmailError('Please enter a valid email address');
+      return;
+    }
+
     // Save remember me preference
     localStorage.setItem('squareone_remember_me', rememberMe.toString());
 
-    if (loginMode === 'magic') {
-      const { error } = await signInWithEmail(email);
-      
+    if (isSignUp) {
+      const { error } = await signUp(email, password, name || undefined);
       if (error) {
-        setMessage({ type: 'error', text: error.message || 'Failed to send magic link' });
+        showError('Sign up failed', error.message);
       } else {
-        setMessage({ type: 'success', text: 'Check your email for the magic link!' });
+        success('Account created!', 'Check your email to verify your account.');
       }
     } else {
-      if (!password) {
-        setMessage({ type: 'error', text: 'Please enter a password' });
-        setLoading(false);
-        return;
-      }
-
-      if (isSignUp) {
-        const { error } = await signUp(email, password, name || undefined);
-        
-        if (error) {
-          setMessage({ type: 'error', text: error.message || 'Failed to sign up' });
-        } else {
-          setMessage({ type: 'success', text: 'Account created! Check your email to verify your account.' });
-        }
-      } else {
-        const { error } = await signInWithPassword(email, password);
-        
-        if (error) {
-          setMessage({ type: 'error', text: error.message || 'Failed to sign in' });
-        }
+      const { error } = await signInWithPassword(email, password);
+      if (error) {
+        showError('Sign in failed', error.message);
       }
     }
-    
-    setLoading(false);
   };
 
   const handleGoogleLogin = async () => {
-    setLoading(true);
-    setMessage(null);
     localStorage.setItem('squareone_remember_me', rememberMe.toString());
     const { error } = await signInWithGoogle();
     if (error) {
-      setMessage({ type: 'error', text: error.message || 'Failed to sign in with Google' });
-      setLoading(false);
+      showError('Google sign in failed', error.message);
     }
   };
 
   const handleAppleLogin = async () => {
-    setLoading(true);
-    setMessage(null);
     localStorage.setItem('squareone_remember_me', rememberMe.toString());
     const { error } = await signInWithApple();
     if (error) {
-      setMessage({ type: 'error', text: error.message || 'Failed to sign in with Apple' });
-      setLoading(false);
+      showError('Apple sign in failed', error.message);
     }
   };
 
   const handleGuestLogin = () => {
+    signInAsGuest();
     navigate('/dashboard');
   };
 
@@ -112,110 +99,59 @@ export const Login: React.FC = () => {
             </div>
 
             <NeoCard className="mb-8">
-                {message && (
-                    <div className={`mb-4 p-3 border-2 border-black ${
-                        message.type === 'success' ? 'bg-neo-green' : 'bg-neo-red'
-                    }`}>
-                        <p className="text-sm font-bold uppercase text-black">{message.text}</p>
-                    </div>
-                )}
-
-                {/* Login Mode Toggle */}
-                <div className="mb-4 flex gap-2 border-2 border-black bg-gray-100 p-1">
-                    <button
-                        onClick={() => {
-                            setLoginMode('magic');
-                            setMessage(null);
-                        }}
-                        className={`flex-1 py-2 border border-black font-bold text-sm transition-colors ${
-                            loginMode === 'magic' 
-                                ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black' 
-                                : 'hover:bg-white text-gray-500 hover:text-black'
-                        }`}
-                    >
-                        Magic Link
-                    </button>
-                    <button
-                        onClick={() => {
-                            setLoginMode('password');
-                            setMessage(null);
-                        }}
-                        className={`flex-1 py-2 border border-black font-bold text-sm transition-colors ${
-                            loginMode === 'password' 
-                                ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black' 
-                                : 'hover:bg-white text-gray-500 hover:text-black'
-                        }`}
-                    >
-                        Password
-                    </button>
-                </div>
-                
                 <form onSubmit={handleEmailLogin}>
-                    {isSignUp && loginMode === 'password' && (
-                        <div className="mb-4">
-                            <label className="block text-sm font-bold uppercase tracking-widest mb-2 ml-1">Name (Optional)</label>
-                            <div className="relative">
-                                <input 
-                                    type="text" 
-                                    placeholder="Your name"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    disabled={loading}
-                                    className="w-full h-14 bg-white border-2 border-black px-4 text-lg font-bold placeholder:text-gray-400 focus:outline-none focus:bg-neo-yellow/20 focus:shadow-neo transition-all disabled:opacity-50"
-                                />
-                            </div>
-                        </div>
+                    {isSignUp && (
+                      <NeoInput
+                        label="Name (Optional)"
+                        placeholder="Your name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        disabled={isProcessing}
+                      />
                     )}
 
-                    <div className="mb-4">
-                        <label className="block text-sm font-bold uppercase tracking-widest mb-2 ml-1">Enter Email</label>
-                        <div className="relative">
-                            <input 
-                                type="email" 
-                                placeholder="friend@example.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                disabled={loading}
-                                required
-                                className="w-full h-14 bg-white border-2 border-black px-4 text-lg font-bold placeholder:text-gray-400 focus:outline-none focus:bg-neo-yellow/20 focus:shadow-neo transition-all disabled:opacity-50"
-                            />
-                            <Mail className="absolute right-4 top-1/2 -translate-y-1/2 text-black pointer-events-none" />
-                        </div>
+                    <NeoInput
+                      label="Enter Email"
+                      type="email"
+                      placeholder="friend@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={isProcessing}
+                      error={emailError}
+                      required
+                    />
+
+                    <div className="relative">
+                      <NeoInput
+                        label="Password"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Enter your password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        disabled={isProcessing}
+                        required
+                        className="pr-12"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-[38px] text-black hover:opacity-70 transition-opacity"
+                        tabIndex={-1}
+                      >
+                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
                     </div>
-
-                    {loginMode === 'password' && (
-                        <div className="mb-6">
-                            <label className="block text-sm font-bold uppercase tracking-widest mb-2 ml-1">Password</label>
-                            <div className="relative">
-                                <input 
-                                    type={showPassword ? 'text' : 'password'}
-                                    placeholder="Enter your password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    disabled={loading}
-                                    required
-                                    className="w-full h-14 bg-white border-2 border-black px-4 pr-12 text-lg font-bold placeholder:text-gray-400 focus:outline-none focus:bg-neo-yellow/20 focus:shadow-neo transition-all disabled:opacity-50"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-black hover:opacity-70 transition-opacity"
-                                >
-                                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                                </button>
-                            </div>
-                        </div>
-                    )}
 
                     <div className="flex items-center gap-2 mb-6 ml-1">
-                        <div 
+                        <button
+                            type="button"
                             className={`w-6 h-6 border-2 border-black flex items-center justify-center cursor-pointer transition-all ${
                                 rememberMe ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' : 'bg-white'
                             }`}
                             onClick={() => setRememberMe(!rememberMe)}
                         >
-                            {rememberMe && <Zap size={14} className="fill-black" />}
-                        </div>
+                            {rememberMe && <Mail size={14} className="fill-black" />}
+                        </button>
                         <label 
                             className="text-xs font-bold uppercase tracking-widest cursor-pointer select-none"
                             onClick={() => setRememberMe(!rememberMe)}
@@ -224,39 +160,28 @@ export const Login: React.FC = () => {
                         </label>
                     </div>
 
-                    <NeoButton fullWidth type="submit" disabled={loading} className="group">
-                        <span>
-                            {loading 
-                                ? (loginMode === 'magic' ? 'Sending...' : isSignUp ? 'Signing up...' : 'Signing in...')
-                                : (loginMode === 'magic' 
-                                    ? 'Get Magic Link' 
-                                    : isSignUp 
-                                        ? 'Sign Up' 
-                                        : 'Sign In')
-                            }
-                        </span>
-                        {loginMode === 'magic' ? (
-                            <Zap className="fill-black group-hover:scale-110 transition-transform" />
-                        ) : (
+                    <NeoButton fullWidth type="submit" isLoading={isProcessing} className="group">
+                        {!isProcessing && (
+                          <>
+                            <span>{isSignUp ? 'Sign Up' : 'Sign In'}</span>
                             <Lock className="fill-black group-hover:scale-110 transition-transform" />
+                          </>
                         )}
                     </NeoButton>
 
-                    {loginMode === 'password' && (
-                        <div className="mt-4 text-center">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setIsSignUp(!isSignUp);
-                                    setMessage(null);
-                                    setPassword('');
-                                }}
-                                className="text-xs font-bold uppercase text-gray-500 hover:text-black hover:underline decoration-2 underline-offset-4 transition-all"
-                            >
-                                {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-                            </button>
-                        </div>
-                    )}
+                    <div className="mt-4 text-center">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setIsSignUp(!isSignUp);
+                                setPassword('');
+                                setEmailError('');
+                            }}
+                            className="text-xs font-bold uppercase text-gray-500 hover:text-black hover:underline decoration-2 underline-offset-4 transition-all"
+                        >
+                            {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+                        </button>
+                    </div>
                 </form>
 
                 <div className="flex items-center gap-4 my-6">
@@ -268,14 +193,14 @@ export const Login: React.FC = () => {
                 <div className="flex flex-col gap-3">
                     <button 
                         onClick={handleGoogleLogin}
-                        disabled={loading}
+                        disabled={isProcessing}
                         className="w-full h-12 bg-neo-pink border-2 border-black shadow-neo-sm hover:shadow-neo active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all flex items-center justify-center gap-3 font-bold uppercase text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <UserCircle size={20} /> Google
                     </button>
                     <button 
                         onClick={handleAppleLogin}
-                        disabled={loading}
+                        disabled={isProcessing}
                         className="w-full h-12 bg-neo-blue border-2 border-black shadow-neo-sm hover:shadow-neo active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all flex items-center justify-center gap-3 font-bold uppercase text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <Apple size={20} /> Apple

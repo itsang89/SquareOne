@@ -5,27 +5,38 @@ export interface User {
   avatar: string;
 }
 
+export type FriendStatus = 'settled' | 'active';
+
 export interface Friend {
   id: string; // UUID
-  user_id?: string; // UUID - for database (optional for backward compatibility)
+  user_id?: string; // UUID
   name: string;
   avatar: string;
   balance: number; // Positive = they owe you, Negative = you owe them
   lastActivity: string;
-  status: 'settled' | 'active';
+  status: FriendStatus;
 }
 
-export type TransactionType = 'Meal' | 'Poker' | 'Transport' | 'Loan' | 'Shopping' | 'General' | string;
+export type TransactionType = 
+  | 'Meal' 
+  | 'Poker' 
+  | 'Transport' 
+  | 'Loan' 
+  | 'Shopping' 
+  | 'General' 
+  | 'Groceries' 
+  | 'Movies' 
+  | string;
 
 export interface Transaction {
   id: string; // UUID
-  user_id?: string; // UUID - for database (optional for backward compatibility)
+  user_id?: string; // UUID
   title: string;
   amount: number;
   date: string; // ISO date string
   type: TransactionType;
   payerId: string; // 'me' or friendId
-  friendId: string; // UUID - The other person involved (friend ID)
+  friendId: string; // UUID - The other person involved
   note?: string;
   isSettlement?: boolean;
 }
@@ -34,4 +45,14 @@ export interface ExpenseChartData {
   name: string;
   value: number;
   color: string;
+}
+
+export interface AuthResult {
+  success: boolean;
+  error?: Error;
+}
+
+export interface AppActionResult {
+  success: boolean;
+  error?: Error;
 }

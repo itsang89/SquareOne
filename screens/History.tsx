@@ -1,42 +1,48 @@
 import React, { useState, useMemo } from 'react';
 import { Search, MoreVertical, Filter, Trash2 } from 'lucide-react';
-import { BackButton, Avatar } from '../components/NeoComponents';
+import { BackButton, Avatar, NeoInput, NeoButton } from '../components/NeoComponents';
 import { useAppContext } from '../context/AppContext';
 import { Transaction } from '../types';
 import { shouldGrayTransaction } from '../utils/calculations';
+import { useTimeout } from '../hooks/useTimeout';
+import { useToast } from '../components/ToastContext';
+import { TransactionSkeleton } from '../components/LoadingSkeleton';
+import { formatCurrency } from '../utils/formatters';
 
 type FilterType = 'All' | 'Poker' | 'Meals' | 'Loans' | 'Unsettled';
 type SortType = 'date' | 'event';
 
 export const History: React.FC = () => {
-  const { transactions, friends, deleteTransaction } = useAppContext();
+  const { transactions, friends, deleteTransaction, loading } = useAppContext();
+  const { success, error: showError } = useToast();
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
   const [sortBy, setSortBy] = useState<SortType>('date');
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const handleDelete = (tx: Transaction) => {
+  useTimeout(() => setDeletingId(null), deletingId ? 3000 : null, [deletingId]);
+
+  const handleDelete = async (tx: Transaction) => {
     if (deletingId === tx.id) {
-      // Confirm deletion
-      deleteTransaction(tx.id);
+      const result = await deleteTransaction(tx.id);
+      if (result.success) {
+        success('Transaction deleted');
+      } else {
+        showError('Delete failed', result.error?.message);
+      }
       setDeletingId(null);
     } else {
-      // First click - show confirmation
       setDeletingId(tx.id);
-      // Auto-cancel after 3 seconds
-      setTimeout(() => setDeletingId(null), 3000);
     }
   };
 
-  // Fix: Filter and search transactions
   const filteredTransactions = useMemo(() => {
     let filtered = [...transactions];
 
-    // Apply search
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(tx => {
-        // Fix: Improved friend lookup for search
         let friend = null;
         if (tx.friendId !== 'me') {
           friend = friends.find(f => f.id === tx.friendId);
@@ -55,19 +61,12 @@ export const History: React.FC = () => {
       });
     }
 
-    // Apply type filter
     if (activeFilter !== 'All') {
       if (activeFilter === 'Unsettled') {
         filtered = filtered.filter(tx => {
-          // If it's a settlement transaction, it's considered "settled"
           if (tx.isSettlement) return false;
-          
-          // Determine the friend ID involved in this transaction
           let friendId = tx.friendId !== 'me' ? tx.friendId : tx.payerId;
-          
-          // If the transaction should be grayed out, it's considered settled
-          const isGrayed = shouldGrayTransaction(tx, friendId, transactions);
-          return !isGrayed;
+          return !shouldGrayTransaction(tx, friendId, transactions);
         });
       } else {
         const typeMap: Record<string, string> = {
@@ -79,15 +78,11 @@ export const History: React.FC = () => {
       }
     }
 
-    // Apply sorting
     if (sortBy === 'date') {
       filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     } else {
-      // Sort by event (type), then by date
       filtered.sort((a, b) => {
-        if (a.type !== b.type) {
-          return a.type.localeCompare(b.type);
-        }
+        if (a.type !== b.type) return a.type.localeCompare(b.type);
         return new Date(b.date).getTime() - new Date(a.date).getTime();
       });
     }
@@ -95,59 +90,30 @@ export const History: React.FC = () => {
     return filtered;
   }, [transactions, searchQuery, activeFilter, sortBy, friends]);
 
-  // Fix: Group transactions by date
   const groupedTransactions = useMemo(() => {
     const groups: Record<string, Transaction[]> = {};
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
     filteredTransactions.forEach((tx: Transaction) => {
-      try {
-        const txDate = new Date(tx.date);
-        // Fix: Validate date
-        if (isNaN(txDate.getTime())) {
-          console.warn('Invalid date for transaction:', tx);
-          return;
-        }
-        
-        const txDateOnly = new Date(txDate.getFullYear(), txDate.getMonth(), txDate.getDate());
-        const diffTime = today.getTime() - txDateOnly.getTime();
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        
-        let groupKey: string;
-        if (diffDays === 0) {
-          groupKey = 'Today';
-        } else if (diffDays === 1) {
-          groupKey = 'Yesterday';
-        } else if (diffDays < 7) {
-          groupKey = 'This Week';
-        } else if (diffDays < 30) {
-          groupKey = 'This Month';
-        } else {
-          groupKey = txDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-        }
-        
-        if (!groups[groupKey]) {
-          groups[groupKey] = [];
-        }
-        groups[groupKey].push(tx);
-      } catch (error) {
-        console.error('Error processing transaction:', tx, error);
-      }
+      const txDate = new Date(tx.date);
+      if (isNaN(txDate.getTime())) return;
+      
+      const txDateOnly = new Date(txDate.getFullYear(), txDate.getMonth(), txDate.getDate());
+      const diffTime = today.getTime() - txDateOnly.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      
+      let groupKey: string;
+      if (diffDays === 0) groupKey = 'Today';
+      else if (diffDays === 1) groupKey = 'Yesterday';
+      else if (diffDays < 7) groupKey = 'This Week';
+      else if (diffDays < 30) groupKey = 'This Month';
+      else groupKey = txDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+      
+      if (!groups[groupKey]) groups[groupKey] = [];
+      groups[groupKey].push(tx);
     });
     
-    // Fix: Sort transactions by time within each group (newest first)
-    Object.keys(groups).forEach(groupKey => {
-      groups[groupKey].sort((a, b) => {
-        try {
-          return new Date(b.date).getTime() - new Date(a.date).getTime();
-        } catch {
-          return 0;
-        }
-      });
-    });
-    
-    // Fix: Sort groups by date (Today first, then Yesterday, then by actual date)
     const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
       if (a === 'Today') return -1;
       if (b === 'Today') return 1;
@@ -157,14 +123,12 @@ export const History: React.FC = () => {
       if (b === 'This Week') return 1;
       if (a === 'This Month') return -1;
       if (b === 'This Month') return 1;
-      // For month names, try to sort by date
-      try {
-        const dateA = new Date(a);
-        const dateB = new Date(b);
-        if (!isNaN(dateA.getTime()) && !isNaN(dateB.getTime())) {
-          return dateB.getTime() - dateA.getTime();
-        }
-      } catch {}
+      
+      const dateA = new Date(a);
+      const dateB = new Date(b);
+      if (!isNaN(dateA.getTime()) && !isNaN(dateB.getTime())) {
+        return dateB.getTime() - dateA.getTime();
+      }
       return 0;
     });
     
@@ -194,15 +158,15 @@ export const History: React.FC = () => {
 
         <div className="flex flex-col gap-4 p-4 pb-2 bg-neo-bg shrink-0 z-10">
             <div className="relative w-full">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
                     <Search className="text-black" size={20} />
                 </div>
-                <input 
-                    type="text" 
+                <NeoInput 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search friend, note, amount..."
-                    className="block w-full pl-10 pr-3 py-3 rounded-md bg-white border-2 border-black text-black placeholder-gray-500 focus:outline-none focus:shadow-neo-sm transition-all placeholder:text-sm font-bold"
+                    className="pl-10"
+                    fullWidth
                 />
             </div>
 
@@ -235,8 +199,12 @@ export const History: React.FC = () => {
         </div>
 
         <div className="flex-1 overflow-y-auto no-scrollbar px-4 pt-4">
-            {filteredTransactions.length > 0 && Object.keys(groupedTransactions).length > 0 ? (
-              Object.entries(groupedTransactions).map(([groupName, txs]: [string, Transaction[]]) => (
+            {loading ? (
+              <div className="flex flex-col gap-4">
+                {[1, 2, 3, 4, 5].map(i => <TransactionSkeleton key={i} />)}
+              </div>
+            ) : filteredTransactions.length > 0 && Object.keys(groupedTransactions).length > 0 ? (
+              Object.entries(groupedTransactions).map(([groupName, txs]) => (
                 <div key={groupName} className="mb-6">
                   <div className="flex items-center gap-4 mb-3">
                     <h3 className="text-xs font-bold uppercase tracking-widest text-black">{groupName}</h3>
@@ -244,22 +212,18 @@ export const History: React.FC = () => {
                   </div>
                   
                   {txs.map(tx => {
-                    // Fix: Improved friend lookup - find the friend involved in the transaction
                     let friend = null;
                     let friendIdForGraying = null;
                     if (tx.friendId !== 'me') {
-                      // If friendId is not 'me', find that friend
                       friend = friends.find(f => f.id === tx.friendId);
                       friendIdForGraying = tx.friendId;
                     } else if (tx.payerId !== 'me') {
-                      // If friendId is 'me' but payerId is not 'me', find the payer
                       friend = friends.find(f => f.id === tx.payerId);
                       friendIdForGraying = tx.payerId;
                     }
                     const friendName = friend?.name || 'Unknown';
-                    const friendAvatar = friend?.avatar || `https://picsum.photos/seed/${tx.friendId || tx.payerId}/100`;
+                    const friendAvatar = friend?.avatar || '';
                     
-                    // Fix: Check if transaction should be grayed (when friend balance is zero)
                     const isGrayed = friendIdForGraying ? shouldGrayTransaction(tx, friendIdForGraying, transactions) : false;
                     
                     return (
@@ -277,7 +241,7 @@ export const History: React.FC = () => {
                           <div className="flex justify-between items-start">
                             <h4 className={`font-bold text-base truncate ${isGrayed ? 'text-gray-500' : ''}`}>{friendName}</h4>
                             <span className={`font-bold whitespace-nowrap px-1 rounded ${isGrayed ? 'text-gray-500 bg-white/50' : tx.payerId === 'me' ? 'text-green-700 bg-white/50' : 'text-red-700 bg-white/50'}`}>
-                              {tx.isSettlement ? '✓ ' : ''}{tx.payerId === 'me' ? '+' : '-'} ${tx.amount.toFixed(2)}
+                              {tx.isSettlement ? '✓ ' : ''}{tx.payerId === 'me' ? '+' : '-'} {formatCurrency(tx.amount)}
                             </span>
                           </div>
                           <div className="flex justify-between items-center mt-0.5">
@@ -299,7 +263,6 @@ export const History: React.FC = () => {
                               ? 'bg-neo-red text-white shadow-neo-sm' 
                               : 'bg-white hover:bg-neo-red/20 opacity-0 group-hover:opacity-100'
                           }`}
-                          title={deletingId === tx.id ? 'Click again to confirm delete' : 'Delete transaction'}
                         >
                           <Trash2 size={16} />
                         </button>
@@ -319,10 +282,10 @@ export const History: React.FC = () => {
             </div>
         </div>
 
-        {/* Floating Filter FAB */}
         <button 
           onClick={handleFilterReset}
           className="absolute bottom-24 right-6 w-14 h-14 bg-neo-yellow text-black rounded-lg border-2 border-black shadow-neo hover:scale-105 active:shadow-none active:translate-y-1 transition-all flex items-center justify-center z-30"
+          aria-label="Reset filters"
         >
              <Filter className="font-bold" />
         </button>

@@ -1,4 +1,4 @@
-import { Friend, Transaction, ExpenseChartData, User } from './types';
+import { Friend, Transaction } from './types';
 
 export const MOCK_FRIENDS: Friend[] = [
   {
@@ -91,6 +91,17 @@ export const TRANSACTION_TAGS = [
   { label: 'Poker', color: 'bg-neo-green', icon: 'club' },
   { label: 'Movies', color: 'bg-neo-purple', icon: 'film' },
 ];
+
+export const TRANSACTION_COLORS: Record<string, string> = {
+  'Meal': '#FF99C8',      // neo-pink
+  'Transport': '#FFDE59', // neo-yellow
+  'Groceries': '#5CE1E6', // neo-blue
+  'Poker': '#C3F53C',     // neo-green
+  'Movies': '#C3B1E1',    // neo-purple
+  'General': '#FF914D',   // neo-orange
+  'Loan': '#FF4D4D',      // neo-red
+  'Shopping': '#FF99C8',  // neo-pink
+};
 
 export const PRESET_AVATARS = [
   'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',

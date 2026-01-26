@@ -1,18 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Moon, Sun, Monitor, Download, Trash2, HelpCircle, ArrowRight, Edit3, LogOut } from 'lucide-react';
-import { NeoCard, Avatar } from '../components/NeoComponents';
+import { NeoCard, Avatar, NeoButton, NeoInput, NeoModal } from '../components/NeoComponents';
 import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 import { useNavigate } from 'react-router-dom';
 import { PRESET_AVATARS } from '../constants';
+import { useToast } from '../components/ToastContext';
 
 type Theme = 'light' | 'dark' | 'system';
 
 export const Profile: React.FC = () => {
-  const { transactions, friends } = useAppContext();
+  const { transactions, friends, refetch } = useAppContext();
   const { user, signOut } = useAuth();
+  const { success, error: showError } = useToast();
   const navigate = useNavigate();
+  
   const [theme, setTheme] = useState<Theme>(() => {
     const stored = localStorage.getItem('squareone_theme');
     return (stored as Theme) || 'light';
@@ -22,14 +25,13 @@ export const Profile: React.FC = () => {
   const [profileName, setProfileName] = useState(user?.name || '');
   const [profileAvatar, setProfileAvatar] = useState(user?.avatar || '');
   const [joinedDate, setJoinedDate] = useState<string>('');
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  // Load user profile data
   useEffect(() => {
     if (user) {
       setProfileName(user.name);
       setProfileAvatar(user.avatar);
       
-      // Load joined date from profile
       const loadProfile = async () => {
         const { data } = await supabase
           .from('profiles')
@@ -46,122 +48,110 @@ export const Profile: React.FC = () => {
     }
   }, [user]);
 
-  // Fix: Apply theme to body
   useEffect(() => {
     const body = document.body;
     body.classList.remove('dark', 'light');
-    if (theme === 'dark') {
-      body.classList.add('dark');
-    } else if (theme === 'light') {
-      body.classList.add('light');
+    
+    if (theme === 'system') {
+      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      body.classList.add(isDark ? 'dark' : 'light');
+    } else {
+      body.classList.add(theme);
     }
-    // System theme would require media query listener, simplified for now
-  }, [theme]);
-
-  // Fix: Persist theme
-  useEffect(() => {
+    
     localStorage.setItem('squareone_theme', theme);
   }, [theme]);
 
   const handleExportCSV = () => {
-    // Fix: Generate CSV from transactions
-    const headers = ['Date', 'Title', 'Type', 'Amount', 'Payer', 'Friend', 'Note', 'Settlement'];
-    const rows = transactions.map(tx => {
-      const friend = friends.find(f => f.id === tx.friendId || (tx.payerId === f.id && tx.friendId === 'me'));
-      const friendName = friend?.name || tx.friendId;
-      const payerName = tx.payerId === 'me' ? 'Me' : friendName;
-      
-      return [
-        new Date(tx.date).toLocaleDateString(),
-        tx.title,
-        tx.type,
-        tx.amount.toFixed(2),
-        payerName,
-        friendName,
-        tx.note || '',
-        tx.isSettlement ? 'Yes' : 'No',
-      ];
-    });
+    try {
+      const headers = ['Date', 'Title', 'Type', 'Amount', 'Payer', 'Friend', 'Note', 'Settlement'];
+      const rows = transactions.map(tx => {
+        const friend = friends.find(f => f.id === tx.friendId || (tx.payerId === f.id && tx.friendId === 'me'));
+        const friendName = friend?.name || tx.friendId;
+        const payerName = tx.payerId === 'me' ? 'Me' : friendName;
+        
+        return [
+          new Date(tx.date).toLocaleDateString(),
+          tx.title,
+          tx.type,
+          tx.amount.toFixed(2),
+          payerName,
+          friendName,
+          tx.note || '',
+          tx.isSettlement ? 'Yes' : 'No',
+        ];
+      });
 
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n');
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `squareone-transactions-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `squareone-transactions-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      success('Exported!', 'Your transaction history has been downloaded.');
+    } catch (error) {
+      showError('Export failed', 'Something went wrong while generating CSV.');
+    }
   };
 
   const handleUpdateProfile = async () => {
-    if (!user) return;
+    if (!user || !profileName.trim()) return;
 
+    setIsUpdating(true);
     try {
       const { error } = await supabase
         .from('profiles')
         .update({
-          name: profileName,
+          name: profileName.trim(),
           avatar: profileAvatar,
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id);
 
-      if (error) {
-        console.error('Error updating profile:', error);
-        alert('Failed to update profile');
-      } else {
-        setShowEditProfile(false);
-        // Profile will be reloaded via AuthContext
-        window.location.reload();
-      }
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      alert('Failed to update profile');
+      if (error) throw error;
+      
+      success('Profile updated');
+      setShowEditProfile(false);
+      // Wait for AuthContext to pick up changes or we could force refresh user profile if needed
+    } catch (error: any) {
+      showError('Update failed', error.message);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
   const handleClearAllData = async () => {
-    if (!showClearConfirm) {
-      setShowClearConfirm(true);
-      return;
-    }
-
     if (!user) return;
 
+    setIsUpdating(true);
     try {
-      // Delete all transactions
       const { error: txError } = await supabase
         .from('transactions')
         .delete()
         .eq('user_id', user.id);
 
-      if (txError) {
-        console.error('Error deleting transactions:', txError);
-        alert('Failed to clear transactions');
-        return;
-      }
+      if (txError) throw txError;
 
-      // Delete all friends
       const { error: friendsError } = await supabase
         .from('friends')
         .delete()
         .eq('user_id', user.id);
 
-      if (friendsError) {
-        console.error('Error deleting friends:', friendsError);
-        alert('Failed to clear friends');
-        return;
-      }
+      if (friendsError) throw friendsError;
 
+      await refetch();
+      success('Data cleared', 'All your transactions and friends have been removed.');
       setShowClearConfirm(false);
-      window.location.reload();
-    } catch (error) {
-      console.error('Error clearing data:', error);
-      alert('Failed to clear data');
+    } catch (error: any) {
+      showError('Failed to clear data', error.message);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -182,24 +172,22 @@ export const Profile: React.FC = () => {
             <NeoCard className="relative">
                 {showEditProfile ? (
                     <div className="flex flex-col gap-4">
+                        <NeoInput
+                            label="Name"
+                            value={profileName}
+                            onChange={(e) => setProfileName(e.target.value)}
+                            disabled={isUpdating}
+                        />
                         <div>
-                            <label className="block text-xs font-bold uppercase mb-2">Name</label>
-                            <input
-                                type="text"
-                                value={profileName}
-                                onChange={(e) => setProfileName(e.target.value)}
-                                className="w-full h-12 bg-white border-2 border-black px-4 text-lg font-bold focus:outline-none focus:bg-neo-yellow/20 focus:shadow-neo"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold uppercase mb-2">Select Avatar</label>
-                            <div className="flex flex-wrap gap-2 mb-3">
+                            <label className="block text-xs font-bold uppercase mb-2 tracking-widest">Select Avatar</label>
+                            <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border-2 border-black">
                                 {PRESET_AVATARS.map((avatarUrl, idx) => (
                                     <button
                                         key={idx}
                                         onClick={() => setProfileAvatar(avatarUrl)}
+                                        disabled={isUpdating}
                                         className={`w-10 h-10 border-2 transition-all hover:scale-110 active:scale-95 ${
-                                            profileAvatar === avatarUrl ? 'border-neo-yellow shadow-neo-sm scale-110' : 'border-black opacity-60 hover:opacity-100'
+                                            profileAvatar === avatarUrl ? 'border-black bg-neo-yellow shadow-neo-sm scale-110' : 'border-black/20 opacity-60 hover:opacity-100'
                                         }`}
                                     >
                                         <img src={avatarUrl} alt={`Preset ${idx}`} className="w-full h-full object-cover" />
@@ -208,22 +196,22 @@ export const Profile: React.FC = () => {
                             </div>
                         </div>
                         <div className="flex gap-3">
-                            <button
-                                onClick={handleUpdateProfile}
-                                className="flex-1 h-12 bg-neo-green border-2 border-black shadow-neo-sm hover:shadow-neo active:shadow-none active:translate-y-[2px] transition-all font-bold uppercase text-sm"
+                            <NeoButton 
+                              fullWidth 
+                              onClick={handleUpdateProfile} 
+                              isLoading={isUpdating}
+                              variant="primary"
                             >
-                                Save
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setShowEditProfile(false);
-                                    setProfileName(user?.name || '');
-                                    setProfileAvatar(user?.avatar || '');
-                                }}
-                                className="flex-1 h-12 bg-gray-200 border-2 border-black shadow-neo-sm hover:shadow-neo active:shadow-none active:translate-y-[2px] transition-all font-bold uppercase text-sm"
+                              Save
+                            </NeoButton>
+                            <NeoButton 
+                              fullWidth 
+                              onClick={() => setShowEditProfile(false)} 
+                              variant="neutral"
+                              disabled={isUpdating}
                             >
-                                Cancel
-                            </button>
+                              Cancel
+                            </NeoButton>
                         </div>
                     </div>
                 ) : (
@@ -237,6 +225,7 @@ export const Profile: React.FC = () => {
                             <button 
                                 onClick={() => setShowEditProfile(true)}
                                 className="w-10 h-10 bg-neo-orange text-black flex items-center justify-center border-2 border-black shadow-neo-sm hover:shadow-neo active:shadow-none active:translate-y-[2px] transition-all"
+                                aria-label="Edit profile"
                             >
                                 <Edit3 size={18} />
                             </button>
@@ -302,20 +291,16 @@ export const Profile: React.FC = () => {
                     </button>
 
                      <button 
-                       onClick={handleClearAllData}
-                       className={`w-full bg-white border-2 border-black p-4 shadow-neo-sm flex items-center justify-between group active:shadow-none active:translate-y-[2px] transition-all ${showClearConfirm ? 'hover:bg-red-100' : 'hover:bg-red-50'}`}
+                       onClick={() => setShowClearConfirm(true)}
+                       className="w-full bg-white border-2 border-black p-4 shadow-neo-sm flex items-center justify-between group active:shadow-none active:translate-y-[2px] transition-all hover:bg-red-50"
                      >
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 bg-neo-red border-2 border-black flex items-center justify-center text-white">
                                 <Trash2 size={16} />
                             </div>
                             <div className="text-left">
-                                <span className="block font-bold uppercase text-sm text-red-600">
-                                  {showClearConfirm ? 'Confirm Clear?' : 'Clear All Data'}
-                                </span>
-                                <span className="block text-[10px] text-red-400 font-bold uppercase tracking-wider">
-                                  {showClearConfirm ? 'Click again to confirm' : 'Cannot be undone'}
-                                </span>
+                                <span className="block font-bold uppercase text-sm text-red-600">Clear All Data</span>
+                                <span className="block text-[10px] text-red-400 font-bold uppercase tracking-wider">Cannot be undone</span>
                             </div>
                         </div>
                     </button>
@@ -357,6 +342,20 @@ export const Profile: React.FC = () => {
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">SquareOne v1.0.0</p>
             </div>
         </main>
+
+        <NeoModal
+          isOpen={showClearConfirm}
+          onClose={() => setShowClearConfirm(false)}
+          title="Clear All Data?"
+        >
+          <p className="font-bold text-gray-600 mb-6 uppercase text-sm tracking-tight">
+            This will permanently delete ALL your transactions and friends. This action cannot be undone.
+          </p>
+          <div className="flex gap-3">
+            <NeoButton fullWidth onClick={() => setShowClearConfirm(false)} variant="neutral">Cancel</NeoButton>
+            <NeoButton fullWidth onClick={handleClearAllData} variant="accent" isLoading={isUpdating}>Yes, Clear All</NeoButton>
+          </div>
+        </NeoModal>
     </div>
   );
 };

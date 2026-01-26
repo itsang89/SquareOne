@@ -1,41 +1,45 @@
 import React, { useMemo, useState } from 'react';
 import { Bell, ArrowUpRight, ArrowDownLeft, Trash2 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { NeoCard, Avatar } from '../components/NeoComponents';
+import { Avatar, NeoCard } from '../components/NeoComponents';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { calculateTotalOwed, calculateTotalOwing, calculateNetBalance, calculateDebtOrigins, shouldGrayTransaction } from '../utils/calculations';
 import { Transaction } from '../types';
+import { useTimeout } from '../hooks/useTimeout';
+import { useToast } from '../components/ToastContext';
+import { TransactionSkeleton, FriendSkeleton } from '../components/LoadingSkeleton';
+import { formatCurrency, formatDate } from '../utils/formatters';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
-  const { friends, transactions, deleteTransaction } = useAppContext();
+  const { friends, transactions, deleteTransaction, loading, error } = useAppContext();
   const { user } = useAuth();
+  const { success, error: showError } = useToast();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const handleDelete = (tx: Transaction) => {
+  useTimeout(() => setDeletingId(null), deletingId ? 3000 : null, [deletingId]);
+
+  const handleDelete = async (tx: Transaction) => {
     if (deletingId === tx.id) {
-      // Confirm deletion
-      deleteTransaction(tx.id);
+      const result = await deleteTransaction(tx.id);
+      if (result.success) {
+        success('Transaction deleted');
+      } else {
+        showError('Failed to delete transaction', result.error?.message);
+      }
       setDeletingId(null);
     } else {
-      // First click - show confirmation
       setDeletingId(tx.id);
-      // Auto-cancel after 3 seconds
-      setTimeout(() => setDeletingId(null), 3000);
     }
   };
   
-  // Fix: Calculate totals from actual transactions instead of hardcoded values
   const totalOwed = useMemo(() => calculateTotalOwed(transactions), [transactions]);
   const totalOwing = useMemo(() => calculateTotalOwing(transactions), [transactions]);
   const netBalance = useMemo(() => calculateNetBalance(transactions), [transactions]);
-  
-  // Fix: Calculate debt origins from actual transactions
   const debtOriginsData = useMemo(() => calculateDebtOrigins(transactions), [transactions]);
   
-  // Fix: Get top friends by absolute balance, sorted high to low
   const topFriends = useMemo(() => {
     return [...friends]
       .filter(f => f.balance !== 0)
@@ -43,17 +47,19 @@ export const Home: React.FC = () => {
       .slice(0, 5);
   }, [friends]);
   
-  // Fix: Get recent transactions, sorted by date descending
   const recentTransactions = useMemo(() => {
     return [...transactions]
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 10);
   }, [transactions]);
   
-  // Fix: Count unsettled transactions for notification badge
   const unsettledCount = useMemo(() => {
     return transactions.filter(tx => !tx.isSettlement).length;
   }, [transactions]);
+
+  if (error) {
+    throw error; // Let ErrorBoundary handle it
+  }
 
   return (
     <div className="min-h-screen pb-24 bg-neo-bg">
@@ -80,19 +86,19 @@ export const Home: React.FC = () => {
                 <div className="relative z-10 mb-6">
                     <p className="text-black/70 text-xs font-bold uppercase tracking-widest mb-1">Total Net Position</p>
                     <p className="text-5xl font-bold tracking-tighter">
-                      {netBalance >= 0 ? '+' : ''}${Math.abs(netBalance).toFixed(2)}
+                      {netBalance >= 0 ? '+' : '-'}{formatCurrency(Math.abs(netBalance))}
                     </p>
                 </div>
 
                 <div className="relative z-10 flex gap-4 pt-4 border-t-2 border-black/10">
                     <div className="flex-1">
                         <p className="text-black/60 text-[10px] font-black uppercase mb-1">You Owe</p>
-                        <p className="text-neo-red font-black text-xl tracking-tight">${totalOwing.toFixed(2)}</p>
+                        <p className="text-neo-red font-black text-xl tracking-tight">{formatCurrency(totalOwing)}</p>
                     </div>
                     <div className="w-[2px] bg-black/10"></div>
                     <div className="flex-1">
                         <p className="text-black/60 text-[10px] font-black uppercase mb-1">Owed To You</p>
-                        <p className="text-neo-greenDark font-black text-xl tracking-tight">${totalOwed.toFixed(2)}</p>
+                        <p className="text-neo-greenDark font-black text-xl tracking-tight">{formatCurrency(totalOwed)}</p>
                     </div>
                 </div>
             </div>
@@ -105,8 +111,12 @@ export const Home: React.FC = () => {
                 <Link to="/friends" className="text-xs font-bold uppercase underline decoration-2">View All</Link>
             </div>
             
-            {topFriends.length > 0 ? (
-              <div className="flex overflow-x-auto no-scrollbar gap-4 pb-4 -mx-5 px-5 snap-x">
+            {loading ? (
+              <div className="flex gap-4 overflow-x-auto pb-4">
+                {[1, 2, 3].map(i => <FriendSkeleton key={i} />)}
+              </div>
+            ) : topFriends.length > 0 ? (
+              <div className="flex overflow-x-auto no-scrollbar gap-4 pb-4 snap-x">
                   {topFriends.map(friend => (
                       <div 
                         key={friend.id} 
@@ -122,7 +132,7 @@ export const Home: React.FC = () => {
                           <div className="text-center w-full">
                               <p className="text-sm font-bold truncate w-full">{friend.name.split(' ')[0]}</p>
                               <p className={`text-xs font-bold ${friend.balance >= 0 ? 'text-neo-greenDark' : 'text-neo-red'}`}>
-                                  {friend.balance >= 0 ? '+' : ''}${Math.abs(friend.balance).toFixed(2)}
+                                  {friend.balance >= 0 ? '+' : '-'}{formatCurrency(Math.abs(friend.balance))}
                               </p>
                           </div>
                       </div>
@@ -138,7 +148,11 @@ export const Home: React.FC = () => {
         {/* Debt Origins & Event Insights */}
         <section>
             <h3 className="text-lg font-black uppercase border-l-4 border-black pl-2 mb-4">Debt Origins</h3>
-            {debtOriginsData.length > 0 ? (
+            {loading ? (
+              <NeoCard className="h-40 flex items-center justify-center bg-gray-50">
+                <div className="animate-pulse w-32 h-32 rounded-full border-4 border-gray-200"></div>
+              </NeoCard>
+            ) : debtOriginsData.length > 0 ? (
                 <NeoCard className="bg-[#F7E8FF] flex flex-row items-center gap-4">
                     <div className="h-32 w-32 shrink-0 relative">
                         <ResponsiveContainer width="100%" height="100%">
@@ -185,10 +199,13 @@ export const Home: React.FC = () => {
         {/* Recent Activity */}
         <section>
              <h3 className="text-lg font-black uppercase border-l-4 border-black pl-2 mb-4">Recent Moves</h3>
-             {recentTransactions.length > 0 ? (
+             {loading ? (
+               <div className="flex flex-col gap-3">
+                 {[1, 2, 3, 4, 5].map(i => <TransactionSkeleton key={i} />)}
+               </div>
+             ) : recentTransactions.length > 0 ? (
                <div className="flex flex-col gap-3">
                   {recentTransactions.map(tx => {
-                    // Fix: Get friend name from friends array
                     let friend = null;
                     let friendIdForGraying = null;
                     if (tx.friendId !== 'me') {
@@ -199,8 +216,6 @@ export const Home: React.FC = () => {
                       friendIdForGraying = tx.payerId;
                     }
                     const friendName = friend ? friend.name : 'Unknown';
-                    
-                    // Fix: Check if transaction should be grayed (when friend balance is zero)
                     const isGrayed = friendIdForGraying ? shouldGrayTransaction(tx, friendIdForGraying, transactions) : false;
                     
                     return (
@@ -226,13 +241,13 @@ export const Home: React.FC = () => {
                                       {tx.isSettlement 
                                         ? `Settled with ${friendName}` 
                                         : tx.payerId === 'me' ? 'You paid' : `${friendName} paid`
-                                      } • {new Date(tx.date).toLocaleDateString(undefined, {month:'short', day:'numeric'})} {new Date(tx.date).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                                      } • {formatDate(tx.date, 'short')}
                                   </p>
                               </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                                <p className={`font-black text-sm ${isGrayed ? 'text-gray-500' : tx.isSettlement ? 'text-neo-greenDark' : tx.payerId === 'me' ? 'text-neo-greenDark' : 'text-neo-red'}`}>
-                                  {tx.isSettlement ? '✓ ' : ''}{tx.payerId === 'me' ? '+' : '-'}${tx.amount.toFixed(2)}
+                                  {tx.isSettlement ? '✓ ' : ''}{tx.payerId === 'me' ? '+' : '-'}{formatCurrency(tx.amount)}
                                </p>
                                <button
                                  onClick={(e) => {

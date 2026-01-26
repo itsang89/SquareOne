@@ -11,30 +11,30 @@ import { Profile } from './screens/Profile';
 import { BottomNav } from './components/BottomNav';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ToastProvider } from './components/ToastContext';
+import { ToastContainer } from './components/Toast';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { FullPageLoading } from './components/LoadingSpinner';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-neo-bg flex items-center justify-center">
-        <div className="text-xl font-bold uppercase">Loading...</div>
-      </div>
-    );
+    return <FullPageLoading />;
   }
 
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  return <>{children}</>;
+  return <ErrorBoundary>{children}</ErrorBoundary>;
 };
 
 const AppContent: React.FC = () => {
   const { user } = useAuth();
 
   return (
-    <>
+    <div className="min-h-screen bg-neo-bg">
       <Routes>
         <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
         <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
@@ -96,18 +96,23 @@ const AppContent: React.FC = () => {
         />
       </Routes>
       {user && <BottomNav />}
-    </>
+      <ToastContainer />
+    </div>
   );
 };
 
 export default function App() {
   return (
     <HashRouter>
-      <AuthProvider>
-        <AppProvider>
-          <AppContent />
-        </AppProvider>
-      </AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <AppProvider>
+            <ErrorBoundary>
+              <AppContent />
+            </ErrorBoundary>
+          </AppProvider>
+        </AuthProvider>
+      </ToastProvider>
     </HashRouter>
   );
 }

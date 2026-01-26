@@ -161,8 +161,8 @@ export const Profile: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen pb-24 bg-neo-bg font-display">
-        <header className="sticky top-0 z-20 bg-neo-bg/95 backdrop-blur-sm p-6 flex items-center justify-between">
+    <div className="min-h-screen pb-24 bg-neo-bg dark:bg-zinc-950 font-display transition-colors duration-300">
+        <header className="sticky top-0 z-20 bg-neo-bg/95 dark:bg-zinc-950/95 backdrop-blur-sm p-6 flex items-center justify-between border-b-2 border-transparent dark:border-black">
              <div className="bg-neo-yellow text-black px-4 py-2 border-2 border-black shadow-neo-sm transform -rotate-1">
                 <h1 className="text-xl font-black uppercase tracking-wide">Settings</h1>
             </div>
@@ -179,8 +179,8 @@ export const Profile: React.FC = () => {
                             disabled={isUpdating}
                         />
                         <div>
-                            <label className="block text-xs font-bold uppercase mb-2 tracking-widest">Select Avatar</label>
-                            <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border-2 border-black">
+                            <label className="block text-xs font-bold uppercase mb-2 tracking-widest dark:text-zinc-100">Select Avatar</label>
+                            <div className="flex flex-wrap gap-2 p-3 bg-gray-50 dark:bg-zinc-800 border-2 border-black">
                                 {PRESET_AVATARS.map((avatarUrl, idx) => (
                                     <button
                                         key={idx}
@@ -219,8 +219,8 @@ export const Profile: React.FC = () => {
                         <div className="flex items-center gap-4">
                             <Avatar src={user?.avatar || ''} alt="Profile" size="lg" className="border-[3px] shadow-sm" />
                             <div className="flex-1 min-w-0">
-                                <h2 className="text-2xl font-black uppercase leading-none truncate">{user?.name || 'User'}</h2>
-                                <p className="text-sm font-bold text-gray-500 mt-1 uppercase tracking-wider">{user?.email || ''}</p>
+                                <h2 className="text-2xl font-black uppercase leading-none truncate dark:text-zinc-100">{user?.name || 'User'}</h2>
+                                <p className="text-sm font-bold text-gray-500 dark:text-zinc-400 mt-1 uppercase tracking-wider">{user?.email || ''}</p>
                             </div>
                             <button 
                                 onClick={() => setShowEditProfile(true)}
@@ -230,7 +230,7 @@ export const Profile: React.FC = () => {
                                 <Edit3 size={18} />
                             </button>
                         </div>
-                        <div className="mt-4 pt-4 border-t-2 border-black flex justify-between text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                        <div className="mt-4 pt-4 border-t-2 border-black flex justify-between text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-zinc-500">
                             <span>Joined</span>
                             <span>{joinedDate || 'Recently'}</span>
                         </div>
@@ -239,28 +239,28 @@ export const Profile: React.FC = () => {
             </NeoCard>
 
             <section>
-                 <h3 className="text-xs font-black uppercase tracking-widest mb-3 flex items-center gap-2">
+                 <h3 className="text-xs font-black uppercase tracking-widest mb-3 flex items-center gap-2 dark:text-zinc-400">
                     <Settings size={16} /> User Preferences
                 </h3>
                 <NeoCard className="flex flex-col gap-6">
                     <div>
-                         <label className="block text-xs font-bold uppercase mb-2">Appearance</label>
-                         <div className="grid grid-cols-3 gap-0 border-2 border-black bg-gray-100 p-1">
+                         <label className="block text-xs font-bold uppercase mb-2 dark:text-zinc-400">Appearance</label>
+                         <div className="grid grid-cols-3 gap-0 border-2 border-black bg-gray-100 dark:bg-zinc-800 p-1">
                             <button 
                               onClick={() => setTheme('dark')}
-                              className={`py-2 border border-black font-bold text-sm transition-colors flex items-center justify-center gap-1 ${theme === 'dark' ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black' : 'hover:bg-white text-gray-500 hover:text-black'}`}
+                              className={`py-2 border border-black font-bold text-sm transition-colors flex items-center justify-center gap-1 ${theme === 'dark' ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black' : 'hover:bg-white dark:hover:bg-zinc-700 text-gray-500 dark:text-zinc-400 hover:text-black dark:hover:text-zinc-100'}`}
                             >
                                 <Moon size={16} />
                             </button>
                             <button 
                               onClick={() => setTheme('light')}
-                              className={`py-2 border border-black font-bold text-sm transition-colors flex items-center justify-center gap-1 ${theme === 'light' ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black' : 'hover:bg-white text-gray-500 hover:text-black'}`}
+                              className={`py-2 border border-black font-bold text-sm transition-colors flex items-center justify-center gap-1 ${theme === 'light' ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black' : 'hover:bg-white dark:hover:bg-zinc-700 text-gray-500 dark:text-zinc-400 hover:text-black dark:hover:text-zinc-100'}`}
                             >
                                 <Sun size={16} />
                             </button>
                             <button 
                               onClick={() => setTheme('system')}
-                              className={`py-2 border border-black font-bold text-sm transition-colors flex items-center justify-center gap-1 ${theme === 'system' ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black' : 'hover:bg-white text-gray-500 hover:text-black'}`}
+                              className={`py-2 border border-black font-bold text-sm transition-colors flex items-center justify-center gap-1 ${theme === 'system' ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black' : 'hover:bg-white dark:hover:bg-zinc-700 text-gray-500 dark:text-zinc-400 hover:text-black dark:hover:text-zinc-100'}`}
                             >
                                 <Monitor size={16} />
                             </button>
@@ -270,29 +270,29 @@ export const Profile: React.FC = () => {
             </section>
 
             <section>
-                 <h3 className="text-xs font-black uppercase tracking-widest mb-3 flex items-center gap-2">
+                 <h3 className="text-xs font-black uppercase tracking-widest mb-3 flex items-center gap-2 dark:text-zinc-400">
                     <Download size={16} /> Data Management
                 </h3>
                 <div className="flex flex-col gap-4">
                     <button 
                       onClick={handleExportCSV}
-                      className="w-full bg-white border-2 border-black p-4 shadow-neo-sm flex items-center justify-between group active:shadow-none active:translate-y-[2px] transition-all hover:bg-purple-50"
+                      className="w-full bg-white dark:bg-zinc-900 border-2 border-black p-4 shadow-neo-sm flex items-center justify-between group active:shadow-none active:translate-y-[2px] transition-all hover:bg-purple-50 dark:hover:bg-zinc-800"
                     >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 text-black dark:text-zinc-100">
                             <div className="w-8 h-8 bg-neo-purple border-2 border-black flex items-center justify-center text-black">
                                 <Download size={16} />
                             </div>
                             <div className="text-left">
                                 <span className="block font-bold uppercase text-sm">Export to CSV</span>
-                                <span className="block text-[10px] text-gray-500 font-bold uppercase tracking-wider">Transaction history</span>
+                                <span className="block text-[10px] text-gray-500 dark:text-zinc-500 font-bold uppercase tracking-wider">Transaction history</span>
                             </div>
                         </div>
-                        <ArrowRight size={18} className="-rotate-45 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                        <ArrowRight size={18} className="-rotate-45 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform text-black dark:text-zinc-100" />
                     </button>
 
                      <button 
                        onClick={() => setShowClearConfirm(true)}
-                       className="w-full bg-white border-2 border-black p-4 shadow-neo-sm flex items-center justify-between group active:shadow-none active:translate-y-[2px] transition-all hover:bg-red-50"
+                       className="w-full bg-white dark:bg-zinc-900 border-2 border-black p-4 shadow-neo-sm flex items-center justify-between group active:shadow-none active:translate-y-[2px] transition-all hover:bg-red-50 dark:hover:bg-zinc-800"
                      >
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 bg-neo-red border-2 border-black flex items-center justify-center text-white">
@@ -307,18 +307,18 @@ export const Profile: React.FC = () => {
 
                     <button 
                       onClick={handleSignOut}
-                      className="w-full bg-white border-2 border-black p-4 shadow-neo-sm flex items-center justify-between group active:shadow-none active:translate-y-[2px] transition-all hover:bg-gray-50"
+                      className="w-full bg-white dark:bg-zinc-900 border-2 border-black p-4 shadow-neo-sm flex items-center justify-between group active:shadow-none active:translate-y-[2px] transition-all hover:bg-gray-50 dark:hover:bg-zinc-800"
                     >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 text-black dark:text-zinc-100">
                             <div className="w-8 h-8 bg-neo-blue border-2 border-black flex items-center justify-center text-white">
                                 <LogOut size={16} />
                             </div>
                             <div className="text-left">
                                 <span className="block font-bold uppercase text-sm">Sign Out</span>
-                                <span className="block text-[10px] text-gray-500 font-bold uppercase tracking-wider">Log out of your account</span>
+                                <span className="block text-[10px] text-gray-500 dark:text-zinc-500 font-bold uppercase tracking-wider">Log out of your account</span>
                             </div>
                         </div>
-                        <ArrowRight size={18} className="-rotate-45 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                        <ArrowRight size={18} className="-rotate-45 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform text-black dark:text-zinc-100" />
                     </button>
                 </div>
             </section>
@@ -332,14 +332,14 @@ export const Profile: React.FC = () => {
                             <span className="text-xs text-black font-bold tracking-widest mt-1 opacity-75">Master the app</span>
                         </div>
                     </div>
-                     <div className="w-8 h-8 bg-white border-2 border-black flex items-center justify-center">
+                     <div className="w-8 h-8 bg-white dark:bg-zinc-100 border-2 border-black flex items-center justify-center">
                         <ArrowRight size={16} className="text-black font-bold" />
                     </div>
                 </div>
             </section>
             
             <div className="text-center mt-4 mb-4">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">SquareOne v1.0.0</p>
+                <p className="text-[10px] font-bold text-gray-400 dark:text-zinc-600 uppercase tracking-widest">SquareOne v1.0.0</p>
             </div>
         </main>
 

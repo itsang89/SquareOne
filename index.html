@@ -10,6 +10,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
@@ -67,7 +68,7 @@
 </script>
 <link rel="stylesheet" href="/index.css">
 </head>
-  <body class="bg-neo-bg text-black antialiased selection:bg-neo-yellow selection:text-black">
+  <body class="bg-neo-bg text-black antialiased selection:bg-neo-yellow selection:text-black transition-colors duration-300 dark:bg-zinc-950 dark:text-zinc-100">
     <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
 </body>

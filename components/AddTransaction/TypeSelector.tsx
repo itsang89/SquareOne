@@ -31,7 +31,7 @@ export const TypeSelector: React.FC<TypeSelectorProps> = ({
 
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-xs font-bold uppercase tracking-widest text-gray-500 pl-1">For What?</label>
+      <label className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-zinc-500 pl-1">For What?</label>
       <div className="flex gap-3 overflow-x-auto pb-2 pt-2 pl-1 no-scrollbar">
         {TRANSACTION_TAGS.map(tag => {
           const isSelected = selectedType === tag.label;
@@ -59,7 +59,7 @@ export const TypeSelector: React.FC<TypeSelectorProps> = ({
         })}
         <button 
           onClick={() => setShowModal(true)}
-          className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full border-2 border-black bg-white hover:bg-gray-100 transition-colors"
+          className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full border-2 border-black bg-white dark:bg-zinc-800 dark:text-zinc-100 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
           type="button"
         >
           <Plus size={16} />

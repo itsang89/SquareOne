@@ -49,8 +49,8 @@ export const EditFriendModal: React.FC<EditFriendModalProps> = ({
         />
         
         <div>
-          <label className="block text-sm font-bold uppercase mb-2 tracking-widest">Select Avatar</label>
-          <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border-2 border-black">
+          <label className="block text-sm font-bold uppercase mb-2 tracking-widest dark:text-zinc-100">Select Avatar</label>
+          <div className="flex flex-wrap gap-2 p-3 bg-gray-50 dark:bg-zinc-800 border-2 border-black">
             {PRESET_AVATARS.map((avatarUrl, idx) => (
               <button
                 key={idx}

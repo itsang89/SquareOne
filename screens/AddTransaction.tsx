@@ -99,21 +99,21 @@ export const AddTransaction: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 bg-white z-50 flex flex-col">
+    <div className="fixed inset-0 bg-white dark:bg-zinc-950 z-50 flex flex-col transition-colors duration-300">
       {/* Header */}
       <div className="flex flex-col items-center pt-2 pb-2 shrink-0 border-b-2 border-black">
-        <div className="h-1.5 w-12 rounded-full bg-black mb-4"></div>
+        <div className="h-1.5 w-12 rounded-full bg-black dark:bg-zinc-100 mb-4"></div>
         <div className="w-full flex items-center justify-between px-5 pb-2">
-          <h2 className="text-xl font-black tracking-tight uppercase">New Transaction</h2>
+          <h2 className="text-xl font-black tracking-tight uppercase dark:text-zinc-100">New Transaction</h2>
           <button onClick={() => navigate(-1)} className="flex items-center justify-center w-10 h-10 rounded-lg border-2 border-black hover:bg-neo-red transition-colors shadow-neo-sm active:shadow-none active:translate-y-1">
-            <X className="font-bold text-black" />
+            <X className="font-bold text-black dark:text-zinc-100" />
           </button>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col px-5 pt-4 space-y-6 pb-20">
         {/* Direction Toggle */}
-        <div className="flex w-full h-14 rounded-none border-2 border-black bg-white shadow-neo">
+        <div className="flex w-full h-14 rounded-none border-2 border-black bg-white dark:bg-zinc-900 shadow-neo">
           <label className="flex-1 relative cursor-pointer group">
             <input 
               type="radio" 
@@ -123,7 +123,7 @@ export const AddTransaction: React.FC = () => {
               onChange={() => handleChange('direction', 'owe')} 
               className="sr-only peer" 
             />
-            <div className="w-full h-full flex items-center justify-center font-bold uppercase transition-all bg-transparent text-gray-400 peer-checked:bg-neo-purple peer-checked:text-black hover:bg-gray-100">
+            <div className="w-full h-full flex items-center justify-center font-bold uppercase transition-all bg-transparent text-gray-400 dark:text-zinc-500 peer-checked:bg-neo-purple peer-checked:text-black hover:bg-gray-100 dark:hover:bg-zinc-800">
               I Owe
             </div>
           </label>
@@ -137,7 +137,7 @@ export const AddTransaction: React.FC = () => {
               onChange={() => handleChange('direction', 'they-owe')} 
               className="sr-only peer" 
             />
-            <div className="w-full h-full flex items-center justify-center font-bold uppercase transition-all bg-transparent text-gray-400 peer-checked:bg-neo-green peer-checked:text-black hover:bg-gray-100">
+            <div className="w-full h-full flex items-center justify-center font-bold uppercase transition-all bg-transparent text-gray-400 dark:text-zinc-500 peer-checked:bg-neo-green peer-checked:text-black hover:bg-gray-100 dark:hover:bg-zinc-800">
               They Owe
             </div>
           </label>
@@ -184,24 +184,24 @@ export const AddTransaction: React.FC = () => {
               setShowNumpad(false);
               setShowDatePicker(true);
             }}
-            className="flex-1 flex items-center justify-center gap-2 h-12 border-2 border-black bg-white text-sm font-bold shadow-neo-sm active:shadow-none active:translate-y-1 hover:bg-gray-50 transition-all"
+            className="flex-1 flex items-center justify-center gap-2 h-12 border-2 border-black bg-white dark:bg-zinc-900 text-sm font-bold shadow-neo-sm active:shadow-none active:translate-y-1 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all dark:text-zinc-100"
           >
             {new Date(values.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
           </button>
           <button 
             onClick={() => setShowNoteModal(true)}
-            className="flex-1 flex items-center justify-center gap-2 h-12 border-2 border-black bg-white text-sm font-bold shadow-neo-sm active:shadow-none active:translate-y-1 hover:bg-gray-50 transition-all"
+            className="flex-1 flex items-center justify-center gap-2 h-12 border-2 border-black bg-white dark:bg-zinc-900 text-sm font-bold shadow-neo-sm active:shadow-none active:translate-y-1 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all dark:text-zinc-100"
           >
             {values.note ? 'Note added' : 'Add Note'}
           </button>
-          <button className="w-12 flex items-center justify-center border-2 border-black bg-white text-sm font-bold shadow-neo-sm active:shadow-none active:translate-y-1 hover:bg-gray-50 transition-all">
+          <button className="w-12 flex items-center justify-center border-2 border-black bg-white dark:bg-zinc-900 text-sm font-bold shadow-neo-sm active:shadow-none active:translate-y-1 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all dark:text-zinc-100">
             <Camera size={18} />
           </button>
         </div>
       </div>
 
       {/* Footer Actions */}
-      <div className="shrink-0 bg-white pb-6 px-5 pt-4 border-t-2 border-black">
+      <div className="shrink-0 bg-white dark:bg-zinc-900 pb-6 px-5 pt-4 border-t-2 border-black">
         <div className="flex gap-4">
           <NeoButton 
             fullWidth 

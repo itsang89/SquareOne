@@ -147,19 +147,19 @@ export const History: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-neo-bg flex flex-col pb-24 relative overflow-hidden">
-        <header className="flex items-center justify-between p-4 bg-neo-bg border-b-2 border-black z-20 shrink-0">
+    <div className="min-h-screen bg-neo-bg dark:bg-zinc-950 flex flex-col pb-24 relative overflow-hidden transition-colors duration-300">
+        <header className="flex items-center justify-between p-4 bg-neo-bg dark:bg-zinc-950 border-b-2 border-black z-20 shrink-0">
             <BackButton to="/dashboard" />
-            <h1 className="text-xl font-bold tracking-tight uppercase">History</h1>
-            <button className="flex items-center justify-center w-10 h-10 rounded-md border-2 border-transparent hover:bg-black/5 transition-colors">
-                <MoreVertical className="text-black" />
+            <h1 className="text-xl font-bold tracking-tight uppercase dark:text-zinc-100">History</h1>
+            <button className="flex items-center justify-center w-10 h-10 rounded-md border-2 border-transparent hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                <MoreVertical className="text-black dark:text-zinc-100" />
             </button>
         </header>
 
-        <div className="flex flex-col gap-4 p-4 pb-2 bg-neo-bg shrink-0 z-10">
+        <div className="flex flex-col gap-4 p-4 pb-2 bg-neo-bg dark:bg-zinc-950 shrink-0 z-10">
             <div className="relative w-full">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                    <Search className="text-black" size={20} />
+                    <Search className="text-black dark:text-zinc-100" size={20} />
                 </div>
                 <NeoInput 
                     value={searchQuery}
@@ -175,23 +175,23 @@ export const History: React.FC = () => {
                      <button 
                        key={filter}
                        onClick={() => setActiveFilter(filter)}
-                       className={`shrink-0 px-4 py-1.5 rounded-md border-2 border-black text-black font-bold text-sm shadow-neo-sm active:shadow-none active:translate-y-1 transition-all ${activeFilter === filter ? 'bg-neo-purple' : 'bg-white hover:bg-gray-100'}`}
+                       className={`shrink-0 px-4 py-1.5 rounded-md border-2 border-black text-black font-bold text-sm shadow-neo-sm active:shadow-none active:translate-y-1 transition-all ${activeFilter === filter ? 'bg-neo-purple' : 'bg-white dark:bg-zinc-900 dark:text-zinc-100 hover:bg-gray-100 dark:hover:bg-zinc-800'}`}
                      >
                         {filter}
                     </button>
                 ))}
             </div>
 
-            <div className="flex w-full bg-white rounded-md border-2 border-black p-1 shadow-neo-sm">
+            <div className="flex w-full bg-white dark:bg-zinc-900 rounded-md border-2 border-black p-1 shadow-neo-sm">
                 <button 
                   onClick={() => setSortBy('date')}
-                  className={`flex-1 py-1.5 text-sm rounded text-center transition-all ${sortBy === 'date' ? 'font-bold bg-black text-white shadow-sm' : 'font-medium text-gray-500 hover:text-black hover:bg-gray-100'}`}
+                  className={`flex-1 py-1.5 text-sm rounded text-center transition-all ${sortBy === 'date' ? 'font-bold bg-black dark:bg-zinc-100 text-white dark:text-black shadow-sm' : 'font-medium text-gray-500 dark:text-zinc-500 hover:text-black dark:hover:text-zinc-100 hover:bg-gray-100 dark:hover:bg-zinc-800'}`}
                 >
                     By Date
                 </button>
                 <button 
                   onClick={() => setSortBy('event')}
-                  className={`flex-1 py-1.5 text-sm rounded text-center transition-all ${sortBy === 'event' ? 'font-bold bg-black text-white shadow-sm' : 'font-medium text-gray-500 hover:text-black hover:bg-gray-100'}`}
+                  className={`flex-1 py-1.5 text-sm rounded text-center transition-all ${sortBy === 'event' ? 'font-bold bg-black dark:bg-zinc-100 text-white dark:text-black shadow-sm' : 'font-medium text-gray-500 dark:text-zinc-500 hover:text-black dark:hover:text-zinc-100 hover:bg-gray-100 dark:hover:bg-zinc-800'}`}
                 >
                     By Event
                 </button>
@@ -207,8 +207,8 @@ export const History: React.FC = () => {
               Object.entries(groupedTransactions).map(([groupName, txs]) => (
                 <div key={groupName} className="mb-6">
                   <div className="flex items-center gap-4 mb-3">
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-black">{groupName}</h3>
-                    <div className="h-[2px] flex-1 bg-black/10"></div>
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-black dark:text-zinc-400">{groupName}</h3>
+                    <div className="h-[2px] flex-1 bg-black/10 dark:bg-white/10"></div>
                   </div>
                   
                   {txs.map(tx => {
@@ -229,26 +229,26 @@ export const History: React.FC = () => {
                     return (
                       <div 
                         key={tx.id} 
-                        className={`group relative flex items-center gap-3 p-3 mb-3 rounded-md border-2 border-black shadow-neo active:shadow-none active:translate-y-1 transition-all ${tx.payerId === 'me' ? 'bg-neo-green/20' : 'bg-neo-red/20'} ${isGrayed ? 'opacity-50 grayscale' : tx.isSettlement ? 'opacity-60' : ''} ${deletingId === tx.id ? 'border-neo-red' : ''}`}
+                        className={`group relative flex items-center gap-3 p-3 mb-3 rounded-md border-2 border-black shadow-neo active:shadow-none active:translate-y-1 transition-all ${tx.payerId === 'me' ? 'bg-neo-green/20 dark:bg-neo-green/10' : 'bg-neo-red/20 dark:bg-neo-red/10'} ${isGrayed ? 'opacity-50 grayscale' : tx.isSettlement ? 'opacity-60' : ''} ${deletingId === tx.id ? 'border-neo-red' : ''}`}
                       >
                         <div className="relative shrink-0">
                           <Avatar src={friendAvatar} alt={friendName} size="md" />
                           {!tx.isSettlement && (
-                            <div className={`absolute -bottom-1 -right-1 border-2 border-white rounded-full w-4 h-4 ${tx.payerId === 'me' ? 'bg-neo-green' : 'bg-neo-red'}`}></div>
+                            <div className={`absolute -bottom-1 -right-1 border-2 border-white dark:border-zinc-950 rounded-full w-4 h-4 ${tx.payerId === 'me' ? 'bg-neo-green' : 'bg-neo-red'}`}></div>
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-start">
-                            <h4 className={`font-bold text-base truncate ${isGrayed ? 'text-gray-500' : ''}`}>{friendName}</h4>
-                            <span className={`font-bold whitespace-nowrap px-1 rounded ${isGrayed ? 'text-gray-500 bg-white/50' : tx.payerId === 'me' ? 'text-green-700 bg-white/50' : 'text-red-700 bg-white/50'}`}>
+                            <h4 className={`font-bold text-base truncate dark:text-zinc-100 ${isGrayed ? 'text-gray-500 dark:text-zinc-500' : ''}`}>{friendName}</h4>
+                            <span className={`font-bold whitespace-nowrap px-1 rounded ${isGrayed ? 'text-gray-500 dark:text-zinc-500 bg-white/50 dark:bg-zinc-800/50' : tx.payerId === 'me' ? 'text-green-700 dark:text-neo-greenDark bg-white/50 dark:bg-zinc-800/50' : 'text-red-700 dark:text-neo-red bg-white/50 dark:bg-zinc-800/50'}`}>
                               {tx.isSettlement ? '✓ ' : ''}{tx.payerId === 'me' ? '+' : '-'} {formatCurrency(tx.amount)}
                             </span>
                           </div>
                           <div className="flex justify-between items-center mt-0.5">
-                            <p className={`text-xs font-medium truncate ${isGrayed ? 'text-gray-400' : 'text-gray-700'}`}>
+                            <p className={`text-xs font-medium truncate dark:text-zinc-300 ${isGrayed ? 'text-gray-400 dark:text-zinc-600' : 'text-gray-700 dark:text-zinc-300'}`}>
                               {tx.isSettlement ? 'Settlement' : tx.title} {tx.note && `• ${tx.note}`}
                             </p>
-                            <span className={`text-xs font-mono ml-2 shrink-0 ${isGrayed ? 'text-gray-400' : 'text-gray-500'}`}>
+                            <span className={`text-xs font-mono ml-2 shrink-0 ${isGrayed ? 'text-gray-400 dark:text-zinc-600' : 'text-gray-500 dark:text-zinc-500'}`}>
                               {new Date(tx.date).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
@@ -261,7 +261,7 @@ export const History: React.FC = () => {
                           className={`ml-2 p-2 rounded-md border-2 border-black transition-all ${
                             deletingId === tx.id 
                               ? 'bg-neo-red text-white shadow-neo-sm' 
-                              : 'bg-white hover:bg-neo-red/20 opacity-0 group-hover:opacity-100'
+                              : 'bg-white dark:bg-zinc-800 dark:text-zinc-100 hover:bg-neo-red/20 opacity-0 group-hover:opacity-100'
                           }`}
                         >
                           <Trash2 size={16} />
@@ -273,12 +273,12 @@ export const History: React.FC = () => {
               ))
             ) : (
               <div className="py-12 text-center">
-                <p className="text-sm font-bold uppercase text-gray-400">No transactions found</p>
+                <p className="text-sm font-bold uppercase text-gray-400 dark:text-zinc-600">No transactions found</p>
               </div>
             )}
             
             <div className="py-8 text-center opacity-30">
-                <p className="text-[10px] uppercase tracking-widest font-bold">End of History</p>
+                <p className="text-[10px] uppercase tracking-widest font-bold dark:text-zinc-500">End of History</p>
             </div>
         </div>
 

@@ -62,17 +62,17 @@ export const Home: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen pb-24 bg-neo-bg">
+    <div className="min-h-screen pb-24 bg-neo-bg dark:bg-zinc-950 transition-colors duration-300">
       {/* Header */}
-      <header className="sticky top-0 z-20 bg-neo-bg/95 backdrop-blur-sm border-b-2 border-black px-5 py-4 flex items-center justify-between">
+      <header className="sticky top-0 z-20 bg-neo-bg/95 dark:bg-zinc-950/95 backdrop-blur-sm border-b-2 border-black px-5 py-4 flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold uppercase leading-none">Hello, {user?.name || 'User'}</h2>
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">Dashboard</p>
+          <h2 className="text-xl font-bold uppercase leading-none dark:text-zinc-100">Hello, {user?.name || 'User'}</h2>
+          <p className="text-xs font-bold text-gray-500 dark:text-zinc-500 uppercase tracking-widest mt-1">Dashboard</p>
         </div>
         <button className="relative w-12 h-12 bg-neo-yellow border-2 border-black rounded-lg shadow-neo-sm active:shadow-none active:translate-y-1 flex items-center justify-center">
             <Bell size={24} className="text-black" />
             {unsettledCount > 0 && (
-              <span className="absolute top-2 right-2 w-3 h-3 bg-neo-red border-2 border-white rounded-full"></span>
+              <span className="absolute top-2 right-2 w-3 h-3 bg-neo-red border-2 border-white dark:border-zinc-950 rounded-full"></span>
             )}
         </button>
       </header>
@@ -81,23 +81,23 @@ export const Home: React.FC = () => {
         {/* Net Position Widget */}
         <section>
             <div className="relative bg-neo-yellow border-2 border-black p-6 shadow-neo overflow-hidden rounded-lg">
-                <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/20 rounded-full blur-2xl pointer-events-none"></div>
+                <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/20 dark:bg-black/20 rounded-full blur-2xl pointer-events-none"></div>
                 
                 <div className="relative z-10 mb-6">
-                    <p className="text-black/70 text-xs font-bold uppercase tracking-widest mb-1">Total Net Position</p>
-                    <p className="text-5xl font-bold tracking-tighter">
+                    <p className="text-black/70 dark:text-black/80 text-xs font-bold uppercase tracking-widest mb-1">Total Net Position</p>
+                    <p className="text-5xl font-bold tracking-tighter text-black">
                       {netBalance >= 0 ? '+' : '-'}{formatCurrency(Math.abs(netBalance))}
                     </p>
                 </div>
 
                 <div className="relative z-10 flex gap-4 pt-4 border-t-2 border-black/10">
                     <div className="flex-1">
-                        <p className="text-black/60 text-[10px] font-black uppercase mb-1">You Owe</p>
+                        <p className="text-black/60 dark:text-black/70 text-[10px] font-black uppercase mb-1">You Owe</p>
                         <p className="text-neo-red font-black text-xl tracking-tight">{formatCurrency(totalOwing)}</p>
                     </div>
                     <div className="w-[2px] bg-black/10"></div>
                     <div className="flex-1">
-                        <p className="text-black/60 text-[10px] font-black uppercase mb-1">Owed To You</p>
+                        <p className="text-black/60 dark:text-black/70 text-[10px] font-black uppercase mb-1">Owed To You</p>
                         <p className="text-neo-greenDark font-black text-xl tracking-tight">{formatCurrency(totalOwed)}</p>
                     </div>
                 </div>
@@ -107,8 +107,8 @@ export const Home: React.FC = () => {
         {/* Top Sharks */}
         <section>
             <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-black uppercase border-l-4 border-black pl-2">Top Sharks</h3>
-                <Link to="/friends" className="text-xs font-bold uppercase underline decoration-2">View All</Link>
+                <h3 className="text-lg font-black uppercase border-l-4 border-black dark:border-zinc-100 pl-2 dark:text-zinc-100">Top Sharks</h3>
+                <Link to="/friends" className="text-xs font-bold uppercase underline decoration-2 dark:text-zinc-100">View All</Link>
             </div>
             
             {loading ? (
@@ -121,16 +121,16 @@ export const Home: React.FC = () => {
                       <div 
                         key={friend.id} 
                         onClick={() => navigate(`/friends/${friend.id}`)}
-                        className="snap-start shrink-0 w-32 bg-white border-2 border-black p-3 rounded-lg shadow-neo-sm flex flex-col items-center gap-2 cursor-pointer hover:shadow-neo hover:-translate-y-1 transition-all active:shadow-neo-pressed active:translate-y-0"
+                        className="snap-start shrink-0 w-32 bg-white dark:bg-zinc-900 border-2 border-black p-3 rounded-lg shadow-neo-sm flex flex-col items-center gap-2 cursor-pointer hover:shadow-neo hover:-translate-y-1 transition-all active:shadow-neo-pressed active:translate-y-0"
                       >
                           <div className="relative">
                               <Avatar src={friend.avatar} alt={friend.name} size="md" />
-                              <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center ${friend.balance >= 0 ? 'bg-neo-greenDark' : 'bg-neo-red'}`}>
+                              <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white dark:border-zinc-900 flex items-center justify-center ${friend.balance >= 0 ? 'bg-neo-greenDark' : 'bg-neo-red'}`}>
                                   {friend.balance >= 0 ? <ArrowDownLeft size={12} className="text-white"/> : <ArrowUpRight size={12} className="text-white"/>}
                               </div>
                           </div>
                           <div className="text-center w-full">
-                              <p className="text-sm font-bold truncate w-full">{friend.name.split(' ')[0]}</p>
+                              <p className="text-sm font-bold truncate w-full dark:text-zinc-100">{friend.name.split(' ')[0]}</p>
                               <p className={`text-xs font-bold ${friend.balance >= 0 ? 'text-neo-greenDark' : 'text-neo-red'}`}>
                                   {friend.balance >= 0 ? '+' : '-'}{formatCurrency(Math.abs(friend.balance))}
                               </p>
@@ -139,7 +139,7 @@ export const Home: React.FC = () => {
                   ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-400 text-sm font-bold uppercase">
+              <div className="text-center py-8 text-gray-400 dark:text-zinc-600 text-sm font-bold uppercase">
                 No active balances
               </div>
             )}
@@ -147,13 +147,13 @@ export const Home: React.FC = () => {
 
         {/* Debt Origins & Event Insights */}
         <section>
-            <h3 className="text-lg font-black uppercase border-l-4 border-black pl-2 mb-4">Debt Origins</h3>
+            <h3 className="text-lg font-black uppercase border-l-4 border-black dark:border-zinc-100 pl-2 mb-4 dark:text-zinc-100">Debt Origins</h3>
             {loading ? (
-              <NeoCard className="h-40 flex items-center justify-center bg-gray-50">
-                <div className="animate-pulse w-32 h-32 rounded-full border-4 border-gray-200"></div>
+              <NeoCard className="h-40 flex items-center justify-center bg-gray-50 dark:bg-zinc-800">
+                <div className="animate-pulse w-32 h-32 rounded-full border-4 border-gray-200 dark:border-zinc-700"></div>
               </NeoCard>
             ) : debtOriginsData.length > 0 ? (
-                <NeoCard className="bg-[#F7E8FF] flex flex-row items-center gap-4">
+                <NeoCard className="bg-[#F7E8FF] dark:bg-purple-900/30 flex flex-row items-center gap-4">
                     <div className="h-32 w-32 shrink-0 relative">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -173,32 +173,32 @@ export const Home: React.FC = () => {
                             </PieChart>
                         </ResponsiveContainer>
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                             <div className="w-2 h-2 bg-black rounded-full"></div>
+                             <div className="w-2 h-2 bg-black dark:bg-zinc-100 rounded-full"></div>
                         </div>
                     </div>
                     
                     <div className="flex-1 flex flex-col gap-2">
                         {debtOriginsData.map((entry) => (
-                            <div key={entry.name} className="flex items-center justify-between bg-white border border-black p-1.5 rounded shadow-sm">
+                            <div key={entry.name} className="flex items-center justify-between bg-white dark:bg-zinc-900 border border-black p-1.5 rounded shadow-sm">
                                 <div className="flex items-center gap-2">
                                     <div className="w-3 h-3 border border-black" style={{ backgroundColor: entry.color }}></div>
-                                    <span className="text-xs font-bold uppercase">{entry.name}</span>
+                                    <span className="text-xs font-bold uppercase dark:text-zinc-100">{entry.name}</span>
                                 </div>
-                                <span className="text-xs font-mono">{entry.value}%</span>
+                                <span className="text-xs font-mono dark:text-zinc-300">{entry.value}%</span>
                             </div>
                         ))}
                     </div>
                 </NeoCard>
             ) : (
-                <NeoCard className="bg-gray-50 flex items-center justify-center py-10">
-                    <p className="text-xs font-bold uppercase text-gray-400">No debt data available</p>
+                <NeoCard className="bg-gray-50 dark:bg-zinc-800 flex items-center justify-center py-10">
+                    <p className="text-xs font-bold uppercase text-gray-400 dark:text-zinc-600">No debt data available</p>
                 </NeoCard>
             )}
         </section>
 
         {/* Recent Activity */}
         <section>
-             <h3 className="text-lg font-black uppercase border-l-4 border-black pl-2 mb-4">Recent Moves</h3>
+             <h3 className="text-lg font-black uppercase border-l-4 border-black dark:border-zinc-100 pl-2 mb-4 dark:text-zinc-100">Recent Moves</h3>
              {loading ? (
                <div className="flex flex-col gap-3">
                  {[1, 2, 3, 4, 5].map(i => <TransactionSkeleton key={i} />)}
@@ -219,25 +219,25 @@ export const Home: React.FC = () => {
                     const isGrayed = friendIdForGraying ? shouldGrayTransaction(tx, friendIdForGraying, transactions) : false;
                     
                     return (
-                      <div key={tx.id} className={`group bg-white border-2 border-transparent hover:border-black hover:shadow-neo-sm p-3 rounded-lg flex items-center justify-between transition-all ${isGrayed ? 'opacity-50 grayscale' : tx.isSettlement ? 'opacity-75' : ''} ${deletingId === tx.id ? 'border-neo-red' : ''}`}>
+                      <div key={tx.id} className={`group bg-white dark:bg-zinc-900 border-2 border-transparent hover:border-black hover:shadow-neo-sm p-3 rounded-lg flex items-center justify-between transition-all ${isGrayed ? 'opacity-50 grayscale' : tx.isSettlement ? 'opacity-75' : ''} ${deletingId === tx.id ? 'border-neo-red' : ''}`}>
                           <div className="flex items-center gap-3 flex-1 min-w-0">
                               <div className={`w-10 h-10 border-2 border-black rounded flex items-center justify-center shadow-sm shrink-0 ${
-                                  isGrayed ? 'bg-gray-300' :
+                                  isGrayed ? 'bg-gray-300 dark:bg-zinc-700' :
                                   tx.isSettlement ? 'bg-neo-green' :
                                   tx.type === 'Meal' ? 'bg-neo-orange' : 
                                   tx.type === 'Transport' ? 'bg-neo-yellow' : 
                                   tx.type === 'Loan' ? 'bg-neo-green' : 
                                   tx.type === 'Poker' ? 'bg-neo-purple' : 'bg-neo-blue'
                               }`}>
-                                  <span className="text-lg font-bold">
+                                  <span className="text-lg font-bold text-black">
                                       {tx.isSettlement ? '✓' : tx.type === 'Meal' ? '🍕' : tx.type === 'Transport' ? '🚕' : tx.type === 'Loan' ? '💸' : tx.type === 'Poker' ? '🃏' : '📝'}
                                   </span>
                               </div>
                               <div className="flex-1 min-w-0">
-                                  <p className={`font-bold text-sm leading-tight ${isGrayed ? 'text-gray-500' : ''}`}>
+                                  <p className={`font-bold text-sm leading-tight dark:text-zinc-100 ${isGrayed ? 'text-gray-500' : ''}`}>
                                     {tx.isSettlement ? '✓ Settlement' : tx.title}
                                   </p>
-                                  <p className={`text-[10px] font-bold uppercase tracking-wide ${isGrayed ? 'text-gray-400' : 'text-gray-400'}`}>
+                                  <p className={`text-[10px] font-bold uppercase tracking-wide ${isGrayed ? 'text-gray-400 dark:text-zinc-600' : 'text-gray-400 dark:text-zinc-500'}`}>
                                       {tx.isSettlement 
                                         ? `Settled with ${friendName}` 
                                         : tx.payerId === 'me' ? 'You paid' : `${friendName} paid`
@@ -246,7 +246,7 @@ export const Home: React.FC = () => {
                               </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                               <p className={`font-black text-sm ${isGrayed ? 'text-gray-500' : tx.isSettlement ? 'text-neo-greenDark' : tx.payerId === 'me' ? 'text-neo-greenDark' : 'text-neo-red'}`}>
+                               <p className={`font-black text-sm ${isGrayed ? 'text-gray-500 dark:text-zinc-600' : tx.isSettlement ? 'text-neo-greenDark' : tx.payerId === 'me' ? 'text-neo-greenDark' : 'text-neo-red'}`}>
                                   {tx.isSettlement ? '✓ ' : ''}{tx.payerId === 'me' ? '+' : '-'}{formatCurrency(tx.amount)}
                                </p>
                                <button
@@ -257,7 +257,7 @@ export const Home: React.FC = () => {
                                  className={`p-1.5 rounded-md border-2 border-black transition-all ${
                                    deletingId === tx.id 
                                      ? 'bg-neo-red text-white shadow-neo-sm' 
-                                     : 'bg-white hover:bg-neo-red/20 opacity-0 group-hover:opacity-100'
+                                     : 'bg-white dark:bg-zinc-800 hover:bg-neo-red/20 opacity-0 group-hover:opacity-100 dark:text-zinc-100'
                                  }`}
                                  title={deletingId === tx.id ? 'Click again to confirm delete' : 'Delete transaction'}
                                >
@@ -269,7 +269,7 @@ export const Home: React.FC = () => {
                   })}
                </div>
              ) : (
-               <div className="text-center py-8 text-gray-400 text-sm font-bold uppercase">
+               <div className="text-center py-8 text-gray-400 dark:text-zinc-600 text-sm font-bold uppercase">
                  No recent transactions
                </div>
              )}

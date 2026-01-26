@@ -23,8 +23,8 @@ export const NeoButton: React.FC<NeoButtonProps> = ({
     primary: "bg-neo-green hover:bg-[#aeea00] shadow-neo text-black",
     secondary: "bg-neo-yellow hover:bg-yellow-400 shadow-neo text-black",
     accent: "bg-neo-purple hover:bg-purple-300 shadow-neo text-black",
-    neutral: "bg-white hover:bg-gray-50 shadow-neo text-black",
-    ghost: "bg-transparent border-none shadow-none hover:bg-black/5"
+    neutral: "bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 shadow-neo text-black dark:text-zinc-100",
+    ghost: "bg-transparent border-none shadow-none hover:bg-black/5 dark:hover:bg-white/5 dark:text-zinc-100"
   };
 
   const widthClass = fullWidth ? 'w-full' : '';

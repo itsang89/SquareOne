@@ -26,10 +26,10 @@ export const NeoInput: React.FC<NeoInputProps> = ({
         className={`
           ${widthClass}
           border-2 border-black p-3 
-          font-bold placeholder:text-gray-400
+          font-bold placeholder:text-gray-400 dark:placeholder:text-zinc-500
           focus:outline-none focus:ring-0 focus:shadow-neo-sm
           transition-all
-          ${error ? 'bg-neo-red/10 border-neo-red' : 'bg-white'}
+          ${error ? 'bg-neo-red/10 border-neo-red' : 'bg-white dark:bg-zinc-900'}
           ${className}
         `}
         {...props}
@@ -60,10 +60,10 @@ export const NeoTextArea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElem
         className={`
           w-full
           border-2 border-black p-3 
-          font-bold placeholder:text-gray-400
+          font-bold placeholder:text-gray-400 dark:placeholder:text-zinc-500
           focus:outline-none focus:ring-0 focus:shadow-neo-sm
           transition-all min-h-[100px]
-          ${error ? 'bg-neo-red/10 border-neo-red' : 'bg-white'}
+          ${error ? 'bg-neo-red/10 border-neo-red' : 'bg-white dark:bg-zinc-900'}
           ${className}
         `}
         {...props}

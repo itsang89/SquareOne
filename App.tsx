@@ -34,7 +34,7 @@ const AppContent: React.FC = () => {
   const { user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-neo-bg">
+    <div className="min-h-screen bg-neo-bg dark:bg-zinc-950 transition-colors duration-300">
       <Routes>
         <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
         <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />

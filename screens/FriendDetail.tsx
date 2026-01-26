@@ -77,14 +77,14 @@ export const FriendDetail: React.FC = () => {
 
   if (!friend) {
     return (
-      <div className="min-h-screen bg-neo-bg flex items-center justify-center">
-        <p className="text-lg font-bold">Friend not found</p>
+      <div className="min-h-screen bg-neo-bg dark:bg-zinc-950 flex items-center justify-center">
+        <p className="text-lg font-bold dark:text-zinc-100">Friend not found</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-neo-bg flex flex-col pb-24">
+    <div className="min-h-screen bg-neo-bg dark:bg-zinc-950 flex flex-col pb-24 transition-colors duration-300">
       <DetailHeader
         onEdit={() => {
           setShowEditModal(true);
@@ -98,31 +98,31 @@ export const FriendDetail: React.FC = () => {
         onToggleOptions={() => setShowOptions(!showOptions)}
       />
 
-      <section className="px-6 pt-8 pb-6 flex flex-col items-center text-center relative overflow-hidden bg-white border-b-2 border-black">
-        <div className="absolute top-10 right-10 w-40 h-40 bg-neo-purple rounded-full blur-3xl opacity-60 pointer-events-none mix-blend-multiply"></div>
-        <div className="absolute top-20 left-10 w-32 h-32 bg-neo-green rounded-full blur-3xl opacity-60 pointer-events-none mix-blend-multiply"></div>
+      <section className="px-6 pt-8 pb-6 flex flex-col items-center text-center relative overflow-hidden bg-white dark:bg-zinc-900 border-b-2 border-black">
+        <div className="absolute top-10 right-10 w-40 h-40 bg-neo-purple rounded-full blur-3xl opacity-60 dark:opacity-20 pointer-events-none mix-blend-multiply dark:mix-blend-normal"></div>
+        <div className="absolute top-20 left-10 w-32 h-32 bg-neo-green rounded-full blur-3xl opacity-60 dark:opacity-20 pointer-events-none mix-blend-multiply dark:mix-blend-normal"></div>
 
         <div className="relative mb-4 z-10">
             <Avatar src={friend.avatar} alt={friend.name} size="xl" className="shadow-neo" />
             <div className="absolute bottom-0 right-0 w-8 h-8 bg-neo-yellow border-2 border-black rounded-full flex items-center justify-center shadow-sm">
-                 <MessageCircle size={16} />
+                 <MessageCircle size={16} className="text-black" />
             </div>
         </div>
 
-        <h2 className="text-2xl font-black uppercase tracking-tight mb-1 z-10">{friend.name}</h2>
+        <h2 className="text-2xl font-black uppercase tracking-tight mb-1 z-10 dark:text-zinc-100">{friend.name}</h2>
         
-        <div className="flex items-center gap-2 mb-6 z-10 bg-black/5 px-3 py-1 rounded-full border border-black/10">
-             <div className={`w-2.5 h-2.5 rounded-full border border-black ${calculatedBalance >= 0 ? 'bg-neo-green' : 'bg-neo-red animate-pulse'}`}></div>
-             <p className={`text-xs font-bold uppercase tracking-widest ${calculatedBalance >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+        <div className="flex items-center gap-2 mb-6 z-10 bg-black/5 dark:bg-white/5 px-3 py-1 rounded-full border border-black/10 dark:border-white/10">
+             <div className={`w-2.5 h-2.5 rounded-full border border-black dark:border-zinc-400 ${calculatedBalance >= 0 ? 'bg-neo-green' : 'bg-neo-red animate-pulse'}`}></div>
+             <p className={`text-xs font-bold uppercase tracking-widest ${calculatedBalance >= 0 ? 'text-green-700 dark:text-neo-greenDark' : 'text-red-700 dark:text-neo-red'}`}>
                 {calculatedBalance >= 0 ? 'Owes you' : 'You owe'}
              </p>
         </div>
 
         <div className="relative inline-block mb-8 z-10 group cursor-default">
-            <span className="text-6xl font-black tracking-tighter block relative z-10">
+            <span className="text-6xl font-black tracking-tighter block relative z-10 dark:text-zinc-100">
                 {formatCurrency(Math.abs(calculatedBalance))}
             </span>
-            <div className="absolute bottom-2 left-0 w-full h-4 bg-neo-green/50 -z-0 skew-x-12"></div>
+            <div className="absolute bottom-2 left-0 w-full h-4 bg-neo-green/50 dark:bg-neo-green/30 -z-0 skew-x-12"></div>
         </div>
 
         <div className="grid grid-cols-2 gap-4 w-full z-10">
@@ -130,7 +130,7 @@ export const FriendDetail: React.FC = () => {
                 <HandCoins size={18} /> Settle Up
             </NeoButton>
             <NeoButton variant="secondary" onClick={() => {}} className="group">
-                <span className="group-hover:animate-bounce">👋</span> Nudge
+                <span className="group-hover:animate-bounce text-black">👋</span> <span className="text-black">Nudge</span>
             </NeoButton>
         </div>
       </section>
@@ -157,7 +157,7 @@ export const FriendDetail: React.FC = () => {
         onClose={() => setShowDeleteConfirm(false)}
         title="Delete Friend?"
       >
-        <p className="font-bold text-gray-600 mb-6 uppercase text-sm tracking-tight">
+        <p className="font-bold text-gray-600 dark:text-zinc-400 mb-6 uppercase text-sm tracking-tight">
           This will permanently delete {friend.name} and all associated transactions. This action cannot be undone.
         </p>
         <div className="flex gap-3">

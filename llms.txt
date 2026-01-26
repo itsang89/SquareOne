@@ -1,0 +1,23 @@
+# SquareOne
+> Neumorphic expense tracking app built with React and Supabase.
+
+## Core Files
+- `App.tsx`: Main application entry point and routing configuration.
+- `context/AppContext.tsx`: Primary state management for friends and transactions with real-time sync.
+- `context/AuthContext.tsx`: Authentication state management using Supabase Auth.
+- `utils/supabase.ts`: Supabase client initialization.
+- `components/NeoComponents.tsx`: Core UI design system (Neumorphic style).
+
+## Key Concepts
+- **Neo-brutalism (Neo)**: The visual style of the app, characterized by bold black borders, high contrast, and a modern aesthetic.
+- **Real-time Sync**: Data is kept in sync across clients using Supabase's PostgreSQL changes listener.
+- **Friend Balances**: Calculated on the client side based on the full transaction history for each friend.
+- **Guest Mode**: A fallback mode for users without an account, though primary functionality relies on Supabase.
+
+## Tech Stack
+- React 19 (Vite)
+- TypeScript
+- Supabase (Auth, DB, Real-time)
+- React Router 7
+- Lucide React (Icons)
+- Recharts (Data Visualization)

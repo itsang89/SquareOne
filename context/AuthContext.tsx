@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '../utils/supabase';
 import { User } from '../types';
@@ -23,25 +23,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const isLoadingProfileRef = useRef(false);
 
-  // Load user profile from database
+  // Load user profile from database with timeout
   const loadUserProfile = useCallback(async (supabaseUser: SupabaseUser): Promise<User | null> => {
+    // Create fallback profile function
+    const createFallbackProfile = (): User => {
+      return {
+        id: supabaseUser.id,
+        name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
+        email: supabaseUser.email || '',
+        avatar: supabaseUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User')}&background=random`,
+      };
+    };
+
     try {
-      const { data, error } = await supabase
+      // Create a timeout promise that rejects after 5 seconds
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Profile query timeout')), 5000);
+      });
+
+      // Race between the database query and timeout
+      const queryPromise = supabase
         .from('profiles')
         .select('*')
         .eq('id', supabaseUser.id)
         .single();
 
+      const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
+
       if (error) {
-        console.warn('Profile not found or error loading, using fallback data:', error.message);
-        // Fallback to Supabase user metadata or email
-        return {
-          id: supabaseUser.id,
-          name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
-          email: supabaseUser.email || '',
-          avatar: supabaseUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User')}&background=random`,
-        };
+        console.warn('Profile not found, using fallback:', error.message);
+        return createFallbackProfile();
       }
 
       return {
@@ -50,15 +63,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: data.email || supabaseUser.email || '',
         avatar: data.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name || 'User')}&background=random`,
       };
-    } catch (error) {
-      console.error('Unexpected error loading user profile:', error);
-      // Even on unexpected error, try to return a fallback instead of null to avoid login hangs
-      return {
-        id: supabaseUser.id,
-        name: supabaseUser.email?.split('@')[0] || 'User',
-        email: supabaseUser.email || '',
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(supabaseUser.email?.split('@')[0] || 'User')}&background=random`,
-      };
+    } catch (error: any) {
+      console.warn('Profile query timeout, using fallback');
+      return createFallbackProfile();
     }
   }, []);
 
@@ -100,12 +107,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
       
-      console.log('Auth state change event:', event);
+      // Skip if we're already in the middle of loading a profile from signInWithPassword
+      if (isLoadingProfileRef.current && event === 'SIGNED_IN') {
+        return;
+      }
+      
       setSession(session);
+      setLoading(true);
       
       try {
         if (session?.user) {
-          // Profile loading is starting
           const profile = await loadUserProfile(session.user);
           if (mounted) setUser(profile);
         } else {
@@ -126,14 +137,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInWithPassword = async (email: string, password: string) => {
     setIsProcessing(true);
+    isLoadingProfileRef.current = true;
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+      
+      if (error) {
+        return { error };
+      }
+      
+      // If successful, wait for the user profile to load
+      if (data.user) {
+        const profile = await loadUserProfile(data.user);
+        setUser(profile);
+        setSession(data.session);
+      }
+      
+      return { error: null };
+    } catch (error: any) {
+      console.error('Sign in error:', error);
       return { error };
     } finally {
       setIsProcessing(false);
+      isLoadingProfileRef.current = false;
     }
   };
 

@@ -11,6 +11,7 @@ import { useTimeout } from '../hooks/useTimeout';
 import { useToast } from '../components/ToastContext';
 import { TransactionSkeleton, FriendSkeleton } from '../components/LoadingSkeleton';
 import { formatCurrency, formatDate } from '../utils/formatters';
+import { AnimatedNumber } from '../components/AnimatedNumber';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
@@ -86,19 +87,24 @@ export const Home: React.FC = () => {
                 <div className="relative z-10 mb-6">
                     <p className="text-black/70 dark:text-black/80 text-xs font-bold uppercase tracking-widest mb-1">Total Net Position</p>
                     <p className="text-5xl font-bold tracking-tighter text-black">
-                      {netBalance >= 0 ? '+' : '-'}{formatCurrency(Math.abs(netBalance))}
+                      {netBalance >= 0 ? '+' : '-'}
+                      <AnimatedNumber value={Math.abs(netBalance)} decimals={2} prefix="$" />
                     </p>
                 </div>
 
                 <div className="relative z-10 flex gap-4 pt-4 border-t-2 border-black/10">
                     <div className="flex-1">
                         <p className="text-black/60 dark:text-black/70 text-[10px] font-black uppercase mb-1">You Owe</p>
-                        <p className="text-neo-red font-black text-xl tracking-tight">{formatCurrency(totalOwing)}</p>
+                        <p className="text-neo-red font-black text-xl tracking-tight">
+                          <AnimatedNumber value={totalOwing} decimals={2} prefix="$" />
+                        </p>
                     </div>
                     <div className="w-[2px] bg-black/10"></div>
                     <div className="flex-1">
                         <p className="text-black/60 dark:text-black/70 text-[10px] font-black uppercase mb-1">Owed To You</p>
-                        <p className="text-neo-greenDark font-black text-xl tracking-tight">{formatCurrency(totalOwed)}</p>
+                        <p className="text-neo-greenDark font-black text-xl tracking-tight">
+                          <AnimatedNumber value={totalOwed} decimals={2} prefix="$" />
+                        </p>
                     </div>
                 </div>
             </div>

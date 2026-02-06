@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Apple, Lock, Eye, EyeOff, UserCircle } from 'lucide-react';
 import { NeoButton, NeoCard, NeoInput } from '../components/NeoComponents';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ToastContext';
 import { isValidEmail } from '../utils/validation';
+import { springs, slideInRight, slideInLeft, staggerContainer, staggerItem } from '../utils/animations';
+import { useAnimations } from '../hooks/useAnimations';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -18,6 +21,7 @@ export const Login: React.FC = () => {
     isProcessing 
   } = useAuth();
   const { success, error: showError } = useToast();
+  const { getVariants, getTransition } = useAnimations();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -99,29 +103,50 @@ export const Login: React.FC = () => {
             </div>
 
             <NeoCard className="mb-8">
-                <form onSubmit={handleEmailLogin}>
-                    {isSignUp && (
+                <motion.form 
+                  onSubmit={handleEmailLogin}
+                  variants={getVariants(staggerContainer)}
+                  initial="hidden"
+                  animate="visible"
+                  key={isSignUp ? 'signup' : 'signin'}
+                >
+                    <AnimatePresence mode="wait">
+                      {isSignUp && (
+                        <motion.div
+                          variants={getVariants(staggerItem)}
+                          initial="hidden"
+                          animate="visible"
+                          exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                          transition={getTransition(springs.bouncy)}
+                        >
+                          <NeoInput
+                            label="Name (Optional)"
+                            placeholder="Your name"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            disabled={isProcessing}
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    <motion.div variants={getVariants(staggerItem)}>
                       <NeoInput
-                        label="Name (Optional)"
-                        placeholder="Your name"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
+                        label="Enter Email"
+                        type="email"
+                        placeholder="friend@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                         disabled={isProcessing}
+                        error={emailError}
+                        required
                       />
-                    )}
+                    </motion.div>
 
-                    <NeoInput
-                      label="Enter Email"
-                      type="email"
-                      placeholder="friend@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      disabled={isProcessing}
-                      error={emailError}
-                      required
-                    />
-
-                    <div className="relative">
+                    <motion.div 
+                      className="relative"
+                      variants={getVariants(staggerItem)}
+                    >
                       <NeoInput
                         label="Password"
                         type={showPassword ? 'text' : 'password'}
@@ -132,44 +157,77 @@ export const Login: React.FC = () => {
                         required
                         className="pr-12"
                       />
-                      <button
+                      <motion.button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-4 top-[38px] text-black dark:text-zinc-100 hover:opacity-70 transition-opacity"
+                        className="absolute right-4 top-[38px] text-black dark:text-zinc-100"
                         tabIndex={-1}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
                       >
-                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                      </button>
-                    </div>
+                        <AnimatePresence mode="wait" initial={false}>
+                          <motion.div
+                            key={showPassword ? 'eyeoff' : 'eye'}
+                            initial={{ rotate: -180, opacity: 0 }}
+                            animate={{ rotate: 0, opacity: 1 }}
+                            exit={{ rotate: 180, opacity: 0 }}
+                            transition={springs.bouncy}
+                          >
+                            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                          </motion.div>
+                        </AnimatePresence>
+                      </motion.button>
+                    </motion.div>
 
-                    <div className="flex items-center gap-2 mb-6 ml-1">
-                        <button
+                    <motion.div 
+                      className="flex items-center gap-2 mb-6 ml-1"
+                      variants={getVariants(staggerItem)}
+                    >
+                        <motion.button
                             type="button"
-                            className={`w-6 h-6 border-2 border-black flex items-center justify-center cursor-pointer transition-all ${
+                            className={`w-6 h-6 border-2 border-black flex items-center justify-center cursor-pointer ${
                                 rememberMe ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' : 'bg-white dark:bg-zinc-800'
                             }`}
                             onClick={() => setRememberMe(!rememberMe)}
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
                         >
-                            {rememberMe && <Mail size={14} className="fill-black" />}
-                        </button>
+                            <AnimatePresence>
+                              {rememberMe && (
+                                <motion.div
+                                  initial={{ scale: 0, opacity: 0 }}
+                                  animate={{ scale: 1, opacity: 1 }}
+                                  exit={{ scale: 0, opacity: 0 }}
+                                  transition={springs.bouncy}
+                                >
+                                  <Mail size={14} className="fill-black" />
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                        </motion.button>
                         <label 
                             className="text-xs font-bold uppercase tracking-widest cursor-pointer select-none dark:text-zinc-100"
                             onClick={() => setRememberMe(!rememberMe)}
                         >
                             Remember Me
                         </label>
-                    </div>
+                    </motion.div>
 
-                    <NeoButton fullWidth type="submit" isLoading={isProcessing} className="group">
-                        {!isProcessing && (
-                          <>
-                            <span>{isSignUp ? 'Sign Up' : 'Sign In'}</span>
-                            <Lock className="fill-black group-hover:scale-110 transition-transform" />
-                          </>
-                        )}
-                    </NeoButton>
+                    <motion.div variants={getVariants(staggerItem)}>
+                      <NeoButton fullWidth type="submit" isLoading={isProcessing} className="group">
+                          {!isProcessing && (
+                            <>
+                              <span>{isSignUp ? 'Sign Up' : 'Sign In'}</span>
+                              <Lock className="fill-black group-hover:scale-110 transition-transform" />
+                            </>
+                          )}
+                      </NeoButton>
+                    </motion.div>
 
-                    <div className="mt-4 text-center">
+                    <motion.div 
+                      className="mt-4 text-center"
+                      variants={getVariants(staggerItem)}
+                    >
                         <button
                             type="button"
                             onClick={() => {
@@ -181,8 +239,8 @@ export const Login: React.FC = () => {
                         >
                             {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
                         </button>
-                    </div>
-                </form>
+                    </motion.div>
+                </motion.form>
 
                 <div className="flex items-center gap-4 my-6">
                     <div className="h-[2px] bg-black dark:bg-zinc-100 flex-1 opacity-20"></div>
@@ -212,7 +270,7 @@ export const Login: React.FC = () => {
                 <button onClick={handleGuestLogin} className="inline-flex items-center gap-2 text-gray-500 dark:text-zinc-500 font-bold uppercase text-xs hover:text-black dark:hover:text-zinc-100 hover:underline decoration-2 underline-offset-4 transition-all">
                     Try as Guest
                 </button>
-                <p className="mt-6 text-[10px] text-gray-400 dark:text-zinc-600 font-medium max-w-[200px] mx-auto leading-relaxed">
+                <p className="mt-6 text-[10px] text-gray-400 dark:text-zinc-500 font-medium max-w-[200px] mx-auto leading-relaxed">
                     By entering, you agree to our Terms & Privacy Policy.
                 </p>
             </div>

@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Settings, Moon, Sun, Monitor, Download, Trash2, HelpCircle, ArrowRight, Edit3, LogOut } from 'lucide-react';
 import { NeoCard, Avatar, NeoButton, NeoInput, NeoModal } from '../components/NeoComponents';
+import { HowToUseModal } from '../components/HowToUseModal';
 import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 import { useNavigate } from 'react-router-dom';
 import { PRESET_AVATARS } from '../constants';
 import { useToast } from '../components/ToastContext';
+import { springs, fadeIn, staggerContainer, staggerItem, bounceIn, moonRotate, sunRotateScale, monitorPulse } from '../utils/animations';
+import { useAnimations } from '../hooks/useAnimations';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -15,6 +19,7 @@ export const Profile: React.FC = () => {
   const { user, signOut } = useAuth();
   const { success, error: showError } = useToast();
   const navigate = useNavigate();
+  const { getVariants, getTransition } = useAnimations();
   
   const [theme, setTheme] = useState<Theme>(() => {
     const stored = localStorage.getItem('squareone_theme');
@@ -22,6 +27,7 @@ export const Profile: React.FC = () => {
   });
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showHowToUse, setShowHowToUse] = useState(false);
   const [profileName, setProfileName] = useState(user?.name || '');
   const [profileAvatar, setProfileAvatar] = useState(user?.avatar || '');
   const [joinedDate, setJoinedDate] = useState<string>('');
@@ -170,32 +176,64 @@ export const Profile: React.FC = () => {
 
         <main className="p-6 flex flex-col gap-8">
             <NeoCard className="relative">
-                {showEditProfile ? (
-                    <div className="flex flex-col gap-4">
-                        <NeoInput
-                            label="Name"
-                            value={profileName}
-                            onChange={(e) => setProfileName(e.target.value)}
-                            disabled={isUpdating}
-                        />
-                        <div>
+                <AnimatePresence mode="wait">
+                  {showEditProfile ? (
+                    <motion.div 
+                      key="edit-mode"
+                      className="flex flex-col gap-4"
+                      variants={getVariants(staggerContainer)}
+                      initial="hidden"
+                      animate="visible"
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={getTransition(springs.gentle)}
+                    >
+                        <motion.div variants={getVariants(staggerItem)}>
+                          <NeoInput
+                              label="Name"
+                              value={profileName}
+                              onChange={(e) => setProfileName(e.target.value)}
+                              disabled={isUpdating}
+                          />
+                        </motion.div>
+                        <motion.div variants={getVariants(staggerItem)}>
                             <label className="block text-xs font-bold uppercase mb-2 tracking-widest dark:text-zinc-100">Select Avatar</label>
-                            <div className="flex flex-wrap gap-2 p-3 bg-gray-50 dark:bg-zinc-800 border-2 border-black">
+                            <motion.div 
+                              className="flex flex-wrap gap-2 p-3 bg-gray-50 dark:bg-zinc-800 border-2 border-black"
+                              variants={getVariants(staggerContainer)}
+                              initial="hidden"
+                              animate="visible"
+                            >
                                 {PRESET_AVATARS.map((avatarUrl, idx) => (
-                                    <button
+                                    <motion.button
                                         key={idx}
                                         onClick={() => setProfileAvatar(avatarUrl)}
                                         disabled={isUpdating}
-                                        className={`w-10 h-10 border-2 transition-all hover:scale-110 active:scale-95 ${
-                                            profileAvatar === avatarUrl ? 'border-black bg-neo-yellow shadow-neo-sm scale-110' : 'border-black/20 opacity-60 hover:opacity-100'
+                                        className={`w-10 h-10 border-2 ${
+                                            profileAvatar === avatarUrl ? 'border-black bg-neo-yellow shadow-neo-sm' : 'border-black/20 opacity-60'
                                         }`}
+                                        variants={getVariants(bounceIn)}
+                                        whileHover={{ scale: 1.1, opacity: 1 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        animate={profileAvatar === avatarUrl ? { scale: 1.1 } : { scale: 1 }}
+                                        transition={getTransition(springs.bouncy)}
                                     >
                                         <img src={avatarUrl} alt={`Preset ${idx}`} className="w-full h-full object-cover" />
-                                    </button>
+                                        {profileAvatar === avatarUrl && (
+                                          <motion.div
+                                            className="absolute inset-0 border-2 border-black pointer-events-none"
+                                            initial={{ scale: 0 }}
+                                            animate={{ scale: 1 }}
+                                            transition={springs.elastic}
+                                          />
+                                        )}
+                                    </motion.button>
                                 ))}
-                            </div>
-                        </div>
-                        <div className="flex gap-3">
+                            </motion.div>
+                        </motion.div>
+                        <motion.div 
+                          className="flex gap-3"
+                          variants={getVariants(staggerItem)}
+                        >
                             <NeoButton 
                               fullWidth 
                               onClick={handleUpdateProfile} 
@@ -212,30 +250,49 @@ export const Profile: React.FC = () => {
                             >
                               Cancel
                             </NeoButton>
-                        </div>
-                    </div>
-                ) : (
-                    <>
+                        </motion.div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="view-mode"
+                      variants={getVariants(fadeIn)}
+                      initial="hidden"
+                      animate="visible"
+                      exit={{ opacity: 0, x: 20 }}
+                      transition={getTransition(springs.gentle)}
+                    >
                         <div className="flex items-center gap-4">
                             <Avatar src={user?.avatar || ''} alt="Profile" size="lg" className="border-[3px] shadow-sm" />
                             <div className="flex-1 min-w-0">
                                 <h2 className="text-2xl font-black uppercase leading-none truncate dark:text-zinc-100">{user?.name || 'User'}</h2>
                                 <p className="text-sm font-bold text-gray-500 dark:text-zinc-400 mt-1 uppercase tracking-wider">{user?.email || ''}</p>
                             </div>
-                            <button 
+                            <motion.button 
                                 onClick={() => setShowEditProfile(true)}
-                                className="w-10 h-10 bg-neo-orange text-black flex items-center justify-center border-2 border-black shadow-neo-sm hover:shadow-neo active:shadow-none active:translate-y-[2px] transition-all"
+                                className="w-10 h-10 bg-neo-orange text-black flex items-center justify-center border-2 border-black shadow-neo-sm"
                                 aria-label="Edit profile"
+                                whileHover={{ 
+                                  scale: 1.05,
+                                  rotate: 15,
+                                  boxShadow: '4px 4px 0px 0px rgba(0,0,0,1)',
+                                }}
+                                whileTap={{ 
+                                  scale: 0.95,
+                                  rotate: 0,
+                                  boxShadow: '0px 0px 0px 0px rgba(0,0,0,1)',
+                                  y: 2,
+                                }}
                             >
                                 <Edit3 size={18} />
-                            </button>
+                            </motion.button>
                         </div>
                         <div className="mt-4 pt-4 border-t-2 border-black flex justify-between text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-zinc-500">
                             <span>Joined</span>
                             <span>{joinedDate || 'Recently'}</span>
                         </div>
-                    </>
-                )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
             </NeoCard>
 
             <section>
@@ -245,25 +302,55 @@ export const Profile: React.FC = () => {
                 <NeoCard className="flex flex-col gap-6">
                     <div>
                          <label className="block text-xs font-bold uppercase mb-2 dark:text-zinc-400">Appearance</label>
-                         <div className="grid grid-cols-3 gap-0 border-2 border-black bg-gray-100 dark:bg-zinc-800 p-1">
-                            <button 
+                         <div className="grid grid-cols-3 gap-0 border-2 border-black bg-gray-100 dark:bg-zinc-800 p-1 relative">
+                            <motion.button 
                               onClick={() => setTheme('dark')}
-                              className={`py-2 border border-black font-bold text-sm transition-colors flex items-center justify-center gap-1 ${theme === 'dark' ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black' : 'hover:bg-white dark:hover:bg-zinc-700 text-gray-500 dark:text-zinc-400 hover:text-black dark:hover:text-zinc-100'}`}
+                              className={`py-2 border border-black font-bold text-sm flex items-center justify-center gap-1 relative z-10 ${theme === 'dark' ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black' : 'text-gray-500 dark:text-zinc-400'}`}
+                              whileHover={theme !== 'dark' ? { 
+                                backgroundColor: 'rgba(255,255,255,0.1)',
+                                color: theme === 'light' ? '#000' : '#fff',
+                              } : {}}
+                              whileTap={{ scale: 0.95 }}
                             >
-                                <Moon size={16} />
-                            </button>
-                            <button 
+                                <motion.div
+                                  variants={moonRotate}
+                                  animate={theme === 'dark' ? 'active' : 'inactive'}
+                                >
+                                  <Moon size={16} />
+                                </motion.div>
+                            </motion.button>
+                            <motion.button 
                               onClick={() => setTheme('light')}
-                              className={`py-2 border border-black font-bold text-sm transition-colors flex items-center justify-center gap-1 ${theme === 'light' ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black' : 'hover:bg-white dark:hover:bg-zinc-700 text-gray-500 dark:text-zinc-400 hover:text-black dark:hover:text-zinc-100'}`}
+                              className={`py-2 border border-black font-bold text-sm flex items-center justify-center gap-1 relative z-10 ${theme === 'light' ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black' : 'text-gray-500 dark:text-zinc-400'}`}
+                              whileHover={theme !== 'light' ? { 
+                                backgroundColor: 'rgba(255,255,255,0.1)',
+                                color: theme === 'light' ? '#000' : '#fff',
+                              } : {}}
+                              whileTap={{ scale: 0.95 }}
                             >
-                                <Sun size={16} />
-                            </button>
-                            <button 
+                                <motion.div
+                                  variants={sunRotateScale}
+                                  animate={theme === 'light' ? 'active' : 'inactive'}
+                                >
+                                  <Sun size={16} />
+                                </motion.div>
+                            </motion.button>
+                            <motion.button 
                               onClick={() => setTheme('system')}
-                              className={`py-2 border border-black font-bold text-sm transition-colors flex items-center justify-center gap-1 ${theme === 'system' ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black' : 'hover:bg-white dark:hover:bg-zinc-700 text-gray-500 dark:text-zinc-400 hover:text-black dark:hover:text-zinc-100'}`}
+                              className={`py-2 border border-black font-bold text-sm flex items-center justify-center gap-1 relative z-10 ${theme === 'system' ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black' : 'text-gray-500 dark:text-zinc-400'}`}
+                              whileHover={theme !== 'system' ? { 
+                                backgroundColor: 'rgba(255,255,255,0.1)',
+                                color: theme === 'light' ? '#000' : '#fff',
+                              } : {}}
+                              whileTap={{ scale: 0.95 }}
                             >
-                                <Monitor size={16} />
-                            </button>
+                                <motion.div
+                                  variants={monitorPulse}
+                                  animate={theme === 'system' ? 'active' : 'inactive'}
+                                >
+                                  <Monitor size={16} />
+                                </motion.div>
+                            </motion.button>
                         </div>
                     </div>
                 </NeoCard>
@@ -324,7 +411,10 @@ export const Profile: React.FC = () => {
             </section>
 
             <section>
-                <div className="block bg-neo-pink text-black border-2 border-black p-5 shadow-neo hover:shadow-neo-lg hover:-translate-y-0.5 transition-all flex items-center justify-between group active:translate-y-[2px] active:shadow-none cursor-pointer">
+                <button 
+                  onClick={() => setShowHowToUse(true)}
+                  className="w-full text-left block bg-neo-pink text-black border-2 border-black p-5 shadow-neo hover:shadow-neo-lg hover:-translate-y-0.5 transition-all flex items-center justify-between group active:translate-y-[2px] active:shadow-none cursor-pointer"
+                >
                     <div className="flex items-center gap-4">
                         <HelpCircle size={32} className="animate-pulse" />
                         <div className="flex flex-col">
@@ -335,7 +425,7 @@ export const Profile: React.FC = () => {
                      <div className="w-8 h-8 bg-white dark:bg-zinc-100 border-2 border-black flex items-center justify-center">
                         <ArrowRight size={16} className="text-black font-bold" />
                     </div>
-                </div>
+                </button>
             </section>
             
             <div className="text-center mt-4 mb-4">
@@ -356,6 +446,11 @@ export const Profile: React.FC = () => {
             <NeoButton fullWidth onClick={handleClearAllData} variant="accent" isLoading={isUpdating}>Yes, Clear All</NeoButton>
           </div>
         </NeoModal>
+
+        <HowToUseModal 
+          isOpen={showHowToUse} 
+          onClose={() => setShowHowToUse(false)} 
+        />
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { Search, MoreVertical, Filter, Trash2 } from 'lucide-react';
 import { BackButton, Avatar, NeoInput, NeoButton } from '../components/NeoComponents';
 import { useAppContext } from '../context/AppContext';
@@ -8,6 +9,8 @@ import { useTimeout } from '../hooks/useTimeout';
 import { useToast } from '../components/ToastContext';
 import { TransactionSkeleton } from '../components/LoadingSkeleton';
 import { formatCurrency } from '../utils/formatters';
+import { staggerContainer, staggerItem, springs } from '../utils/animations';
+import { useAnimations } from '../hooks/useAnimations';
 
 type FilterType = 'All' | 'Poker' | 'Meals' | 'Loans' | 'Unsettled';
 type SortType = 'date' | 'event';
@@ -15,6 +18,7 @@ type SortType = 'date' | 'event';
 export const History: React.FC = () => {
   const { transactions, friends, deleteTransaction, loading } = useAppContext();
   const { success, error: showError } = useToast();
+  const { getVariants, getTransition } = useAnimations();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
@@ -206,12 +210,22 @@ export const History: React.FC = () => {
             ) : filteredTransactions.length > 0 && Object.keys(groupedTransactions).length > 0 ? (
               Object.entries(groupedTransactions).map(([groupName, txs]) => (
                 <div key={groupName} className="mb-6">
-                  <div className="flex items-center gap-4 mb-3">
+                  <motion.div 
+                    className="flex items-center gap-4 mb-3"
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={getTransition(springs.gentle)}
+                  >
                     <h3 className="text-xs font-bold uppercase tracking-widest text-black dark:text-zinc-400">{groupName}</h3>
                     <div className="h-[2px] flex-1 bg-black/10 dark:bg-white/10"></div>
-                  </div>
+                  </motion.div>
                   
-                  {txs.map(tx => {
+                  <motion.div
+                    variants={getVariants(staggerContainer)}
+                    initial="hidden"
+                    animate="visible"
+                  >
+                    {txs.map(tx => {
                     let friend = null;
                     let friendIdForGraying = null;
                     if (tx.friendId !== 'me') {
@@ -227,9 +241,13 @@ export const History: React.FC = () => {
                     const isGrayed = friendIdForGraying ? shouldGrayTransaction(tx, friendIdForGraying, transactions) : false;
                     
                     return (
-                      <div 
+                      <motion.div 
                         key={tx.id} 
-                        className={`group relative flex items-center gap-3 p-3 mb-3 rounded-md border-2 border-black shadow-neo active:shadow-none active:translate-y-1 transition-all ${tx.payerId === 'me' ? 'bg-neo-green/20 dark:bg-neo-green/10' : 'bg-neo-red/20 dark:bg-neo-red/10'} ${isGrayed ? 'opacity-50 grayscale' : tx.isSettlement ? 'opacity-60' : ''} ${deletingId === tx.id ? 'border-neo-red' : ''}`}
+                        className={`group relative flex items-center gap-3 p-3 mb-3 rounded-md border-2 border-black shadow-neo ${tx.payerId === 'me' ? 'bg-neo-green/20 dark:bg-neo-green/10' : 'bg-neo-red/20 dark:bg-neo-red/10'} ${isGrayed ? 'opacity-50 grayscale' : tx.isSettlement ? 'opacity-60' : ''} ${deletingId === tx.id ? 'border-neo-red' : ''}`}
+                        variants={getVariants(staggerItem)}
+                        whileHover={{ scale: 1.01, y: -2 }}
+                        whileTap={{ scale: 0.99, y: 1 }}
+                        transition={getTransition(springs.snappy)}
                       >
                         <div className="relative shrink-0">
                           <Avatar src={friendAvatar} alt={friendName} size="md" />
@@ -253,7 +271,7 @@ export const History: React.FC = () => {
                             </span>
                           </div>
                         </div>
-                        <button
+                        <motion.button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDelete(tx);
@@ -263,12 +281,15 @@ export const History: React.FC = () => {
                               ? 'bg-neo-red text-white shadow-neo-sm' 
                               : 'bg-white dark:bg-zinc-800 dark:text-zinc-100 hover:bg-neo-red/20 opacity-0 group-hover:opacity-100'
                           }`}
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
                         >
                           <Trash2 size={16} />
-                        </button>
-                      </div>
+                        </motion.button>
+                      </motion.div>
                     );
                   })}
+                  </motion.div>
                 </div>
               ))
             ) : (

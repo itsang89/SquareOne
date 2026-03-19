@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, type FormEvent } from 'react';
 
 interface FormConfig<T> {
   initialValues: T;
@@ -27,7 +27,7 @@ export function useForm<T extends Record<string, any>>({
     }
   }, [errors]);
 
-  const handleSubmit = async (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: FormEvent) => {
     if (e) e.preventDefault();
     
     if (validate) {

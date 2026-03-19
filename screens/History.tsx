@@ -208,7 +208,7 @@ export const History: React.FC = () => {
                 {[1, 2, 3, 4, 5].map(i => <TransactionSkeleton key={i} />)}
               </div>
             ) : filteredTransactions.length > 0 && Object.keys(groupedTransactions).length > 0 ? (
-              Object.entries(groupedTransactions).map(([groupName, txs]) => (
+              (Object.entries(groupedTransactions) as [string, Transaction[]][]).map(([groupName, txs]) => (
                 <div key={groupName} className="mb-6">
                   <motion.div 
                     className="flex items-center gap-4 mb-3"

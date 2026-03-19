@@ -57,16 +57,16 @@ SquareOne is a modern, neo-brutalist style expense tracking application designed
    ```
 
 5. **Open the app**:
-   Navigate to `http://localhost:5173` in your browser.
+   Navigate to `http://localhost:3000` in your browser (port is set in `vite.config.ts`).
 
 ## 📂 Project Structure
 
-- `src/components/`: Reusable UI components and feature-specific blocks.
-- `src/screens/`: Page-level components (Home, Friends, History, etc.).
-- `src/context/`: Global state management (Auth and App data).
-- `src/hooks/`: Custom React hooks for shared logic.
-- `src/utils/`: Utility functions for calculations, formatting, and Supabase client.
-- `src/types/`: TypeScript interfaces and type definitions.
+- `components/`: Reusable UI components and feature-specific blocks.
+- `screens/`: Page-level components (Home, Friends, History, etc.).
+- `context/`: Global state management (Auth and App data).
+- `hooks/`: Custom React hooks for shared logic.
+- `utils/`: Utility functions for calculations, formatting, and Supabase client.
+- `types/`: TypeScript interfaces and type definitions.
 
 ## 📖 Documentation
 

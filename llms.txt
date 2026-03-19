@@ -1,12 +1,12 @@
 # SquareOne
-> Neumorphic expense tracking app built with React and Supabase.
+> Neo-brutalist expense tracking app built with React and Supabase.
 
 ## Core Files
 - `App.tsx`: Main application entry point and routing configuration.
 - `context/AppContext.tsx`: Primary state management for friends and transactions with real-time sync.
 - `context/AuthContext.tsx`: Authentication state management using Supabase Auth.
 - `utils/supabase.ts`: Supabase client initialization.
-- `components/NeoComponents.tsx`: Core UI design system (Neumorphic style).
+- `components/NeoComponents.tsx`: Core UI design system (neo-brutalist / Neo style).
 
 ## Key Concepts
 - **Neo-brutalism (Neo)**: The visual style of the app, characterized by bold black borders, high contrast, and a modern aesthetic.

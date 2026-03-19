@@ -78,6 +78,15 @@ export const Home: React.FC = () => {
         </button>
       </header>
 
+      {user?.id === 'guest' && (
+        <div
+          className="mx-5 mt-3 px-4 py-3 bg-neo-blue/30 dark:bg-neo-blue/20 border-2 border-black text-sm font-bold text-black dark:text-zinc-100 shadow-neo-sm"
+          role="status"
+        >
+          Guest — data is saved on this device only. Sign in to sync across devices.
+        </div>
+      )}
+
       <div className="p-5 space-y-8">
         {/* Net Position Widget */}
         <section>

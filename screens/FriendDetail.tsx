@@ -15,10 +15,10 @@ import { formatCurrency } from '../utils/formatters';
 export const FriendDetail: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { friends, transactions: allTransactions, getFriendById, deleteTransaction, updateFriend, deleteFriend, isProcessing } = useAppContext();
+  const { transactions: allTransactions, getFriendById, deleteTransaction, updateFriend, deleteFriend, isProcessing } = useAppContext();
   const { success, error: showError } = useToast();
   
-  const friend = getFriendById(id || '') || friends[0];
+  const friend = id ? getFriendById(id) : undefined;
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showOptions, setShowOptions] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -77,8 +77,16 @@ export const FriendDetail: React.FC = () => {
 
   if (!friend) {
     return (
-      <div className="min-h-screen bg-neo-bg dark:bg-zinc-950 flex items-center justify-center">
-        <p className="text-lg font-bold dark:text-zinc-100">Friend not found</p>
+      <div className="min-h-screen bg-neo-bg dark:bg-zinc-950 flex items-center justify-center px-6">
+        <div className="w-full max-w-sm bg-white dark:bg-zinc-900 border-2 border-black shadow-neo p-8 text-center">
+          <p className="text-lg font-black uppercase tracking-tight dark:text-zinc-100 mb-2">Friend not found</p>
+          <p className="text-sm font-bold text-gray-600 dark:text-zinc-400 mb-6">
+            This person isn&apos;t in your list or the link is invalid.
+          </p>
+          <NeoButton fullWidth variant="primary" onClick={() => navigate('/friends', { replace: true })}>
+            Back to friends
+          </NeoButton>
+        </div>
       </div>
     );
   }

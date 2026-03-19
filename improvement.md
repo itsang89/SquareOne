@@ -2,7 +2,7 @@
 
 **App snapshot:** SquareOne is a neo-brutalist expense-sharing app: friends, transactions, settle-up, and history with Recharts on the dashboard, backed by **Supabase** (auth + Postgres + realtime). Stack: **React 19**, **Vite 6**, **TypeScript**, **React Router 7** (`HashRouter`), **Framer Motion**, **Tailwind via CDN** in `index.html`.
 
-This file merges a fresh codebase review with the prior audit. Items removed from the old list: none were fully resolved in code; guest **read** paths were partially fixed (see proposal 2).
+This file merges a fresh codebase review with the prior audit. **Recently resolved in code:** checklist items **1** (friend/settle routes), **2** (guest localStorage + no Supabase mutations for guest), and **4** (incomplete amount expressions). See **Status** rows under proposals 1, 2, and 4 below.
 
 ---
 
@@ -10,10 +10,10 @@ This file merges a fresh codebase review with the prior audit. Items removed fro
 
 Ranked by **user-facing impact → implementation effort → regression risk** (highest priority first).
 
-- [ ] **1.** Invalid `/friends/:id` and `/settle/:id` must not fall back to another friend’s data  
-- [ ] **2.** Guest mode: either real local-only data + writes, or remove/hide the flow  
+- [x] **1.** Invalid `/friends/:id` and `/settle/:id` must not fall back to another friend’s data  
+- [x] **2.** Guest mode: either real local-only data + writes, or remove/hide the flow  
 - [ ] **3.** OAuth return URLs must work with `HashRouter` (Google / Apple sign-in)  
-- [ ] **4.** Transaction amount validation must reject incomplete expressions (e.g. `5+`)  
+- [x] **4.** Transaction amount validation must reject incomplete expressions (e.g. `5+`)  
 - [x] **5.** Fix all `tsc --noEmit` errors and add `vite-env.d.ts` for `import.meta.env`  
 - [x] **6.** Fix missing `/index.css` (add file or remove the `<link>`)  
 - [ ] **7.** Address `npm audit` (react-router / react-router-dom, rollup) with tested upgrades  
@@ -41,6 +41,7 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 | **UI** | Full-screen or card message consistent with Neo styling; primary action: return to friends list. |
 | **Placement** | `screens/FriendDetail.tsx`, `screens/SettleUp.tsx` (top-level friend resolution). |
 | **Conflicts** | Any code assuming `friend` is always defined after the first friend exists; adjust guards before `useMemo` that depend on `friend`. |
+| **Status** | **Resolved** — `friend` is `getFriendById(id)` only (no `friends[0]`); not-found card with `NeoButton` → `/friends` (`replace`). |
 
 ---
 
@@ -55,6 +56,7 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 | **UI** | Optional banner on dashboard: “Guest — data saved on this device only.” |
 | **Placement** | `context/AppContext.tsx`, `context/AuthContext.tsx`, `screens/Login.tsx`. |
 | **Conflicts** | Realtime and RLS assumptions; guest must never open Supabase channels or inserts. |
+| **Status** | **Resolved (Option A)** — `utils/guestStorage.ts` (`squareone_guest_data`); guest `loadData` + all CRUD branches in `AppContext.tsx`; `clearGuestLocalData()` when a real Supabase session attaches (`AuthContext.tsx`); guest banner on `screens/Home.tsx`. |
 
 ---
 
@@ -83,6 +85,7 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 | **UI** | Inline error on amount field; disable submit until valid. |
 | **Placement** | `utils/validation.ts`, `utils/calculator.ts`, `components/AddTransaction/AmountInput.tsx`, `screens/SettleUp.tsx` if it parses amounts without shared validation. |
 | **Conflicts** | Any UX that relied on forgiving parsing—intentionally stricter behavior. |
+| **Status** | **Resolved** — `isCompleteNumericExpression()` in `calculator.ts`; `isValidAmount` uses it; `AddTransaction` shows `errors.amount`; `SettleUp` uses `isValidAmount` + `evaluateExpression` and a text amount field. |
 
 ---
 
@@ -244,8 +247,8 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 
 - **TODO/FIXME grep:** none in `*.ts` / `*.tsx`.
 - **Commented-out code:** only structural JSX comments and normal inline comments; no large dead blocks flagged.
-- **Incomplete features:** guest mode (writes vs reads), invalid route handling, and docs/stack inconsistencies are the main signals.
+- **Incomplete features:** OAuth redirects vs `HashRouter` (item 3), bundle/security/docs items still open; guest mode and invalid routes are addressed.
 
 ---
 
-*Last updated: 2026-03-20 — full codebase cross-check against `App.tsx`, contexts, screens, utils, `index.html`, `package.json`, `docs/`, README, llms.txt, `tsc --noEmit`, `npm run build`, `npm audit`.*
+*Last updated: 2026-03-20 — items 1, 2, 4 marked resolved after implementation; checklist and proposal **Status** rows updated.*

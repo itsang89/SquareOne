@@ -35,6 +35,7 @@ export const AddTransaction: React.FC = () => {
 
   const {
     values,
+    errors,
     isSubmitting,
     handleChange,
     handleSubmit,
@@ -51,7 +52,9 @@ export const AddTransaction: React.FC = () => {
     validate: (v) => {
       const errors: any = {};
       if (!v.selectedFriendId) errors.selectedFriendId = 'Required';
-      if (!isValidAmount(v.amount)) errors.amount = 'Invalid amount';
+      if (!isValidAmount(v.amount)) {
+        errors.amount = 'Enter a complete amount (unfinished calculations like 5+ are not allowed).';
+      }
       if (!v.selectedTag) errors.selectedTag = 'Required';
       return errors;
     },
@@ -159,15 +162,22 @@ export const AddTransaction: React.FC = () => {
         />
 
         {/* Amount */}
-        <AmountInput
-          amount={values.amount}
-          onAmountChange={(val) => handleChange('amount', val)}
-          showNumpad={showNumpad}
-          onToggleNumpad={() => {
-            setShowFriendPicker(false);
-            setShowNumpad(!showNumpad);
-          }}
-        />
+        <div>
+          <AmountInput
+            amount={values.amount}
+            onAmountChange={(val) => handleChange('amount', val)}
+            showNumpad={showNumpad}
+            onToggleNumpad={() => {
+              setShowFriendPicker(false);
+              setShowNumpad(!showNumpad);
+            }}
+          />
+          {errors.amount && (
+            <p className="text-sm font-bold text-red-600 dark:text-neo-red mt-2 px-1" role="alert">
+              {errors.amount}
+            </p>
+          )}
+        </div>
 
         {/* Tags */}
         <TypeSelector

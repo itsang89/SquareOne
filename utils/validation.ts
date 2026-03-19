@@ -1,4 +1,4 @@
-import { evaluateExpression } from './calculator';
+import { evaluateExpression, isCompleteNumericExpression } from './calculator';
 
 /**
  * Simple email validation
@@ -16,6 +16,7 @@ export function isValidAmount(amount: string | number): boolean {
     return !isNaN(amount) && amount > 0;
   }
 
+  if (!isCompleteNumericExpression(amount)) return false;
   const evaluated = evaluateExpression(amount);
   const num = parseFloat(evaluated);
   return !isNaN(num) && num > 0;

@@ -13,15 +13,17 @@ import { AnimatedNumber } from '../components/AnimatedNumber';
 import { springs } from '../utils/animations';
 import { useAnimations } from '../hooks/useAnimations';
 import { celebrateSettlement } from '../utils/confetti';
+import { isValidAmount } from '../utils/validation';
+import { evaluateExpression } from '../utils/calculator';
 
 export const SettleUp: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { friends, transactions, addTransaction, getFriendById } = useAppContext();
+  const { transactions, addTransaction, getFriendById } = useAppContext();
   const { success, error: showError } = useToast();
   const { getTransition } = useAnimations();
   
-  const friend = getFriendById(id || '') || friends[0];
+  const friend = id ? getFriendById(id) : undefined;
   
   const balance = useMemo(() => {
     if (!friend) return 0;
@@ -55,7 +57,11 @@ export const SettleUp: React.FC = () => {
   const handleConfirmSettle = async () => {
     if (!friend) return;
     
-    const amountNum = parseFloat(amount);
+    if (!isValidAmount(amount)) {
+      showError('Invalid amount', 'Enter a complete positive amount (unfinished expressions are not allowed).');
+      return;
+    }
+    const amountNum = parseFloat(evaluateExpression(amount));
     if (isNaN(amountNum) || amountNum <= 0) {
       showError('Invalid amount', 'Please enter a valid amount to settle.');
       return;
@@ -107,8 +113,16 @@ export const SettleUp: React.FC = () => {
   
   if (!friend) {
     return (
-      <div className="min-h-screen bg-neo-bg dark:bg-zinc-950 flex items-center justify-center">
-        <p className="text-lg font-bold dark:text-zinc-100">Friend not found</p>
+      <div className="min-h-screen bg-neo-bg dark:bg-zinc-950 flex items-center justify-center px-6">
+        <div className="w-full max-w-sm bg-white dark:bg-zinc-900 border-2 border-black shadow-neo p-8 text-center">
+          <p className="text-lg font-black uppercase tracking-tight dark:text-zinc-100 mb-2">Friend not found</p>
+          <p className="text-sm font-bold text-gray-600 dark:text-zinc-400 mb-6">
+            You can&apos;t settle with someone who isn&apos;t in your list.
+          </p>
+          <NeoButton fullWidth variant="primary" onClick={() => navigate('/friends', { replace: true })}>
+            Back to friends
+          </NeoButton>
+        </div>
       </div>
     );
   }
@@ -177,7 +191,8 @@ export const SettleUp: React.FC = () => {
                           $
                         </motion.span>
                         <motion.input 
-                            type="number" 
+                            type="text"
+                            inputMode="decimal"
                             value={amount}
                             onChange={(e) => setAmount(e.target.value)}
                             disabled={isSubmitting}

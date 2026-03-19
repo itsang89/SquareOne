@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '../utils/supabase';
+import { clearGuestLocalData } from '../utils/guestStorage';
 import { User } from '../types';
 
 interface AuthContextType {
@@ -83,6 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         setSession(session);
         if (session?.user) {
+          clearGuestLocalData();
           const profile = await loadUserProfile(session.user);
           if (mounted) setUser(profile);
         } else {
@@ -117,6 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       try {
         if (session?.user) {
+          clearGuestLocalData();
           const profile = await loadUserProfile(session.user);
           if (mounted) setUser(profile);
         } else {
@@ -150,6 +153,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // If successful, wait for the user profile to load
       if (data.user) {
+        clearGuestLocalData();
         const profile = await loadUserProfile(data.user);
         setUser(profile);
         setSession(data.session);

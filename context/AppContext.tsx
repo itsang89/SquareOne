@@ -1,8 +1,39 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { Friend, Transaction } from '../types';
+import { Friend, FriendStatus, Transaction } from '../types';
 import { calculateFriendBalance, getLastActivity } from '../utils/calculations';
 import { supabase } from '../utils/supabase';
+import {
+  readGuestSnapshot,
+  writeGuestSnapshot,
+  type GuestPersistedFriend,
+} from '../utils/guestStorage';
 import { AuthContext } from './AuthContext';
+
+function transactionInvolvesFriend(t: Transaction, friendId: string): boolean {
+  return (
+    (t.payerId === friendId || t.friendId === friendId) &&
+    (t.payerId === 'me' || t.friendId === 'me')
+  );
+}
+
+function buildGuestFriendsList(
+  base: GuestPersistedFriend[],
+  transactions: Transaction[]
+): Friend[] {
+  return base.map((f) => {
+    const balance = calculateFriendBalance(f.id, transactions);
+    const lastActivity = getLastActivity(f.id, transactions);
+    const status: FriendStatus = Math.abs(balance) < 0.01 ? 'settled' : 'active';
+    return {
+      id: f.id,
+      name: f.name,
+      avatar: f.avatar,
+      balance,
+      lastActivity,
+      status,
+    };
+  });
+}
 
 interface AppContextType {
   friends: Friend[];
@@ -38,11 +69,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    // Guest users use local storage only, no Supabase queries
     if (user.id === 'guest') {
-      console.log('Guest mode: skipping database queries');
-      setFriends([]);
-      setTransactions([]);
+      setLoading(true);
+      setError(null);
+      const snap = readGuestSnapshot();
+      const base = snap?.friends ?? [];
+      const txs = snap?.transactions ?? [];
+      setFriends(buildGuestFriendsList(base, txs));
+      setTransactions(txs);
       setLoading(false);
       return;
     }
@@ -163,6 +197,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addTransaction = useCallback(async (transaction: Transaction) => {
     if (!user) return { success: false, error: new Error('User not authenticated') };
 
+    if (user.id === 'guest') {
+      setIsProcessing(true);
+      try {
+        const snap = readGuestSnapshot() ?? { friends: [], transactions: [] };
+        const nextTxs = [...snap.transactions, transaction];
+        writeGuestSnapshot({ friends: snap.friends, transactions: nextTxs });
+        setFriends(buildGuestFriendsList(snap.friends, nextTxs));
+        setTransactions(nextTxs);
+        return { success: true };
+      } finally {
+        setIsProcessing(false);
+      }
+    }
+
     setIsProcessing(true);
     try {
       const dbTransaction = {
@@ -198,6 +246,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateFriend = useCallback(async (friendId: string, updates: Partial<Friend>) => {
     if (!user) return { success: false, error: new Error('User not authenticated') };
 
+    if (user.id === 'guest') {
+      setIsProcessing(true);
+      try {
+        const snap = readGuestSnapshot();
+        if (!snap) {
+          return { success: false, error: new Error('No guest data') };
+        }
+        const idx = snap.friends.findIndex((f) => f.id === friendId);
+        if (idx === -1) {
+          return { success: false, error: new Error('Friend not found') };
+        }
+        const nextBase = [...snap.friends];
+        nextBase[idx] = {
+          ...nextBase[idx],
+          ...(updates.name !== undefined ? { name: updates.name } : {}),
+          ...(updates.avatar !== undefined ? { avatar: updates.avatar } : {}),
+        };
+        writeGuestSnapshot({ friends: nextBase, transactions: snap.transactions });
+        setFriends(buildGuestFriendsList(nextBase, snap.transactions));
+        return { success: true };
+      } finally {
+        setIsProcessing(false);
+      }
+    }
+
     setIsProcessing(true);
     try {
       const dbUpdates: any = {};
@@ -225,6 +298,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteTransaction = useCallback(async (transactionId: string) => {
     if (!user) return { success: false, error: new Error('User not authenticated') };
 
+    if (user.id === 'guest') {
+      setIsProcessing(true);
+      try {
+        const snap = readGuestSnapshot();
+        if (!snap) {
+          return { success: false, error: new Error('No guest data') };
+        }
+        const nextTxs = snap.transactions.filter((t) => t.id !== transactionId);
+        writeGuestSnapshot({ friends: snap.friends, transactions: nextTxs });
+        setFriends(buildGuestFriendsList(snap.friends, nextTxs));
+        setTransactions(nextTxs);
+        return { success: true };
+      } finally {
+        setIsProcessing(false);
+      }
+    }
+
     setIsProcessing(true);
     try {
       const { error } = await supabase
@@ -247,6 +337,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addFriend = useCallback(async (friendData: Omit<Friend, 'id' | 'balance' | 'lastActivity' | 'status'>) => {
     if (!user) return { success: false, error: new Error('User not authenticated') };
+
+    if (user.id === 'guest') {
+      setIsProcessing(true);
+      try {
+        const snap = readGuestSnapshot() ?? { friends: [], transactions: [] };
+        const newFriend: GuestPersistedFriend = {
+          id: crypto.randomUUID(),
+          name: friendData.name,
+          avatar: friendData.avatar || '',
+        };
+        const nextFriends = [...snap.friends, newFriend];
+        writeGuestSnapshot({ friends: nextFriends, transactions: snap.transactions });
+        setFriends(buildGuestFriendsList(nextFriends, snap.transactions));
+        setTransactions(snap.transactions);
+        return { success: true };
+      } finally {
+        setIsProcessing(false);
+      }
+    }
 
     setIsProcessing(true);
     try {
@@ -274,6 +383,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteFriend = useCallback(async (friendId: string) => {
     if (!user) return { success: false, error: new Error('User not authenticated') };
+
+    if (user.id === 'guest') {
+      setIsProcessing(true);
+      try {
+        const snap = readGuestSnapshot();
+        if (!snap) {
+          return { success: false, error: new Error('No guest data') };
+        }
+        const nextFriends = snap.friends.filter((f) => f.id !== friendId);
+        const nextTxs = snap.transactions.filter((t) => !transactionInvolvesFriend(t, friendId));
+        writeGuestSnapshot({ friends: nextFriends, transactions: nextTxs });
+        setFriends(buildGuestFriendsList(nextFriends, nextTxs));
+        setTransactions(nextTxs);
+        return { success: true };
+      } finally {
+        setIsProcessing(false);
+      }
+    }
 
     setIsProcessing(true);
     try {

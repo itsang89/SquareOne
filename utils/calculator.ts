@@ -1,3 +1,10 @@
+/** True if the expression has no trailing binary operator (complete for evaluation as a number). */
+export function isCompleteNumericExpression(expr: string): boolean {
+  const sanitized = expr.replace(/[^-0-9+*/.]/g, '');
+  if (!sanitized) return false;
+  return !/[+*/-]$/.test(sanitized);
+}
+
 /**
  * Safely evaluates a mathematical expression string.
  * Supports basic operators: +, -, *, /

@@ -10,25 +10,21 @@
 
 Ranked by **user-facing impact → implementation effort → regression risk** (highest priority first).
 
-- [x] **1.** Invalid `/friends/:id` and `/settle/:id` must not fall back to another friend’s data  
-- [x] **2.** Guest mode: local-only persistence and no Supabase mutations for `user.id === 'guest'`  
-- [ ] **3.** Auth redirect URLs must work with **HashRouter** (OAuth **and** email confirmation `emailRedirectTo`)  
-- [x] **4.** Transaction amount validation rejects incomplete expressions (e.g. `5+`)  
-- [ ] **5.** Supabase friends/transactions **query errors** must not look like an empty ledger (surface retry / message)  
-- [x] **6.** `tsc --noEmit` clean and `vite-env.d.ts` for `import.meta.env`  
-- [x] **7.** `index.css` linked from `index.html` exists (`public/index.css`)  
-- [ ] **8.** Address `npm audit` (react-router-dom / rollup, etc.) with tested upgrades  
-- [ ] **9.** Code-split heavy routes (e.g. Recharts `Home`, modals-heavy screens) to shrink initial JS  
-- [x] **10.** `package.json` includes `typecheck` (`tsc --noEmit`)  
-- [x] **11.** Remove unused `vite.config` `define` for client-injected API keys  
-- [ ] **12.** Harden `loadUserProfile` after `Promise.race` timeout (ignore stale results / abort if supported)  
-- [ ] **13.** Relax `index.html` viewport (`user-scalable` / `maximum-scale`) for accessibility  
-- [ ] **14.** Refresh **llms.txt** guest description (localStorage, not “fallback only”)  
-- [ ] **15.** (Optional) Replace Tailwind CDN with PostCSS build for production parity  
-- [ ] **16.** (Optional) Enable TypeScript `strict` incrementally  
-- [ ] **17.** **NeoModal** accessibility: `role="dialog"`, focus trap, Escape, labelled close  
-- [ ] **18.** **Vitest** (or similar) unit tests for `calculator`, `validation`, `calculations`  
-- [ ] **19.** (Optional) **ESLint** flat config for React/TS/hooks (enable incrementally)  
+- [ ] **1.** Auth redirect URLs must work with **HashRouter** (OAuth **and** email confirmation `emailRedirectTo`)
+- [ ] **2.** Supabase friends/transactions **query errors** must not look like an empty ledger (surface retry / message)
+- [ ] **3.** Address `npm audit` (react-router-dom / rollup, etc.) with tested upgrades
+- [ ] **4.** Code-split heavy routes (e.g. Recharts `Home`, modals-heavy screens) to shrink initial JS
+- [ ] **5.** Harden `loadUserProfile` after `Promise.race` timeout (ignore stale results / abort if supported)
+- [ ] **6.** Relax `index.html` viewport (`user-scalable` / `maximum-scale`) for accessibility
+- [ ] **7.** Refresh **llms.txt** guest description (localStorage, not “fallback only”)
+- [ ] **8.** (Optional) Replace Tailwind CDN with PostCSS build for production parity
+- [ ] **9.** (Optional) Enable TypeScript `strict` incrementally
+- [ ] **10.** **NeoModal** accessibility: `role="dialog"`, focus trap, Escape, labelled close
+- [ ] **11.** **Vitest** (or similar) unit tests for `calculator`, `validation`, `calculations`
+- [ ] **12.** (Optional) **ESLint** flat config for React/TS/hooks (enable incrementally)
+- [ ] **13.** Global search across friends, transactions, and notes (single search bar)
+- [ ] **14.** Custom transaction title — separate free-text `title` field from the `type` tag
+- [ ] **15.** Group expenses — split one bill across multiple friends at once
 
 ---
 
@@ -202,6 +198,48 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 
 ---
 
+### 13. Global search
+
+| Field | Detail |
+|--------|--------|
+| **What** | No cross-screen search exists; `History.tsx` has its own local search bar but it is scoped to that screen only. Users cannot find a friend or transaction from a single entry point. |
+| **Why** | As the ledger grows, scanning for a specific transaction or friend across tabs becomes tedious; a global search box makes the app feel cohesive. |
+| **How** | Add a search trigger (magnifier icon) to the sticky header or `BottomNav`; open a full-screen overlay that queries `friends` and `transactions` from `AppContext` in real time, grouping results into "Friends" and "Transactions" sections; navigate to `FriendDetail` or `History` on tap. Reuse the `NeoInput` component and existing `formatters`. |
+| **Logic** | Filter `friends` by `name`; filter `transactions` by `title`, `note`, `amount.toString()`, and friend name lookup — the same logic already in `History.tsx` can be extracted to a shared `searchTransactions(query, transactions, friends)` util. |
+| **UI** | Full-screen modal overlay with two labelled result groups, `LoadingSpinner` while debouncing, and a "No results" empty state consistent with Neo styling. |
+| **Placement** | New `components/GlobalSearch.tsx`; new `utils/search.ts` (extracted from `History.tsx`); mount in `App.tsx` or top-level layout. |
+| **Conflicts** | `History.tsx` local search can delegate to the shared util after extraction — no regression if the refactor is additive. |
+
+---
+
+### 14. Custom transaction title
+
+| Field | Detail |
+|--------|--------|
+| **What** | `AddTransaction` sets `title` equal to `type` (e.g. `title: v.selectedTag`), so every Meal is titled "Meal" and every Transport is titled "Transport". There is no way to write a descriptive name like "Taylor's birthday dinner". |
+| **Why** | The `History` and `FriendDetail` screens show `title` as the primary label; generic type names make the ledger hard to scan and force users to open the note field for basic context. |
+| **How** | Add an optional free-text `title` input to `AddTransaction` between the amount and the type selector; default its placeholder to the selected tag (e.g. "Meal") so it is non-breaking; persist the user-entered value to `Transaction.title`. Keep `type` as the separate categorisation field it already is. |
+| **Logic** | `Transaction` type already has a `title: string` field — no schema change required. `AddTransaction` form values need a `title` field; `onSubmit` uses `v.title || v.selectedTag` as the title. Update guest storage and Supabase insert accordingly. |
+| **UI** | Single `NeoInput` with placeholder matching the selected tag; appears inline in the form flow without disrupting the existing step order. |
+| **Placement** | `screens/AddTransaction.tsx`, `hooks/useForm.ts` initial values, `utils/guestStorage.ts` (no structural change). |
+| **Conflicts** | Existing transactions already stored with tag-as-title are unaffected — display remains the same. |
+
+---
+
+### 15. Group expenses (split one bill across multiple friends)
+
+| Field | Detail |
+|--------|--------|
+| **What** | Every transaction is strictly one-to-one (one payer, one friend). Splitting a restaurant bill or Airbnb across three or more friends requires logging separate transactions manually. |
+| **Why** | Multi-person splitting is the most common real-world use case; without it users must do the mental math themselves and enter N transactions — friction that pushes them toward Splitwise. |
+| **How** | Extend `AddTransaction` with a "Split with multiple" toggle; when active, show a multi-select friend list (checkboxes over `FriendSelector`) and a split-mode picker (Equal / Custom per-person). On submit, create one `Transaction` record per selected friend with the correct per-person amount, all sharing a `groupId` UUID. Display grouped transactions in `History` under a collapsible row. |
+| **Logic** | New optional `groupId: string` field on `Transaction` (nullable — does not affect existing records). New `utils/splitCalculations.ts`: `splitEqually(total, n)` and `splitCustom(total, shares[])`. `addTransaction` in `AppContext` accepts an array and inserts in batch (Supabase supports multi-row insert). Guest storage `addTransaction` loops the array. |
+| **UI** | Toggle button in `AddTransaction` header; multi-select friend list with per-person amount preview; summary line "Split $90 → $30 each × 3". In `History`, grouped rows show a stacked avatar cluster and an expand chevron. |
+| **Placement** | `screens/AddTransaction.tsx`, `components/AddTransaction/FriendSelector.tsx`, new `utils/splitCalculations.ts`, `context/AppContext.tsx` (`addTransaction`), `utils/guestStorage.ts`, `screens/History.tsx` (grouped row rendering). Database: add nullable `group_id uuid` column to `transactions` table. |
+| **Conflicts** | `calculateFriendBalance` and settle-up remain per-friend and are unaffected — group records are just multiple normal transactions with a shared tag. Ensure `FriendDetail` correctly sums all group-member transactions for a given friend. |
+
+---
+
 ## Signals reviewed
 
 | Signal | Finding |
@@ -213,4 +251,4 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 
 ---
 
-*Last updated: 2026-03-20 — cross-checked repo: guest storage, friend/settle guards, calculator validation, `public/index.css`, `typecheck`, slim `vite.config`, README structure; merged new items (redirects+email, load errors, modal a11y, tests, llms guest line).*
+*Last updated: 2026-03-25 — pruned completed checklist items (friend/settle route guards, guest local-only mode, amount validation, `typecheck` / `vite-env.d.ts`, `public/index.css` link, slim `vite.config`); checklist and proposals renumbered 1–15.*

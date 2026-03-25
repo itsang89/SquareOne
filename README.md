@@ -14,16 +14,18 @@ SquareOne is a modern, neo-brutalist style expense tracking application designed
 - **Settle Up**: Simplified debt settlement process.
 - **Visual Analytics**: Interactive charts to visualize spending patterns.
 - **Neo-brutalist UI**: A unique "Neo" design system with high contrast, bold borders, and a modern aesthetic.
-- **Guest Mode**: Try the app without an account (local session).
+- **Animations**: Spring-physics animations via Framer Motion with full `prefers-reduced-motion` support.
+- **Guest Mode**: Full CRUD experience without an account — data stored locally in `localStorage`.
 
 ## 🛠️ Tech Stack
 
 - **Frontend**: [React 19](https://react.dev/), [Vite](https://vitejs.dev/), [TypeScript](https://www.typescriptlang.org/)
-- **Routing**: [React Router 7](https://reactrouter.com/)
+- **Routing**: [React Router 7](https://reactrouter.com/) (HashRouter)
 - **Backend/Database**: [Supabase](https://supabase.com/) (Auth, PostgreSQL, Real-time)
+- **Animations**: [Framer Motion](https://www.framer.com/motion/)
 - **Icons**: [Lucide React](https://lucide.dev/)
 - **Charts**: [Recharts](https://recharts.org/)
-- **Styling**: Custom Neo-brutalist CSS
+- **Styling**: Neo-brutalist CSS + [Tailwind CSS](https://tailwindcss.com/) (CDN)
 
 ## 📋 Prerequisites
 
@@ -57,24 +59,19 @@ SquareOne is a modern, neo-brutalist style expense tracking application designed
    ```
 
 5. **Open the app**:
-   Navigate to `http://localhost:3000` in your browser (port is set in `vite.config.ts`).
+   Navigate to `http://localhost:3000` in your browser (port configured in `vite.config.ts`).
 
 ## 📂 Project Structure
 
 - `components/`: Reusable UI components and feature-specific blocks.
 - `screens/`: Page-level components (Home, Friends, History, etc.).
 - `context/`: Global state management (Auth and App data).
-- `hooks/`: Custom React hooks for shared logic.
-- `utils/`: Utility functions for calculations, formatting, and Supabase client.
+- `hooks/`: Custom React hooks for shared logic and animations.
+- `utils/`: Utility functions for calculations, formatting, guest storage, and Supabase client.
 - `types/`: TypeScript interfaces and type definitions.
+- `docs/`: Architecture and database schema documentation.
 
 ## 📖 Documentation
 
-For more detailed information, please refer to:
 - [Architecture Overview](./docs/architecture.md)
 - [Database Schema](./docs/database.md)
-- [Contributing Guidelines](./CONTRIBUTING.md)
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

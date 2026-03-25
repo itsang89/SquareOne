@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Search, MoreVertical, Filter, Trash2 } from 'lucide-react';
+import { Search, MoreVertical, Filter, Pencil, Trash2 } from 'lucide-react';
 import { BackButton, Avatar, NeoInput, NeoButton } from '../components/NeoComponents';
 import { useAppContext } from '../context/AppContext';
 import { Transaction } from '../types';
@@ -16,6 +17,7 @@ type FilterType = 'All' | 'Poker' | 'Meals' | 'Loans' | 'Unsettled';
 type SortType = 'date' | 'event';
 
 export const History: React.FC = () => {
+  const navigate = useNavigate();
   const { transactions, friends, deleteTransaction, loading } = useAppContext();
   const { success, error: showError } = useToast();
   const { getVariants, getTransition } = useAnimations();
@@ -26,6 +28,10 @@ export const History: React.FC = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useTimeout(() => setDeletingId(null), deletingId ? 3000 : null, [deletingId]);
+
+  const handleEdit = (tx: Transaction) => {
+    navigate('/add', { state: { editTransaction: tx } });
+  };
 
   const handleDelete = async (tx: Transaction) => {
     if (deletingId === tx.id) {
@@ -271,21 +277,40 @@ export const History: React.FC = () => {
                             </span>
                           </div>
                         </div>
-                        <motion.button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(tx);
-                          }}
-                          className={`ml-2 p-2 rounded-md border-2 border-black transition-all ${
-                            deletingId === tx.id 
-                              ? 'bg-neo-red text-white shadow-neo-sm' 
-                              : 'bg-white dark:bg-zinc-800 dark:text-zinc-100 hover:bg-neo-red/20 opacity-0 group-hover:opacity-100'
-                          }`}
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                        >
-                          <Trash2 size={16} />
-                        </motion.button>
+                        <div className="ml-2 flex items-center gap-1 shrink-0">
+                          {!tx.isSettlement && !isGrayed && (
+                            <motion.button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEdit(tx);
+                              }}
+                              className="p-2 rounded-md border-2 border-black transition-all bg-white dark:bg-zinc-800 dark:text-zinc-100 hover:bg-neo-blue/30 opacity-0 group-hover:opacity-100"
+                              aria-label="Edit transaction"
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                            >
+                              <Pencil size={16} />
+                            </motion.button>
+                          )}
+                          <motion.button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(tx);
+                            }}
+                            className={`p-2 rounded-md border-2 border-black transition-all ${
+                              deletingId === tx.id 
+                                ? 'bg-neo-red text-white shadow-neo-sm' 
+                                : 'bg-white dark:bg-zinc-800 dark:text-zinc-100 hover:bg-neo-red/20 opacity-0 group-hover:opacity-100'
+                            }`}
+                            aria-label="Delete transaction"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                          >
+                            <Trash2 size={16} />
+                          </motion.button>
+                        </div>
                       </motion.div>
                     );
                   })}

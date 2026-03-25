@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Bell, ArrowUpRight, ArrowDownLeft, Trash2 } from 'lucide-react';
+import { Bell, ArrowUpRight, ArrowDownLeft, Pencil, Trash2 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { Avatar, NeoCard } from '../components/NeoComponents';
 import { Link, useNavigate } from 'react-router-dom';
@@ -21,6 +21,10 @@ export const Home: React.FC = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useTimeout(() => setDeletingId(null), deletingId ? 3000 : null, [deletingId]);
+
+  const handleEdit = (tx: Transaction) => {
+    navigate('/add', { state: { editTransaction: tx } });
+  };
 
   const handleDelete = async (tx: Transaction) => {
     if (deletingId === tx.id) {
@@ -213,7 +217,12 @@ export const Home: React.FC = () => {
 
         {/* Recent Activity */}
         <section>
-             <h3 className="text-lg font-black uppercase border-l-4 border-black dark:border-zinc-100 pl-2 mb-4 dark:text-zinc-100">Recent Moves</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-black uppercase border-l-4 border-black dark:border-zinc-100 pl-2 dark:text-zinc-100">Recent Moves</h3>
+              <Link to="/history" className="text-xs font-bold uppercase underline decoration-2 dark:text-zinc-100">
+                More
+              </Link>
+            </div>
              {loading ? (
                <div className="flex flex-col gap-3">
                  {[1, 2, 3, 4, 5].map(i => <TransactionSkeleton key={i} />)}
@@ -264,7 +273,22 @@ export const Home: React.FC = () => {
                                <p className={`font-black text-sm ${isGrayed ? 'text-gray-500 dark:text-zinc-600' : tx.isSettlement ? 'text-neo-greenDark' : tx.payerId === 'me' ? 'text-neo-greenDark' : 'text-neo-red'}`}>
                                   {tx.isSettlement ? '✓ ' : ''}{tx.payerId === 'me' ? '+' : '-'}{formatCurrency(tx.amount)}
                                </p>
+                               {!tx.isSettlement && !isGrayed && (
+                                 <button
+                                   type="button"
+                                   onClick={(e) => {
+                                     e.stopPropagation();
+                                     handleEdit(tx);
+                                   }}
+                                   className="p-1.5 rounded-md border-2 border-black transition-all bg-white dark:bg-zinc-800 hover:bg-neo-blue/30 opacity-0 group-hover:opacity-100 dark:text-zinc-100"
+                                   title="Edit transaction"
+                                   aria-label="Edit transaction"
+                                 >
+                                   <Pencil size={14} />
+                                 </button>
+                               )}
                                <button
+                                 type="button"
                                  onClick={(e) => {
                                    e.stopPropagation();
                                    handleDelete(tx);
@@ -275,6 +299,7 @@ export const Home: React.FC = () => {
                                      : 'bg-white dark:bg-zinc-800 hover:bg-neo-red/20 opacity-0 group-hover:opacity-100 dark:text-zinc-100'
                                  }`}
                                  title={deletingId === tx.id ? 'Click again to confirm delete' : 'Delete transaction'}
+                                 aria-label="Delete transaction"
                                >
                                  <Trash2 size={14} />
                                </button>

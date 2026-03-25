@@ -9,7 +9,8 @@ interface TypeSelectorProps {
   selectedType: TransactionType | null;
   onSelect: (type: TransactionType) => void;
   customTypes: string[];
-  onAddCustomType: (type: string) => void;
+  /** Return false to keep the modal open (e.g. save failed). */
+  onAddCustomType: (type: string) => boolean | void | Promise<boolean | void>;
 }
 
 export const TypeSelector: React.FC<TypeSelectorProps> = ({
@@ -21,12 +22,12 @@ export const TypeSelector: React.FC<TypeSelectorProps> = ({
   const [showModal, setShowModal] = useState(false);
   const [newType, setNewType] = useState('');
 
-  const handleAdd = () => {
-    if (newType.trim()) {
-      onAddCustomType(newType.trim());
-      setNewType('');
-      setShowModal(false);
-    }
+  const handleAdd = async () => {
+    if (!newType.trim()) return;
+    const result = await Promise.resolve(onAddCustomType(newType.trim()));
+    if (result === false) return;
+    setNewType('');
+    setShowModal(false);
   };
 
   return (

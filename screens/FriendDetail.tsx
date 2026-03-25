@@ -26,6 +26,10 @@ export const FriendDetail: React.FC = () => {
 
   useTimeout(() => setDeletingId(null), deletingId ? 3000 : null, [deletingId]);
 
+  const handleEdit = (tx: Transaction) => {
+    navigate('/add', { state: { editTransaction: tx } });
+  };
+
   const handleDelete = async (tx: Transaction) => {
     if (deletingId === tx.id) {
       const result = await deleteTransaction(tx.id);
@@ -146,6 +150,7 @@ export const FriendDetail: React.FC = () => {
       <main className="px-6 flex-1 overflow-y-auto">
         <TransactionList
           transactions={friendTransactions}
+          onEdit={handleEdit}
           onDelete={handleDelete}
           deletingId={deletingId}
           getIsGrayed={(tx) => shouldGrayTransaction(tx, friend.id, allTransactions)}

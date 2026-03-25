@@ -1,10 +1,11 @@
 import React from 'react';
-import { Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { Transaction } from '../../types';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 
 interface TransactionListProps {
   transactions: Transaction[];
+  onEdit: (tx: Transaction) => void;
   onDelete: (tx: Transaction) => void;
   deletingId: string | null;
   getIsGrayed: (tx: Transaction) => boolean;
@@ -12,6 +13,7 @@ interface TransactionListProps {
 
 export const TransactionList: React.FC<TransactionListProps> = ({
   transactions,
+  onEdit,
   onDelete,
   deletingId,
   getIsGrayed,
@@ -64,7 +66,21 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                 <span className={`block font-black text-xl ${isGrayed ? 'text-gray-500 dark:text-zinc-600' : tx.payerId === 'me' ? 'text-neo-greenDark' : 'text-neo-red'}`}>
                   {tx.isSettlement ? '✓ ' : ''}{formatCurrency(tx.amount)}
                 </span>
+                {!tx.isSettlement && !isGrayed && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(tx);
+                    }}
+                    className="p-2 rounded-md border-2 border-black transition-all bg-white dark:bg-zinc-800 dark:text-zinc-100 hover:bg-neo-blue/30 opacity-0 group-hover:opacity-100"
+                    aria-label="Edit transaction"
+                  >
+                    <Pencil size={16} />
+                  </button>
+                )}
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     onDelete(tx);
@@ -74,6 +90,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                       ? 'bg-neo-red text-white shadow-neo-sm' 
                       : 'bg-white dark:bg-zinc-800 dark:text-zinc-100 hover:bg-neo-red/20 opacity-0 group-hover:opacity-100'
                   }`}
+                  aria-label="Delete transaction"
                 >
                   <Trash2 size={16} />
                 </button>

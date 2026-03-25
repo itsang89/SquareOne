@@ -31,18 +31,36 @@ Stores all expenses and settlement records.
 | `note` | Text | Optional additional details |
 | `is_settlement` | Boolean | Flag to indicate if this is a "Settle Up" transaction |
 
+### 3. `custom_types`
+User-defined transaction category labels (e.g. custom “Loan” variants). Synced per account so they appear on every device after login.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key (auto-generated) |
+| `user_id` | UUID | Foreign key to `auth.users` (owner) |
+| `name` | Text | Display label (unique per user) |
+| `created_at` | Timestamp | When the type was created |
+
+**Constraints:** `UNIQUE(user_id, name)` prevents duplicates per user.
+
+**RLS:** Users can only `SELECT` / `INSERT` / `UPDATE` / `DELETE` rows where `user_id = auth.uid()`.
+
+**Real-time:** Add `custom_types` to the `supabase_realtime` publication (Dashboard → Database → Publications) so the app stays in sync across tabs/devices. SQL migration lives in [`supabase/migrations/`](../supabase/migrations/).
+
 ## Relationships
 
 - Each `friend` belongs to a `user` (authenticated via Supabase).
 - Each `transaction` belongs to a `user`.
 - A `transaction` references a `friend_id` to associate the expense with a specific friend.
+- Each `custom_types` row belongs to a `user`.
 
 ## Row Level Security (RLS)
 
-To ensure data privacy, RLS should be enabled on both tables:
+To ensure data privacy, RLS should be enabled on all app tables:
 
 - **Friends**: `user_id` must match `auth.uid()`.
 - **Transactions**: `user_id` must match `auth.uid()`.
+- **Custom types**: `user_id` must match `auth.uid()`.
 
 Example RLS Policy for `friends`:
 ```sql
@@ -54,4 +72,4 @@ USING (auth.uid() = user_id);
 
 ## Real-time
 
-Real-time is enabled for both `friends` and `transactions` tables to allow the frontend to stay in sync across multiple tabs or devices.
+Real-time is enabled for `friends`, `transactions`, and (after publication setup) `custom_types` so the frontend stays in sync across multiple tabs or devices.

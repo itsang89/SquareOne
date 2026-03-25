@@ -7,6 +7,10 @@ import {
   writeGuestSnapshot,
   type GuestPersistedFriend,
 } from '../utils/guestStorage';
+import {
+  readCustomTypesFromLocal,
+  writeCustomTypesToLocal,
+} from '../utils/customTypesStorage';
 import { AuthContext } from './AuthContext';
 
 function transactionInvolvesFriend(t: Transaction, friendId: string): boolean {
@@ -42,12 +46,16 @@ interface AppContextType {
   error: Error | null;
   refetch: () => Promise<void>;
   addTransaction: (transaction: Transaction) => Promise<{ success: boolean; error?: Error }>;
+  updateTransaction: (transaction: Transaction) => Promise<{ success: boolean; error?: Error }>;
   updateFriend: (friendId: string, updates: Partial<Friend>) => Promise<{ success: boolean; error?: Error }>;
   deleteTransaction: (transactionId: string) => Promise<{ success: boolean; error?: Error }>;
   addFriend: (friend: Omit<Friend, 'id' | 'balance' | 'lastActivity' | 'status'>) => Promise<{ success: boolean; error?: Error }>;
   deleteFriend: (friendId: string) => Promise<{ success: boolean; error?: Error }>;
   getFriendById: (friendId: string) => Friend | undefined;
   isProcessing: boolean;
+  customTypes: string[];
+  addCustomType: (name: string) => Promise<{ success: boolean; error?: Error }>;
+  removeCustomType: (name: string) => Promise<{ success: boolean; error?: Error }>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -57,14 +65,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const user = authContext?.user || null;
   const [friends, setFriends] = useState<Friend[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [customTypes, setCustomTypes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const loadCustomTypes = useCallback(async () => {
+    if (!user) {
+      setCustomTypes([]);
+      return;
+    }
+    if (user.id === 'guest') {
+      setCustomTypes(readCustomTypesFromLocal());
+      return;
+    }
+    const { data, error } = await supabase
+      .from('custom_types')
+      .select('name')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: true });
+    if (error) {
+      console.warn('Error loading custom_types (table may not exist):', error.message);
+      return;
+    }
+    setCustomTypes((data || []).map((r: { name: string }) => r.name));
+  }, [user]);
 
   const loadData = useCallback(async () => {
     if (!user) {
       setFriends([]);
       setTransactions([]);
+      setCustomTypes([]);
       setLoading(false);
       return;
     }
@@ -77,6 +108,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const txs = snap?.transactions ?? [];
       setFriends(buildGuestFriendsList(base, txs));
       setTransactions(txs);
+      setCustomTypes(readCustomTypesFromLocal());
       setLoading(false);
       return;
     }
@@ -84,28 +116,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setLoading(true);
     setError(null);
     try {
-      // Load friends
-      const { data: friendsData, error: friendsError } = await supabase
-        .from('friends')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      const [friendsRes, transactionsRes, customTypesRes] = await Promise.all([
+        supabase
+          .from('friends')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('transactions')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('date', { ascending: false }),
+        supabase
+          .from('custom_types')
+          .select('name')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: true }),
+      ]);
+
+      const friendsError = friendsRes.error;
+      const friendsData = friendsRes.data;
+      const transactionsError = transactionsRes.error;
+      const transactionsData = transactionsRes.data;
+      const customTypesError = customTypesRes.error;
+      const customTypesData = customTypesRes.data;
 
       if (friendsError) {
         console.warn('Error loading friends (table may not exist):', friendsError.message);
         // Don't throw, just use empty data
       }
 
-      // Load transactions
-      const { data: transactionsData, error: transactionsError } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('date', { ascending: false });
-
       if (transactionsError) {
         console.warn('Error loading transactions (table may not exist):', transactionsError.message);
         // Don't throw, just use empty data
+      }
+
+      if (customTypesError) {
+        console.warn('Error loading custom_types (table may not exist):', customTypesError.message);
       }
 
       const mappedTransactions: Transaction[] = (transactionsData || []).map(t => ({
@@ -140,11 +187,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       setFriends(mappedFriends);
       setTransactions(mappedTransactions);
+      setCustomTypes((customTypesData || []).map((r: { name: string }) => r.name));
     } catch (err: any) {
       console.error('Unexpected error loading data:', err);
       // Set empty data instead of throwing
       setFriends([]);
       setTransactions([]);
+      setCustomTypes([]);
       setError(err instanceof Error ? err : new Error(err.message || 'Failed to load data'));
     } finally {
       setLoading(false);
@@ -188,11 +237,112 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       )
       .subscribe();
 
+    const customTypesChannel = supabase
+      .channel('custom-types-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'custom_types',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          void loadCustomTypes();
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(friendsChannel);
       supabase.removeChannel(transactionsChannel);
+      supabase.removeChannel(customTypesChannel);
     };
-  }, [user, loadData]);
+  }, [user, loadData, loadCustomTypes]);
+
+  const addCustomType = useCallback(
+    async (name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) {
+        return { success: false, error: new Error('Empty type name') };
+      }
+      if (!user) {
+        return { success: false, error: new Error('User not authenticated') };
+      }
+
+      if (user.id === 'guest') {
+        setCustomTypes((prev) => {
+          if (prev.includes(trimmed)) return prev;
+          const next = [...prev, trimmed];
+          writeCustomTypesToLocal(next);
+          return next;
+        });
+        return { success: true };
+      }
+
+      try {
+        const { error } = await supabase.from('custom_types').insert({
+          user_id: user.id,
+          name: trimmed,
+        });
+        if (error) {
+          if (error.code === '23505') {
+            await loadCustomTypes();
+            return { success: true };
+          }
+          throw error;
+        }
+        await loadCustomTypes();
+        return { success: true };
+      } catch (err: unknown) {
+        console.error('Error adding custom type:', err);
+        return {
+          success: false,
+          error: err instanceof Error ? err : new Error(String(err)),
+        };
+      }
+    },
+    [user, loadCustomTypes]
+  );
+
+  const removeCustomType = useCallback(
+    async (name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) {
+        return { success: false, error: new Error('Empty type name') };
+      }
+      if (!user) {
+        return { success: false, error: new Error('User not authenticated') };
+      }
+
+      if (user.id === 'guest') {
+        setCustomTypes((prev) => {
+          const next = prev.filter((n) => n !== trimmed);
+          writeCustomTypesToLocal(next);
+          return next;
+        });
+        return { success: true };
+      }
+
+      try {
+        const { error } = await supabase
+          .from('custom_types')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('name', trimmed);
+        if (error) throw error;
+        await loadCustomTypes();
+        return { success: true };
+      } catch (err: unknown) {
+        console.error('Error removing custom type:', err);
+        return {
+          success: false,
+          error: err instanceof Error ? err : new Error(String(err)),
+        };
+      }
+    },
+    [user, loadCustomTypes]
+  );
 
   const addTransaction = useCallback(async (transaction: Transaction) => {
     if (!user) return { success: false, error: new Error('User not authenticated') };
@@ -238,6 +388,62 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (err: any) {
       console.error('Error adding transaction:', err);
       return { success: false, error: err instanceof Error ? err : new Error(err.message || 'Failed to add transaction') };
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [user, loadData]);
+
+  const updateTransaction = useCallback(async (transaction: Transaction) => {
+    if (!user) return { success: false, error: new Error('User not authenticated') };
+
+    if (user.id === 'guest') {
+      setIsProcessing(true);
+      try {
+        const snap = readGuestSnapshot();
+        if (!snap) {
+          return { success: false, error: new Error('No guest data') };
+        }
+        const idx = snap.transactions.findIndex((t) => t.id === transaction.id);
+        if (idx === -1) {
+          return { success: false, error: new Error('Transaction not found') };
+        }
+        const nextTxs = [...snap.transactions];
+        nextTxs[idx] = transaction;
+        writeGuestSnapshot({ friends: snap.friends, transactions: nextTxs });
+        setFriends(buildGuestFriendsList(snap.friends, nextTxs));
+        setTransactions(nextTxs);
+        return { success: true };
+      } finally {
+        setIsProcessing(false);
+      }
+    }
+
+    setIsProcessing(true);
+    try {
+      const dbTransaction = {
+        id: transaction.id,
+        user_id: user.id,
+        title: transaction.title,
+        amount: transaction.amount,
+        date: transaction.date,
+        type: transaction.type,
+        payer_id: transaction.payerId === 'me' ? user.id : (transaction.friendId === 'me' ? transaction.payerId : transaction.payerId),
+        friend_id: transaction.friendId === 'me' ? transaction.payerId : transaction.friendId,
+        note: transaction.note || null,
+        is_settlement: transaction.isSettlement || false,
+      };
+
+      const { error } = await supabase
+        .from('transactions')
+        .upsert(dbTransaction, { onConflict: 'id' });
+
+      if (error) throw error;
+
+      await loadData();
+      return { success: true };
+    } catch (err: any) {
+      console.error('Error updating transaction:', err);
+      return { success: false, error: err instanceof Error ? err : new Error(err.message || 'Failed to update transaction') };
     } finally {
       setIsProcessing(false);
     }
@@ -442,12 +648,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     error,
     refetch: loadData,
     addTransaction,
+    updateTransaction,
     updateFriend,
     deleteTransaction,
     addFriend,
     deleteFriend,
     getFriendById,
     isProcessing,
+    customTypes,
+    addCustomType,
+    removeCustomType,
   }), [
     friends,
     transactions,
@@ -455,12 +665,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     error,
     loadData,
     addTransaction,
+    updateTransaction,
     updateFriend,
     deleteTransaction,
     addFriend,
     deleteFriend,
     getFriendById,
     isProcessing,
+    customTypes,
+    addCustomType,
+    removeCustomType,
   ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

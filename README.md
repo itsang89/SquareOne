@@ -2,9 +2,6 @@
 
 SquareOne is a modern, neo-brutalist style expense tracking application designed to help friends manage shared costs, track debts, and settle up easily. Built with React and Supabase, it provides a seamless, real-time experience for maintaining financial balance within your social circle.
 
-<div align="center">
-  <img width="1200" height="400" alt="SquareOne Banner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
 
 ## 🚀 Features
 

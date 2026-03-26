@@ -25,6 +25,7 @@ export const AmountInput: React.FC<AmountInputProps> = ({
       }
     } else if (val === '=') {
       onAmountChange(evaluateExpression(amount));
+      if (showNumpad) onToggleNumpad();
     } else if (['+', '-', '*', '/'].includes(val)) {
       // Don't add operator if last char is already an operator
       if (/[+*/-]$/.test(amount)) {

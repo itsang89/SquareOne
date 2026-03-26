@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserPlus, ArrowUpRight, ArrowDownLeft, Check } from 'lucide-react';
 import { Avatar, NeoButton, NeoModal, NeoInput } from '../components/NeoComponents';
+import { DataLoadErrorBanner } from '../components/DataLoadErrorBanner';
 import { useAppContext } from '../context/AppContext';
 import { FriendSkeleton } from '../components/LoadingSkeleton';
 import { PRESET_AVATARS } from '../constants';
@@ -12,7 +13,7 @@ type FilterType = 'A-Z' | 'High-Low' | 'Recent';
 
 export const Friends: React.FC = () => {
   const navigate = useNavigate();
-  const { friends, transactions, addFriend, loading } = useAppContext();
+  const { friends, transactions, addFriend, loading, error, refetch } = useAppContext();
   const { success, error: showError } = useToast();
   
   const [filter, setFilter] = useState<FilterType>('High-Low');
@@ -111,10 +112,18 @@ export const Friends: React.FC = () => {
         </div>
       </header>
 
+      <DataLoadErrorBanner error={error} loading={loading} onRetry={refetch} />
+
       <main className="flex-1 p-5 flex flex-col gap-4">
         {loading ? (
           <div className="flex flex-col gap-4">
             {[1, 2, 3, 4, 5].map(i => <FriendSkeleton key={i} />)}
+          </div>
+        ) : error && friends.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center space-y-4 px-4">
+            <p className="text-gray-700 dark:text-zinc-300 font-bold uppercase tracking-wider max-w-sm">
+              We couldn&apos;t load your friends. Use Retry above or check your connection.
+            </p>
           </div>
         ) : filteredFriends.length > 0 ? (
           filteredFriends.map((friend) => (

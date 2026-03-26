@@ -50,20 +50,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const requestId = ++profileRequestIdRef.current;
 
+    const queryPromise = supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', supabaseUser.id)
+      .single();
+
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('Profile query timeout')), 5000);
+    });
+
     try {
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Profile query timeout')), 5000);
-      });
-
-      const queryPromise = supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', supabaseUser.id)
-        .single();
-
       const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
+      clearTimeout(timeoutId!);
 
-      // Discard if a newer request has already settled (e.g. timeout fired first)
       if (requestId !== profileRequestIdRef.current) return null;
 
       if (error) {
@@ -80,8 +81,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name || 'User')}&background=random`,
       };
     } catch {
-      // Timeout or network error — discard if a newer request settled first
+      clearTimeout(timeoutId!);
       if (requestId !== profileRequestIdRef.current) return null;
+      // Timeout or thrown network error — ignore late query resolution from this attempt.
+      void Promise.resolve(queryPromise).catch(() => {});
       console.warn('Profile query timeout, using fallback');
       return createFallbackProfile();
     }

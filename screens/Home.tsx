@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Bell, ArrowUpRight, ArrowDownLeft, Pencil, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Bell, ArrowUpRight, ArrowDownLeft, Pencil, Trash2 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { Avatar, NeoCard } from '../components/NeoComponents';
 import { Link, useNavigate } from 'react-router-dom';
@@ -12,7 +12,7 @@ import { useToast } from '../components/ToastContext';
 import { TransactionSkeleton, FriendSkeleton } from '../components/LoadingSkeleton';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { AnimatedNumber } from '../components/AnimatedNumber';
-import { NeoButton } from '../components/NeoButton';
+import { DataLoadErrorBanner } from '../components/DataLoadErrorBanner';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
@@ -88,26 +88,7 @@ export const Home: React.FC = () => {
         </div>
       )}
 
-      {error && (
-        <div
-          className="mx-5 mt-3 px-4 py-3 bg-neo-red/20 dark:bg-neo-red/10 border-2 border-black text-sm font-bold text-black dark:text-zinc-100 shadow-neo-sm flex items-center justify-between gap-3"
-          role="alert"
-        >
-          <span className="flex items-center gap-2">
-            <AlertTriangle size={16} className="shrink-0 text-neo-red" />
-            Couldn't load your data. Check your connection and try again.
-          </span>
-          <NeoButton
-            variant="secondary"
-            className="py-1 px-3 text-xs shrink-0"
-            isLoading={loading}
-            onClick={refetch}
-          >
-            <RefreshCw size={12} />
-            Retry
-          </NeoButton>
-        </div>
-      )}
+      <DataLoadErrorBanner error={error} loading={loading} onRetry={refetch} />
 
       <div className="p-5 space-y-8">
         {/* Net Position Widget */}

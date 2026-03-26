@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, MoreVertical, Filter, Pencil, Trash2 } from 'lucide-react';
-import { BackButton, Avatar, NeoInput, NeoButton } from '../components/NeoComponents';
+import { BackButton, Avatar, NeoInput } from '../components/NeoComponents';
+import { DataLoadErrorBanner } from '../components/DataLoadErrorBanner';
 import { useAppContext } from '../context/AppContext';
 import { Transaction } from '../types';
 import { shouldGrayTransaction } from '../utils/calculations';
@@ -18,7 +19,7 @@ type SortType = 'date' | 'event';
 
 export const History: React.FC = () => {
   const navigate = useNavigate();
-  const { transactions, friends, deleteTransaction, loading } = useAppContext();
+  const { transactions, friends, deleteTransaction, loading, error, refetch } = useAppContext();
   const { success, error: showError } = useToast();
   const { getVariants, getTransition } = useAnimations();
   
@@ -166,6 +167,8 @@ export const History: React.FC = () => {
             </button>
         </header>
 
+        <DataLoadErrorBanner error={error} loading={loading} onRetry={refetch} />
+
         <div className="flex flex-col gap-4 p-4 pb-2 bg-neo-bg dark:bg-zinc-950 shrink-0 z-10">
             <div className="relative w-full">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
@@ -212,6 +215,12 @@ export const History: React.FC = () => {
             {loading ? (
               <div className="flex flex-col gap-4">
                 {[1, 2, 3, 4, 5].map(i => <TransactionSkeleton key={i} />)}
+              </div>
+            ) : error && transactions.length === 0 ? (
+              <div className="py-12 text-center px-4">
+                <p className="text-sm font-bold uppercase text-gray-700 dark:text-zinc-400 max-w-sm mx-auto">
+                  We couldn&apos;t load your history. Use Retry above or check your connection.
+                </p>
               </div>
             ) : filteredTransactions.length > 0 && Object.keys(groupedTransactions).length > 0 ? (
               (Object.entries(groupedTransactions) as [string, Transaction[]][]).map(([groupName, txs]) => (

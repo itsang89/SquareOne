@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Friend, FriendStatus, Transaction } from '../types';
 import { calculateFriendBalance, getLastActivity } from '../utils/calculations';
 import { supabase } from '../utils/supabase';
@@ -69,6 +69,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  /** Latest committed transactions for balance math when the transactions query fails but friends load. */
+  const transactionsRef = useRef<Transaction[]>([]);
+  useEffect(() => {
+    transactionsRef.current = transactions;
+  }, [transactions]);
 
   const loadCustomTypes = useCallback(async () => {
     if (!user) {
@@ -177,10 +182,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isSettlement: t.is_settlement || false,
       }));
 
+      const txsForBalances = transactionsError
+        ? transactionsRef.current
+        : mappedTransactions;
+
       // Calculate friend balances and status
       const mappedFriends: Friend[] = (friendsData || []).map(f => {
-        const balance = calculateFriendBalance(f.id, mappedTransactions);
-        const lastActivity = getLastActivity(f.id, mappedTransactions);
+        const balance = calculateFriendBalance(f.id, txsForBalances);
+        const lastActivity = getLastActivity(f.id, txsForBalances);
         const status = Math.abs(balance) < 0.01 ? 'settled' : 'active';
 
         return {
@@ -194,9 +203,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
       });
 
-      setFriends(mappedFriends);
-      setTransactions(mappedTransactions);
-      setCustomTypes((customTypesData || []).map((r: { name: string }) => r.name));
+      // Do not overwrite a successful snapshot with [] when only one query failed.
+      if (!friendsError) {
+        setFriends(mappedFriends);
+      }
+      if (!transactionsError) {
+        setTransactions(mappedTransactions);
+      }
+      if (!customTypesError) {
+        setCustomTypes((customTypesData || []).map((r: { name: string }) => r.name));
+      }
     } catch (err: any) {
       console.error('Unexpected error loading data:', err);
       // Set empty data instead of throwing

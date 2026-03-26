@@ -15,8 +15,6 @@ dist-ssr
 # Supabase
 supabase/
 
-improvement.md
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

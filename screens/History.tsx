@@ -75,7 +75,7 @@ export const History: React.FC = () => {
       if (activeFilter === 'Unsettled') {
         filtered = filtered.filter(tx => {
           if (tx.isSettlement) return false;
-          let friendId = tx.friendId !== 'me' ? tx.friendId : tx.payerId;
+          const friendId = tx.friendId !== 'me' ? tx.friendId : tx.payerId;
           return !shouldGrayTransaction(tx, friendId, transactions);
         });
       } else {

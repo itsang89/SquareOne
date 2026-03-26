@@ -22,7 +22,7 @@ export const Friends: React.FC = () => {
   const [isAdding, setIsAdding] = useState(false);
 
   const filteredFriends = useMemo(() => {
-    let sorted = [...friends];
+    const sorted = [...friends];
     
     switch (filter) {
       case 'A-Z':

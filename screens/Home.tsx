@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Bell, ArrowUpRight, ArrowDownLeft, Pencil, Trash2 } from 'lucide-react';
+import { Bell, ArrowUpRight, ArrowDownLeft, Pencil, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { Avatar, NeoCard } from '../components/NeoComponents';
 import { Link, useNavigate } from 'react-router-dom';
@@ -12,10 +12,11 @@ import { useToast } from '../components/ToastContext';
 import { TransactionSkeleton, FriendSkeleton } from '../components/LoadingSkeleton';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { AnimatedNumber } from '../components/AnimatedNumber';
+import { NeoButton } from '../components/NeoButton';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
-  const { friends, transactions, deleteTransaction, loading, error } = useAppContext();
+  const { friends, transactions, deleteTransaction, loading, error, refetch } = useAppContext();
   const { user } = useAuth();
   const { success, error: showError } = useToast();
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -62,10 +63,6 @@ export const Home: React.FC = () => {
     return transactions.filter(tx => !tx.isSettlement).length;
   }, [transactions]);
 
-  if (error) {
-    throw error; // Let ErrorBoundary handle it
-  }
-
   return (
     <div className="min-h-screen pb-24 bg-neo-bg dark:bg-zinc-950 transition-colors duration-300">
       {/* Header */}
@@ -88,6 +85,27 @@ export const Home: React.FC = () => {
           role="status"
         >
           Guest — data is saved on this device only. Sign in to sync across devices.
+        </div>
+      )}
+
+      {error && (
+        <div
+          className="mx-5 mt-3 px-4 py-3 bg-neo-red/20 dark:bg-neo-red/10 border-2 border-black text-sm font-bold text-black dark:text-zinc-100 shadow-neo-sm flex items-center justify-between gap-3"
+          role="alert"
+        >
+          <span className="flex items-center gap-2">
+            <AlertTriangle size={16} className="shrink-0 text-neo-red" />
+            Couldn't load your data. Check your connection and try again.
+          </span>
+          <NeoButton
+            variant="secondary"
+            className="py-1 px-3 text-xs shrink-0"
+            isLoading={loading}
+            onClick={refetch}
+          >
+            <RefreshCw size={12} />
+            Retry
+          </NeoButton>
         </div>
       )}
 

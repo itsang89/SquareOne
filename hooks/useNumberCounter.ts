@@ -16,7 +16,7 @@ export function useNumberCounter(
   const { duration = 800, easing = easeOutCubic } = options;
   const prefersReducedMotion = useReducedMotion();
   const [displayValue, setDisplayValue] = useState(targetValue);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | undefined>(undefined);
   const previousValueRef = useRef(targetValue);
 
   useEffect(() => {

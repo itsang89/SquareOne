@@ -324,7 +324,7 @@ export const Profile: React.FC = () => {
                               className={`py-2 border border-black font-bold text-sm flex items-center justify-center gap-1 relative z-10 ${theme === 'light' ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black' : 'text-gray-500 dark:text-zinc-400'}`}
                               whileHover={theme !== 'light' ? { 
                                 backgroundColor: 'rgba(255,255,255,0.1)',
-                                color: theme === 'light' ? '#000' : '#fff',
+                                color: '#fff',
                               } : {}}
                               whileTap={{ scale: 0.95 }}
                             >

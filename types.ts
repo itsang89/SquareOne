@@ -45,6 +45,7 @@ export interface ExpenseChartData {
   name: string;
   value: number;
   color: string;
+  [key: string]: unknown;
 }
 
 export interface AuthResult {

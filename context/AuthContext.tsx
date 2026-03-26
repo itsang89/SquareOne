@@ -4,6 +4,10 @@ import { supabase } from '../utils/supabase';
 import { clearGuestLocalData } from '../utils/guestStorage';
 import { User } from '../types';
 
+// Build the hash-based redirect URL so Supabase lands inside the HashRouter SPA.
+// e.g. https://myapp.com/#/dashboard instead of https://myapp.com/dashboard
+const authRedirectTo = (path: string) => `${window.location.origin}/#${path}`;
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -25,26 +29,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const isLoadingProfileRef = useRef(false);
+  // Monotonically-increasing counter used to detect and discard stale profile
+  // responses that arrive after a timeout fallback has already been applied.
+  const profileRequestIdRef = useRef(0);
 
-  // Load user profile from database with timeout
+  // Load user profile from database with timeout.
+  // Uses a request-ID guard so that if the DB query resolves after the timeout
+  // fallback has been committed, the stale result is silently ignored.
   const loadUserProfile = useCallback(async (supabaseUser: SupabaseUser): Promise<User | null> => {
-    // Create fallback profile function
-    const createFallbackProfile = (): User => {
-      return {
-        id: supabaseUser.id,
-        name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
-        email: supabaseUser.email || '',
-        avatar: supabaseUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User')}&background=random`,
-      };
-    };
+    const createFallbackProfile = (): User => ({
+      id: supabaseUser.id,
+      name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
+      email: supabaseUser.email || '',
+      avatar:
+        supabaseUser.user_metadata?.avatar_url ||
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(
+          supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
+        )}&background=random`,
+    });
+
+    const requestId = ++profileRequestIdRef.current;
 
     try {
-      // Create a timeout promise that rejects after 5 seconds
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('Profile query timeout')), 5000);
       });
 
-      // Race between the database query and timeout
       const queryPromise = supabase
         .from('profiles')
         .select('*')
@@ -52,6 +62,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
+
+      // Discard if a newer request has already settled (e.g. timeout fired first)
+      if (requestId !== profileRequestIdRef.current) return null;
 
       if (error) {
         console.warn('Profile not found, using fallback:', error.message);
@@ -62,9 +75,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: data.id,
         name: data.name || supabaseUser.email?.split('@')[0] || 'User',
         email: data.email || supabaseUser.email || '',
-        avatar: data.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name || 'User')}&background=random`,
+        avatar:
+          data.avatar ||
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name || 'User')}&background=random`,
       };
-    } catch (error: any) {
+    } catch {
+      // Timeout or network error — discard if a newer request settled first
+      if (requestId !== profileRequestIdRef.current) return null;
       console.warn('Profile query timeout, using fallback');
       return createFallbackProfile();
     }
@@ -86,7 +103,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (session?.user) {
           clearGuestLocalData();
           const profile = await loadUserProfile(session.user);
-          if (mounted) setUser(profile);
+          // profile is null only when a newer request superseded this one; skip
+          if (mounted && profile !== null) setUser(profile);
         } else {
           if (mounted) setUser(null);
         }
@@ -121,7 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (session?.user) {
           clearGuestLocalData();
           const profile = await loadUserProfile(session.user);
-          if (mounted) setUser(profile);
+          if (mounted && profile !== null) setUser(profile);
         } else {
           if (mounted) setUser(null);
         }
@@ -151,11 +169,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { error };
       }
       
-      // If successful, wait for the user profile to load
       if (data.user) {
         clearGuestLocalData();
         const profile = await loadUserProfile(data.user);
-        setUser(profile);
+        if (profile !== null) setUser(profile);
         setSession(data.session);
       }
       
@@ -179,7 +196,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           data: {
             name: name || email.split('@')[0],
           },
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          emailRedirectTo: authRedirectTo('/dashboard'),
         },
       });
       return { error };
@@ -194,7 +211,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: authRedirectTo('/dashboard'),
         },
       });
       return { error };
@@ -209,7 +226,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: authRedirectTo('/dashboard'),
         },
       });
       return { error };

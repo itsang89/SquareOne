@@ -1,11 +1,11 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, type HTMLMotionProps } from 'framer-motion';
 import { NeoColorVariant } from '../types/components';
 import { LoadingSpinner } from './LoadingSpinner';
 import { springs } from '../utils/animations';
 import { useAnimations } from '../hooks/useAnimations';
 
-interface NeoButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface NeoButtonProps extends Omit<HTMLMotionProps<'button'>, 'ref'> {
   variant?: NeoColorVariant;
   fullWidth?: boolean;
   isLoading?: boolean;

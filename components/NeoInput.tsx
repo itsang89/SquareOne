@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { motion, useAnimation } from 'framer-motion';
+import { motion, useAnimation, type HTMLMotionProps } from 'framer-motion';
 import { shakeX, fadeInDown, springs } from '../utils/animations';
 import { useAnimations } from '../hooks/useAnimations';
 
-interface NeoInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface NeoInputProps extends Omit<HTMLMotionProps<'input'>, 'ref'> {
   label?: string;
   error?: string;
   fullWidth?: boolean;
@@ -69,7 +69,7 @@ export const NeoInput: React.FC<NeoInputProps> = ({
   );
 };
 
-export const NeoTextArea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label?: string, error?: string }> = ({
+export const NeoTextArea: React.FC<Omit<HTMLMotionProps<'textarea'>, 'ref'> & { label?: string; error?: string }> = ({
   label,
   error,
   className = '',

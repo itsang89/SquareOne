@@ -142,17 +142,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const customTypesData = customTypesRes.data;
 
       if (friendsError) {
-        console.warn('Error loading friends (table may not exist):', friendsError.message);
-        // Don't throw, just use empty data
+        console.warn('Error loading friends:', friendsError.message);
       }
 
       if (transactionsError) {
-        console.warn('Error loading transactions (table may not exist):', transactionsError.message);
-        // Don't throw, just use empty data
+        console.warn('Error loading transactions:', transactionsError.message);
       }
 
       if (customTypesError) {
         console.warn('Error loading custom_types (table may not exist):', customTypesError.message);
+      }
+
+      // Surface a recoverable error when core data (friends or transactions) fails
+      // so the UI can show a retry prompt rather than silently appearing empty.
+      if (friendsError || transactionsError) {
+        const msg = [friendsError?.message, transactionsError?.message]
+          .filter(Boolean)
+          .join('; ');
+        setError(new Error(msg));
+      } else {
+        setError(null);
       }
 
       const mappedTransactions: Transaction[] = (transactionsData || []).map(t => ({

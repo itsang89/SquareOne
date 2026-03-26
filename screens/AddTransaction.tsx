@@ -58,14 +58,16 @@ const AddTransactionInner: React.FC<AddTransactionInnerProps> = ({ editTransacti
               ? editTransaction.date.split('T')[0]
               : editTransaction.date.slice(0, 10),
             note: editTransaction.note ?? '',
+            customTitle: editTransaction.title,
           }
         : {
             amount: '0',
-            direction: 'owe' as const,
+            direction: 'they-owe' as const,
             selectedFriendId: null as string | null,
             selectedTag: null as TransactionType | null,
             date: new Date().toISOString().split('T')[0],
             note: '',
+            customTitle: '',
           },
     [editTransaction]
   );
@@ -95,8 +97,11 @@ const AddTransactionInner: React.FC<AddTransactionInnerProps> = ({ editTransacti
       const now = new Date();
       selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
 
+      const resolvedTitle =
+        (v.customTitle as string).trim() || (v.selectedTag as string);
+
       const baseFields = {
-        title: v.selectedTag as string,
+        title: resolvedTitle,
         amount: amountNum,
         date: selectedDate.toISOString(),
         type: v.selectedTag as TransactionType,
@@ -230,6 +235,15 @@ const AddTransactionInner: React.FC<AddTransactionInnerProps> = ({ editTransacti
             </p>
           )}
         </div>
+
+        <NeoInput
+          label="Title"
+          placeholder={
+            values.selectedTag ? String(values.selectedTag) : 'What was this for?'
+          }
+          value={values.customTitle as string}
+          onChange={(e) => handleChange('customTitle', e.target.value)}
+        />
 
         <TypeSelector
           selectedType={values.selectedTag}

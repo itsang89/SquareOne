@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Bell, ArrowUpRight, ArrowDownLeft, Pencil, Trash2 } from 'lucide-react';
+import { Bell, ArrowUpRight, ArrowDownLeft, Pencil, Trash2, Search } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { Avatar, NeoCard } from '../components/NeoComponents';
 import { Link, useNavigate } from 'react-router-dom';
@@ -13,11 +13,13 @@ import { TransactionSkeleton, FriendSkeleton } from '../components/LoadingSkelet
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { AnimatedNumber } from '../components/AnimatedNumber';
 import { DataLoadErrorBanner } from '../components/DataLoadErrorBanner';
+import { useSearch } from '../context/SearchContext';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
   const { friends, transactions, deleteTransaction, loading, error, refetch } = useAppContext();
   const { user } = useAuth();
+  const { openSearch } = useSearch();
   const { success, error: showError } = useToast();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -71,12 +73,22 @@ export const Home: React.FC = () => {
           <h2 className="text-xl font-bold uppercase leading-none dark:text-zinc-100">Hello, {user?.name || 'User'}</h2>
           <p className="text-xs font-bold text-gray-500 dark:text-zinc-500 uppercase tracking-widest mt-1">Dashboard</p>
         </div>
+        <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={openSearch}
+          className="w-12 h-12 bg-white dark:bg-zinc-900 border-2 border-black rounded-lg shadow-neo-sm active:shadow-none active:translate-y-1 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-zinc-800"
+          aria-label="Search friends and transactions"
+        >
+            <Search size={22} className="text-black dark:text-zinc-100" strokeWidth={2.5} />
+        </button>
         <button className="relative w-12 h-12 bg-neo-yellow border-2 border-black rounded-lg shadow-neo-sm active:shadow-none active:translate-y-1 flex items-center justify-center">
             <Bell size={24} className="text-black" />
             {unsettledCount > 0 && (
               <span className="absolute top-2 right-2 w-3 h-3 bg-neo-red border-2 border-white dark:border-zinc-950 rounded-full"></span>
             )}
         </button>
+        </div>
       </header>
 
       {user?.id === 'guest' && (
@@ -272,14 +284,14 @@ export const Home: React.FC = () => {
                                <p className={`font-black text-sm ${isGrayed ? 'text-gray-500 dark:text-zinc-600' : tx.isSettlement ? 'text-neo-greenDark' : tx.payerId === 'me' ? 'text-neo-greenDark' : 'text-neo-red'}`}>
                                   {tx.isSettlement ? '✓ ' : ''}{tx.payerId === 'me' ? '+' : '-'}{formatCurrency(tx.amount)}
                                </p>
-                               {!tx.isSettlement && !isGrayed && (
+                               {!tx.isSettlement && (
                                  <button
                                    type="button"
                                    onClick={(e) => {
                                      e.stopPropagation();
                                      handleEdit(tx);
                                    }}
-                                   className="p-1.5 rounded-md border-2 border-black transition-all bg-white dark:bg-zinc-800 hover:bg-neo-blue/30 opacity-0 group-hover:opacity-100 dark:text-zinc-100"
+                                   className="p-1.5 rounded-md border-2 border-black transition-all bg-white dark:bg-zinc-800 hover:bg-neo-blue/30 dark:text-zinc-100"
                                    title="Edit transaction"
                                    aria-label="Edit transaction"
                                  >
@@ -295,7 +307,7 @@ export const Home: React.FC = () => {
                                  className={`p-1.5 rounded-md border-2 border-black transition-all ${
                                    deletingId === tx.id 
                                      ? 'bg-neo-red text-white shadow-neo-sm' 
-                                     : 'bg-white dark:bg-zinc-800 hover:bg-neo-red/20 opacity-0 group-hover:opacity-100 dark:text-zinc-100'
+                                     : 'bg-white dark:bg-zinc-800 hover:bg-neo-red/20 dark:text-zinc-100'
                                  }`}
                                  title={deletingId === tx.id ? 'Click again to confirm delete' : 'Delete transaction'}
                                  aria-label="Delete transaction"

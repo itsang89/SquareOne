@@ -66,14 +66,14 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                 <span className={`block font-black text-xl ${isGrayed ? 'text-gray-500 dark:text-zinc-600' : tx.payerId === 'me' ? 'text-neo-greenDark' : 'text-neo-red'}`}>
                   {tx.isSettlement ? '✓ ' : ''}{formatCurrency(tx.amount)}
                 </span>
-                {!tx.isSettlement && !isGrayed && (
+                {!tx.isSettlement && (
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       onEdit(tx);
                     }}
-                    className="p-2 rounded-md border-2 border-black transition-all bg-white dark:bg-zinc-800 dark:text-zinc-100 hover:bg-neo-blue/30 opacity-0 group-hover:opacity-100"
+                    className="p-2 rounded-md border-2 border-black transition-all bg-white dark:bg-zinc-800 dark:text-zinc-100 hover:bg-neo-blue/30"
                     aria-label="Edit transaction"
                   >
                     <Pencil size={16} />
@@ -88,7 +88,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                   className={`p-2 rounded-md border-2 border-black transition-all ${
                     deletingId === tx.id 
                       ? 'bg-neo-red text-white shadow-neo-sm' 
-                      : 'bg-white dark:bg-zinc-800 dark:text-zinc-100 hover:bg-neo-red/20 opacity-0 group-hover:opacity-100'
+                      : 'bg-white dark:bg-zinc-800 dark:text-zinc-100 hover:bg-neo-red/20'
                   }`}
                   aria-label="Delete transaction"
                 >

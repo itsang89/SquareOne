@@ -1,7 +1,9 @@
 import React, { lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { BottomNav } from './components/BottomNav';
+import { GlobalSearch } from './components/GlobalSearch';
 import { AppProvider } from './context/AppContext';
+import { SearchProvider } from './context/SearchContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/ToastContext';
 import { ToastContainer } from './components/Toast';
@@ -99,6 +101,7 @@ const AppContent: React.FC = () => {
           />
         </Routes>
       </Suspense>
+      {user && <GlobalSearch />}
       {user && <BottomNav />}
       <ToastContainer />
     </div>
@@ -111,9 +114,11 @@ export default function App() {
       <ToastProvider>
         <AuthProvider>
           <AppProvider>
-            <ErrorBoundary>
-              <AppContent />
-            </ErrorBoundary>
+            <SearchProvider>
+              <ErrorBoundary>
+                <AppContent />
+              </ErrorBoundary>
+            </SearchProvider>
           </AppProvider>
         </AuthProvider>
       </ToastProvider>

@@ -1,12 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, ArrowUpRight, ArrowDownLeft, Check } from 'lucide-react';
+import { UserPlus, ArrowUpRight, ArrowDownLeft, Check, Search } from 'lucide-react';
 import { Avatar, NeoButton, NeoModal, NeoInput } from '../components/NeoComponents';
 import { DataLoadErrorBanner } from '../components/DataLoadErrorBanner';
 import { useAppContext } from '../context/AppContext';
 import { FriendSkeleton } from '../components/LoadingSkeleton';
 import { PRESET_AVATARS } from '../constants';
 import { useToast } from '../components/ToastContext';
+import { useSearch } from '../context/SearchContext';
 import { formatCurrency } from '../utils/formatters';
 
 type FilterType = 'A-Z' | 'High-Low' | 'Recent';
@@ -14,6 +15,7 @@ type FilterType = 'A-Z' | 'High-Low' | 'Recent';
 export const Friends: React.FC = () => {
   const navigate = useNavigate();
   const { friends, transactions, addFriend, loading, error, refetch } = useAppContext();
+  const { openSearch } = useSearch();
   const { success, error: showError } = useToast();
   
   const [filter, setFilter] = useState<FilterType>('High-Low');
@@ -85,6 +87,15 @@ export const Friends: React.FC = () => {
                 <h2 className="text-xs font-bold tracking-widest text-gray-500 dark:text-zinc-500 leading-none mb-1">SQUARE ONE</h2>
                 <h1 className="text-4xl font-black uppercase leading-none dark:text-zinc-100">Friends</h1>
             </div>
+            <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={openSearch}
+              className="w-12 h-12 bg-white dark:bg-zinc-900 border-2 border-black shadow-neo active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all flex items-center justify-center hover:bg-gray-100 dark:hover:bg-zinc-800"
+              aria-label="Search friends and transactions"
+            >
+                <Search className="text-black dark:text-zinc-100" strokeWidth={2.5} />
+            </button>
             <button 
               onClick={() => setShowAddFriend(true)}
               className="w-12 h-12 bg-neo-yellow border-2 border-black shadow-neo active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all flex items-center justify-center hover:bg-yellow-400"
@@ -92,6 +103,7 @@ export const Friends: React.FC = () => {
             >
                 <UserPlus className="text-black" />
             </button>
+            </div>
         </div>
 
         {/* Filter Tabs */}

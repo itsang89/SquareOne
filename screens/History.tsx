@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Search, MoreVertical, Filter, Pencil, Trash2 } from 'lucide-react';
+import { Search, Filter, Pencil, Trash2 } from 'lucide-react';
 import { BackButton, Avatar, NeoInput } from '../components/NeoComponents';
 import { DataLoadErrorBanner } from '../components/DataLoadErrorBanner';
 import { useAppContext } from '../context/AppContext';
@@ -13,13 +13,19 @@ import { TransactionSkeleton } from '../components/LoadingSkeleton';
 import { formatCurrency } from '../utils/formatters';
 import { staggerContainer, staggerItem, springs } from '../utils/animations';
 import { useAnimations } from '../hooks/useAnimations';
+import { matchesTransactionQuery, normalizeSearchQuery } from '../utils/search';
+import { useSearch } from '../context/SearchContext';
 
 type FilterType = 'All' | 'Poker' | 'Meals' | 'Loans' | 'Unsettled';
 type SortType = 'date' | 'event';
 
+type HistoryLocationState = { historySearchQuery?: string };
+
 export const History: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { transactions, friends, deleteTransaction, loading, error, refetch } = useAppContext();
+  const { openSearch } = useSearch();
   const { success, error: showError } = useToast();
   const { getVariants, getTransition } = useAnimations();
   
@@ -29,6 +35,13 @@ export const History: React.FC = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useTimeout(() => setDeletingId(null), deletingId ? 3000 : null, [deletingId]);
+
+  useEffect(() => {
+    const q = (location.state as HistoryLocationState | null)?.historySearchQuery;
+    if (typeof q === 'string') {
+      setSearchQuery(q);
+    }
+  }, [location.key, location.state]);
 
   const handleEdit = (tx: Transaction) => {
     navigate('/add', { state: { editTransaction: tx } });
@@ -52,24 +65,8 @@ export const History: React.FC = () => {
     let filtered = [...transactions];
 
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(tx => {
-        let friend = null;
-        if (tx.friendId !== 'me') {
-          friend = friends.find(f => f.id === tx.friendId);
-        } else if (tx.payerId !== 'me') {
-          friend = friends.find(f => f.id === tx.payerId);
-        }
-        const friendName = friend?.name.toLowerCase() || '';
-        const title = tx.title.toLowerCase();
-        const note = (tx.note || '').toLowerCase();
-        const amount = tx.amount.toString();
-        
-        return friendName.includes(query) || 
-               title.includes(query) || 
-               note.includes(query) || 
-               amount.includes(query);
-      });
+      const query = normalizeSearchQuery(searchQuery);
+      filtered = filtered.filter((tx) => matchesTransactionQuery(tx, query, friends));
     }
 
     if (activeFilter !== 'All') {
@@ -162,8 +159,13 @@ export const History: React.FC = () => {
         <header className="flex items-center justify-between p-4 bg-neo-bg dark:bg-zinc-950 border-b-2 border-black z-20 shrink-0">
             <BackButton to="/dashboard" />
             <h1 className="text-xl font-bold tracking-tight uppercase dark:text-zinc-100">History</h1>
-            <button className="flex items-center justify-center w-10 h-10 rounded-md border-2 border-transparent hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                <MoreVertical className="text-black dark:text-zinc-100" />
+            <button
+              type="button"
+              onClick={openSearch}
+              className="flex items-center justify-center w-10 h-10 rounded-md border-2 border-black bg-white dark:bg-zinc-900 shadow-neo-sm hover:bg-neo-blue/20 transition-colors"
+              aria-label="Open global search"
+            >
+                <Search className="text-black dark:text-zinc-100" size={20} strokeWidth={2.5} />
             </button>
         </header>
 
@@ -287,14 +289,14 @@ export const History: React.FC = () => {
                           </div>
                         </div>
                         <div className="ml-2 flex items-center gap-1 shrink-0">
-                          {!tx.isSettlement && !isGrayed && (
+                          {!tx.isSettlement && (
                             <motion.button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleEdit(tx);
                               }}
-                              className="p-2 rounded-md border-2 border-black transition-all bg-white dark:bg-zinc-800 dark:text-zinc-100 hover:bg-neo-blue/30 opacity-0 group-hover:opacity-100"
+                              className="p-2 rounded-md border-2 border-black transition-all bg-white dark:bg-zinc-800 dark:text-zinc-100 hover:bg-neo-blue/30"
                               aria-label="Edit transaction"
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
@@ -311,7 +313,7 @@ export const History: React.FC = () => {
                             className={`p-2 rounded-md border-2 border-black transition-all ${
                               deletingId === tx.id 
                                 ? 'bg-neo-red text-white shadow-neo-sm' 
-                                : 'bg-white dark:bg-zinc-800 dark:text-zinc-100 hover:bg-neo-red/20 opacity-0 group-hover:opacity-100'
+                                : 'bg-white dark:bg-zinc-800 dark:text-zinc-100 hover:bg-neo-red/20'
                             }`}
                             aria-label="Delete transaction"
                             whileHover={{ scale: 1.1 }}

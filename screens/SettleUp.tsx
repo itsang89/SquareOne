@@ -11,7 +11,6 @@ import { DatePicker } from '../components/AddTransaction/DatePicker';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { AnimatedNumber } from '../components/AnimatedNumber';
 import { springs } from '../utils/animations';
-import { useAnimations } from '../hooks/useAnimations';
 import { celebrateSettlement } from '../utils/confetti';
 import { isValidAmount } from '../utils/validation';
 import { evaluateExpression } from '../utils/calculator';
@@ -21,8 +20,6 @@ export const SettleUp: React.FC = () => {
   const navigate = useNavigate();
   const { transactions, addTransaction, getFriendById } = useAppContext();
   const { success, error: showError } = useToast();
-  const { getTransition } = useAnimations();
-  
   const friend = id ? getFriendById(id) : undefined;
   
   const balance = useMemo(() => {
@@ -190,18 +187,14 @@ export const SettleUp: React.FC = () => {
                         >
                           $
                         </motion.span>
-                        <motion.input 
+                        <input
                             type="text"
                             inputMode="decimal"
                             value={amount}
                             onChange={(e) => setAmount(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' && !isSubmitting) handleConfirmSettle(); }}
                             disabled={isSubmitting}
-                            className="w-full h-20 bg-white dark:bg-zinc-900 border-2 border-black pl-10 pr-24 text-5xl font-black focus:outline-none placeholder:text-gray-300 dark:placeholder:text-zinc-700 dark:text-zinc-100"
-                            whileFocus={{
-                              boxShadow: '6px 6px 0px 0px rgba(0,0,0,1)',
-                              scale: 1.01,
-                              transition: getTransition(springs.snappy),
-                            }}
+                            className="w-full h-20 bg-white dark:bg-zinc-900 border-2 border-black pl-10 pr-24 text-5xl font-black focus:outline-none focus:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-shadow placeholder:text-gray-300 dark:placeholder:text-zinc-700 dark:text-zinc-100"
                         />
                         <motion.button 
                           onClick={handleMax}

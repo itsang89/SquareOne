@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Delete, Divide, X, Minus, Plus, Equal } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { evaluateExpression } from '../../utils/calculator';
@@ -44,6 +44,44 @@ export const AmountInput: React.FC<AmountInputProps> = ({
       onAmountChange(amount === '0' ? val : amount + val);
     }
   };
+
+  // Keep refs stable so the effect closure never goes stale
+  const handleNumpadRef = useRef(handleNumpad);
+  handleNumpadRef.current = handleNumpad;
+  const onToggleNumpadRef = useRef(onToggleNumpad);
+  onToggleNumpadRef.current = onToggleNumpad;
+  const showNumpadRef = useRef(showNumpad);
+  showNumpadRef.current = showNumpad;
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+
+      if (/^[0-9]$/.test(e.key) || e.key === '.') {
+        if (!showNumpadRef.current) onToggleNumpadRef.current();
+        handleNumpadRef.current(e.key);
+        e.preventDefault();
+      } else if (showNumpadRef.current) {
+        if (e.key === 'Backspace') {
+          handleNumpadRef.current('back');
+          e.preventDefault();
+        } else if (e.key === 'Enter' || e.key === '=') {
+          handleNumpadRef.current('=');
+          e.preventDefault();
+        } else if (['+', '-', '*', '/'].includes(e.key)) {
+          handleNumpadRef.current(e.key);
+          e.preventDefault();
+        } else if (e.key === 'Escape') {
+          onToggleNumpadRef.current();
+          e.preventDefault();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   return (
     <div className="space-y-6">

@@ -39,19 +39,14 @@ export const NeoInput: React.FC<NeoInputProps> = ({
       <motion.input
         className={`
           ${widthClass}
-          border-2 border-black p-3 
+          border-2 border-black p-3
           font-bold placeholder:text-gray-400 dark:placeholder:text-zinc-500
-          focus:outline-none focus:ring-0
+          focus:outline-none focus:ring-0 focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-shadow
           ${error ? 'bg-neo-red/10 border-neo-red' : 'bg-white dark:bg-zinc-900 dark:text-zinc-100'}
           ${className}
         `}
         variants={getVariants(shakeX)}
         animate={controls}
-        whileFocus={{
-          boxShadow: '4px 4px 0px 0px rgba(0,0,0,1)',
-          scale: 1.01,
-          transition: getTransition(springs.snappy),
-        }}
         {...props}
       />
       {error && (
@@ -96,19 +91,14 @@ export const NeoTextArea: React.FC<Omit<HTMLMotionProps<'textarea'>, 'ref'> & { 
       <motion.textarea
         className={`
           w-full
-          border-2 border-black p-3 
+          border-2 border-black p-3
           font-bold placeholder:text-gray-400 dark:placeholder:text-zinc-500
-          focus:outline-none focus:ring-0 min-h-[100px]
+          focus:outline-none focus:ring-0 focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-shadow min-h-[100px]
           ${error ? 'bg-neo-red/10 border-neo-red' : 'bg-white dark:bg-zinc-900 dark:text-zinc-100'}
           ${className}
         `}
         variants={getVariants(shakeX)}
         animate={controls}
-        whileFocus={{
-          boxShadow: '4px 4px 0px 0px rgba(0,0,0,1)',
-          scale: 1.01,
-          transition: getTransition(springs.snappy),
-        }}
         {...props}
       />
       {error && (

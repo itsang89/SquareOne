@@ -71,6 +71,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isProcessing, setIsProcessing] = useState(false);
   /** Latest committed transactions for balance math when the transactions query fails but friends load. */
   const transactionsRef = useRef<Transaction[]>([]);
+  /** Tracks which user ID has already had its first data load, so background refreshes don't show skeletons. */
+  const loadedUserIdRef = useRef<string | null>(null);
   useEffect(() => {
     transactionsRef.current = transactions;
   }, [transactions]);
@@ -102,11 +104,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setTransactions([]);
       setCustomTypes([]);
       setLoading(false);
+      loadedUserIdRef.current = null;
       return;
     }
 
+    // Only show the loading skeleton on the first fetch for this user identity.
+    // Background refreshes (e.g. auth token refresh on tab focus) silently update.
+    const isFirstLoad = loadedUserIdRef.current !== user.id;
+    loadedUserIdRef.current = user.id;
+
     if (user.id === 'guest') {
-      setLoading(true);
+      if (isFirstLoad) setLoading(true);
       setError(null);
       const snap = readGuestSnapshot();
       const base = snap?.friends ?? [];
@@ -118,7 +126,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    setLoading(true);
+    if (isFirstLoad) setLoading(true);
     setError(null);
     try {
       const [friendsRes, transactionsRes, customTypesRes] = await Promise.all([

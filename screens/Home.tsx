@@ -48,11 +48,10 @@ export const Home: React.FC = () => {
   const netBalance = useMemo(() => calculateNetBalance(transactions), [transactions]);
   const debtOriginsData = useMemo(() => calculateDebtOrigins(transactions), [transactions]);
   
-  const topFriends = useMemo(() => {
+  const friendsOwingMe = useMemo(() => {
     return [...friends]
       .filter(f => f.balance !== 0)
-      .sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance))
-      .slice(0, 5);
+      .sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
   }, [friends]);
   
   const recentTransactions = useMemo(() => {
@@ -134,20 +133,20 @@ export const Home: React.FC = () => {
             </div>
         </section>
 
-        {/* Top Sharks */}
+        {/* Owes You */}
         <section>
             <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-black uppercase border-l-4 border-black dark:border-zinc-100 pl-2 dark:text-zinc-100">Top Sharks</h3>
+                <h3 className="text-lg font-black uppercase border-l-4 border-black dark:border-zinc-100 pl-2 dark:text-zinc-100">Owes You</h3>
                 <Link to="/friends" className="text-xs font-bold uppercase underline decoration-2 dark:text-zinc-100">View All</Link>
             </div>
-            
+
             {loading ? (
               <div className="flex gap-4 overflow-x-auto pb-4">
                 {[1, 2, 3].map(i => <FriendSkeleton key={i} />)}
               </div>
-            ) : topFriends.length > 0 ? (
+            ) : friendsOwingMe.length > 0 ? (
               <div className="flex overflow-x-auto no-scrollbar gap-4 pb-4 snap-x">
-                  {topFriends.map(friend => (
+                  {friendsOwingMe.map(friend => (
                       <div 
                         key={friend.id} 
                         onClick={() => navigate(`/friends/${friend.id}`)}
@@ -170,7 +169,7 @@ export const Home: React.FC = () => {
               </div>
             ) : (
               <div className="text-center py-8 text-gray-400 dark:text-zinc-600 text-sm font-bold uppercase">
-                No active balances
+                Nobody owes you money
               </div>
             )}
         </section>

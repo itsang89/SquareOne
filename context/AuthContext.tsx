@@ -142,7 +142,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (session?.user) {
           clearGuestLocalData();
           const profile = await loadUserProfile(session.user);
-          if (mounted && profile !== null) setUser(profile);
+          if (mounted && profile !== null) {
+            // Keep the same object reference when the user identity hasn't changed
+            // so downstream contexts don't re-fetch data unnecessarily.
+            setUser(prev => prev?.id === profile.id ? prev : profile);
+          }
         } else {
           if (mounted) setUser(null);
         }

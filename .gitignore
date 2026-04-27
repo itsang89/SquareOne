@@ -25,3 +25,5 @@ supabase/
 *.njsproj
 *.sln
 *.sw?
+
+improvement.md

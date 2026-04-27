@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { X, Camera } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -146,6 +146,22 @@ const AddTransactionInner: React.FC<AddTransactionInnerProps> = ({ editTransacti
       }
     },
   });
+
+  const handleSubmitRef = useRef(handleSubmit);
+  handleSubmitRef.current = handleSubmit;
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter') return;
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+      e.preventDefault();
+      stayOnPageRef.current = false;
+      handleSubmitRef.current();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const handleAddCustomType = async (type: string) => {
     const result = await addCustomType(type);

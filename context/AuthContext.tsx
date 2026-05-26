@@ -19,6 +19,7 @@ interface AuthContextType {
   signInWithApple: () => Promise<{ error: any }>;
   signInAsGuest: () => void;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -254,6 +255,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSession(null); // No session for guest
   };
 
+  const refreshUser = async () => {
+    if (!session?.user) return;
+    const profile = await loadUserProfile(session.user);
+    if (profile !== null) setUser(profile);
+  };
+
   const signOut = async () => {
     setIsProcessing(true);
     try {
@@ -276,6 +283,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signInWithApple,
     signInAsGuest,
     signOut,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

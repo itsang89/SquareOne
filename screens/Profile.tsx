@@ -16,7 +16,7 @@ type Theme = 'light' | 'dark' | 'system';
 
 export const Profile: React.FC = () => {
   const { transactions, friends, refetch } = useAppContext();
-  const { user, signOut } = useAuth();
+  const { user, signOut, refreshUser } = useAuth();
   const { success, error: showError } = useToast();
   const navigate = useNavigate();
   const { getVariants, getTransition } = useAnimations();
@@ -122,9 +122,9 @@ export const Profile: React.FC = () => {
 
       if (error) throw error;
       
+      await refreshUser();
       success('Profile updated');
       setShowEditProfile(false);
-      // Wait for AuthContext to pick up changes or we could force refresh user profile if needed
     } catch (error: any) {
       showError('Update failed', error.message);
     } finally {

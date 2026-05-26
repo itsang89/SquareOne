@@ -43,12 +43,14 @@ export const SettleUp: React.FC = () => {
     setAmount(Math.abs(balance).toFixed(2));
   };
   
+  const presets = useMemo(() => [
+    { label: '25%', value: (Math.abs(balance) * 0.25).toFixed(2) },
+    { label: '50%', value: (Math.abs(balance) * 0.5).toFixed(2) },
+    { label: 'Full', value: Math.abs(balance).toFixed(2) },
+  ], [balance]);
+
   const handleQuickAmount = (value: string) => {
-    if (value === 'Full') {
-      handleMax();
-    } else {
-      setAmount(value);
-    }
+    setAmount(value);
   };
   
   const handleConfirmSettle = async () => {
@@ -216,23 +218,23 @@ export const SettleUp: React.FC = () => {
                 </label>
 
                 <div className="grid grid-cols-3 gap-3">
-                    {['100', '500', 'Full'].map(val => {
-                      const isSelected = (val === 'Full' && amount === Math.abs(balance).toFixed(2)) || amount === val;
+                    {presets.map(preset => {
+                      const isSelected = amount === preset.value;
                       return (
-                        <motion.button 
-                          key={val}
-                          onClick={() => handleQuickAmount(val)}
+                        <motion.button
+                          key={preset.label}
+                          onClick={() => handleQuickAmount(preset.value)}
                           disabled={isSubmitting}
                           className={`h-10 border-2 border-black font-bold text-sm shadow-neo-sm disabled:opacity-50 ${
                             isSelected
-                              ? 'bg-neo-blue text-black' 
+                              ? 'bg-neo-blue text-black'
                               : 'bg-white dark:bg-zinc-900 dark:text-zinc-100'
                           }`}
-                          whileHover={!isSelected ? { 
+                          whileHover={!isSelected ? {
                             backgroundColor: 'rgba(147, 197, 253, 0.2)',
                             scale: 1.02,
                           } : {}}
-                          whileTap={{ 
+                          whileTap={{
                             boxShadow: '0px 0px 0px 0px rgba(0,0,0,1)',
                             y: 1,
                             scale: 0.98,
@@ -248,7 +250,7 @@ export const SettleUp: React.FC = () => {
                             repeatType: 'reverse'
                           }}
                         >
-                            {val === 'Full' ? 'Full' : `$${val}`}
+                            {preset.label}
                         </motion.button>
                       );
                     })}

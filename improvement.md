@@ -11,22 +11,26 @@
 Ranked by **user-facing impact → implementation effort → regression risk** (highest priority first).
 
 - [ ] **1.** Group expenses — split one bill across multiple friends at once
-- [ ] **2.** Guest-to-account data migration — migrate localStorage data to Supabase on sign-up
-- [ ] **3.** Profile state sync — name/avatar update in Settings doesn't refresh the in-app header
+- [x] **2.** Guest-to-account data migration — migrate localStorage data to Supabase on sign-up
+- [x] **3.** Profile state sync — name/avatar update in Settings doesn't refresh the in-app header
 - [ ] **4.** Spending trend chart — add a monthly bar/line chart to the dashboard using existing Recharts
-- [ ] **5.** Nudge button — share/copy a payment-request message from `FriendDetail`
+- [ ] **5.** Nudge button — share/copy a payment-request message from `FriendDetail` *(button disabled with "Soon" badge — not yet implemented)*
 - [ ] **6.** History: date-range filter and custom-type chips — extend current Poker/Meals/Loans filters
 - [ ] **7.** FriendDetail: per-friend transaction search/filter — no filtering on a single friend's ledger
-- [ ] **8.** Bell notification panel — notification bell in the header has no click handler
+- [x] **8.** Bell notification panel — removed; bell icon and broken `unsettledCount` deleted from `Home` header
 - [ ] **9.** Friend aggregate stats — totals (# transactions, cumulative spent) on `FriendDetail`
 - [ ] **10.** Receipt photo upload — Camera button in `AddTransaction` has no handler
 - [ ] **11.** Currency/locale preference — `formatCurrency` is hard-coded to USD
-- [ ] **12.** Settle-up smart presets — quick-amount chips are hard-coded to `$100 / $500`
+- [x] **12.** Settle-up smart presets — quick-amount chips are hard-coded to `$100 / $500`
 
 ---
 
 ## Recently completed (reference)
 
+- **Guest-to-account migration (#2):** `migrateGuestData(uid)` in `context/AuthContext.tsx` upserts guest friends and transactions into Supabase before `clearGuestLocalData()` is called; covers password sign-in, OAuth (`onAuthStateChange` SIGNED_IN), and page-reload with existing session; on failure, localStorage is preserved for a natural retry on next sign-in.
+- **Profile state sync (#3):** `refreshUser()` added to `AuthContextType` and `AuthProvider`; wraps `loadUserProfile(session.user)` and updates `user` state; called from `Profile.handleUpdateProfile` on success — header now updates immediately without sign-out/sign-in.
+- **Bell icon removed (#8):** Bell button and the broken `unsettledCount` memo (which counted all non-settlement transactions instead of friends with a net non-zero balance) removed from `screens/Home.tsx`; Friends page already surfaces the same information.
+- **Settle-up smart presets (#12):** `screens/SettleUp.tsx` chips replaced from hardcoded `['100', '500', 'Full']` to a `useMemo` computing `[25%, 50%, Full]` of the actual balance; `handleQuickAmount` simplified to a direct `setAmount`.
 - **Global search:** `components/GlobalSearch.tsx` + `utils/search.ts`; full-screen overlay searches friends and transactions from `AppContext`; `searchTransactions` util extracted from `History.tsx`; mounted in top-level layout.
 - **Custom transaction title:** Free-text `customTitle` field in `AddTransaction`; defaults to selected tag; persisted to `Transaction.title` via `v.customTitle.trim() || v.selectedTag`; no schema change required.
 - **Supabase load errors:** `error` + `refetch`, `DataLoadErrorBanner` on Home/Friends/History, partial data not overwritten with empty arrays when one query fails; friend balances use last good transactions when the transactions query fails.
@@ -211,14 +215,14 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 | Signal | Finding |
 |--------|---------|
 | **TODO / FIXME** | None in `*.ts` / `*.tsx`. |
-| **Inert buttons** | 3 found: Bell (Home.tsx:85 — no onClick), Nudge (FriendDetail.tsx:144 — `onClick={() => {}}`), Camera (AddTransaction.tsx:271 — no onClick). Proposals #5, #8, #10 address these. |
-| **Dead-code comment** | Profile.tsx:127 — *"Wait for AuthContext to pick up changes"*. Proposal #3 fixes this. |
-| **Data loss on sign-up** | `clearGuestLocalData()` called in 3 places in AuthContext before migration. Proposal #2 addresses this. |
+| **Inert buttons** | 1 remaining: Camera (AddTransaction.tsx:271 — no onClick). Proposal #10 addresses this. Bell removed. Nudge disabled with "Soon" badge pending #5. |
+| **Dead-code comment** | Profile.tsx:127 — resolved by #3. |
+| **Data loss on sign-up** | Resolved by #2 — `migrateGuestData` runs before `clearGuestLocalData()` in all auth paths. |
 | **Hard-coded USD** | `formatters.ts:7 currency: 'USD'`. Proposal #11 addresses this. |
-| **Hard-coded presets** | SettleUp.tsx `['100', '500', 'Full']`. Proposal #12 addresses this. |
+| **Hard-coded presets** | Resolved by #12. |
 | **`npm audit`** | Run before releases; last run reported 0 vulnerabilities. |
 | **Context `error`** | Set when friends/transactions queries fail; banner + Retry on Home, Friends, History. |
 
 ---
 
-*Last updated: 2026-03-27 — full reanalysis; 11 new proposals added; group expenses retained; all verified against current source.*
+*Last updated: 2026-05-26 — #2, #3, #12 implemented; #8 removed (bell deleted); #5 nudge button disabled pending implementation.*

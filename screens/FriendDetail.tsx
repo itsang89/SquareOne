@@ -141,8 +141,10 @@ export const FriendDetail: React.FC = () => {
             <NeoButton variant="primary" onClick={() => navigate(`/settle/${friend.id}`)}>
                 <HandCoins size={18} /> Settle Up
             </NeoButton>
-            <NeoButton variant="secondary" onClick={() => {}} className="group">
-                <span className="group-hover:animate-bounce text-black">👋</span> <span className="text-black">Nudge</span>
+            <NeoButton variant="secondary" disabled className="relative opacity-60 cursor-not-allowed">
+                <span className="text-black">👋</span>
+                <span className="text-black">Nudge</span>
+                <span className="absolute -top-2 -right-2 bg-neo-yellow text-black text-[9px] font-black uppercase px-1.5 py-0.5 border border-black leading-none">Soon</span>
             </NeoButton>
         </div>
       </section>

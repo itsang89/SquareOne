@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Bell, ArrowUpRight, ArrowDownLeft, Pencil, Trash2, Search } from 'lucide-react';
+import { ArrowUpRight, ArrowDownLeft, Pencil, Trash2, Search } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { Avatar, NeoCard } from '../components/NeoComponents';
 import { Link, useNavigate } from 'react-router-dom';
@@ -60,10 +60,6 @@ export const Home: React.FC = () => {
       .slice(0, 10);
   }, [transactions]);
   
-  const unsettledCount = useMemo(() => {
-    return transactions.filter(tx => !tx.isSettlement).length;
-  }, [transactions]);
-
   return (
     <div className="min-h-screen pb-24 bg-neo-bg dark:bg-zinc-950 transition-colors duration-300">
       {/* Header */}
@@ -80,12 +76,6 @@ export const Home: React.FC = () => {
           aria-label="Search friends and transactions"
         >
             <Search size={22} className="text-black dark:text-zinc-100" strokeWidth={2.5} />
-        </button>
-        <button className="relative w-12 h-12 bg-neo-yellow border-2 border-black rounded-lg shadow-neo-sm active:shadow-none active:translate-y-1 flex items-center justify-center">
-            <Bell size={24} className="text-black" />
-            {unsettledCount > 0 && (
-              <span className="absolute top-2 right-2 w-3 h-3 bg-neo-red border-2 border-white dark:border-zinc-950 rounded-full"></span>
-            )}
         </button>
         </div>
       </header>

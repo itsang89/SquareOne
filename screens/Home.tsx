@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowUpRight, ArrowDownLeft, Pencil, Trash2, Search } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Avatar, NeoCard } from '../components/NeoComponents';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
-import { calculateTotalOwed, calculateTotalOwing, calculateNetBalance, calculateDebtOrigins, shouldGrayTransaction } from '../utils/calculations';
+import { calculateTotalOwed, calculateTotalOwing, calculateNetBalance, calculateDebtOrigins, calculateMonthlyTotals, shouldGrayTransaction } from '../utils/calculations';
 import { Transaction } from '../types';
 import { useTimeout } from '../hooks/useTimeout';
 import { useToast } from '../components/ToastContext';
@@ -47,6 +47,7 @@ export const Home: React.FC = () => {
   const totalOwing = useMemo(() => calculateTotalOwing(transactions), [transactions]);
   const netBalance = useMemo(() => calculateNetBalance(transactions), [transactions]);
   const debtOriginsData = useMemo(() => calculateDebtOrigins(transactions), [transactions]);
+  const monthlyData = useMemo(() => calculateMonthlyTotals(transactions), [transactions]);
   
   const friendsOwingMe = useMemo(() => {
     return [...friends]
@@ -212,6 +213,34 @@ export const Home: React.FC = () => {
                 <NeoCard className="bg-gray-50 dark:bg-zinc-800 flex items-center justify-center py-10">
                     <p className="text-xs font-bold uppercase text-gray-400 dark:text-zinc-600">No debt data available</p>
                 </NeoCard>
+            )}
+        </section>
+
+        {/* Monthly Spending */}
+        <section>
+            <h3 className="text-lg font-black uppercase border-l-4 border-black dark:border-zinc-100 pl-2 mb-4 dark:text-zinc-100">Monthly Spending</h3>
+            {loading ? (
+              <NeoCard className="h-40 flex items-center justify-center bg-gray-50 dark:bg-zinc-800">
+                <div className="animate-pulse w-full h-24 bg-gray-200 dark:bg-zinc-700 rounded"></div>
+              </NeoCard>
+            ) : (
+              <NeoCard className="bg-[#F0EBFF] dark:bg-purple-900/30 pt-4 pb-2 px-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-zinc-400 mb-3 pl-2">You paid · last 6 months</p>
+                <div className="h-36">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={monthlyData} margin={{ top: 0, right: 4, left: 0, bottom: 0 }}>
+                      <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 9 }} tickFormatter={(v) => `$${v}`} width={38} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        formatter={(v: number) => [formatCurrency(v), 'You paid']}
+                        contentStyle={{ border: '2px solid black', borderRadius: 0, fontWeight: 700, fontSize: 12 }}
+                        cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                      />
+                      <Bar dataKey="total" fill="#C3B1E1" stroke="black" strokeWidth={1.5} radius={[2, 2, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </NeoCard>
             )}
         </section>
 

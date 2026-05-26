@@ -9,6 +9,7 @@ interface TransactionListProps {
   onDelete: (tx: Transaction) => void;
   deletingId: string | null;
   getIsGrayed: (tx: Transaction) => boolean;
+  emptyMessage?: string;
 }
 
 export const TransactionList: React.FC<TransactionListProps> = ({
@@ -17,11 +18,12 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   onDelete,
   deletingId,
   getIsGrayed,
+  emptyMessage,
 }) => {
   if (transactions.length === 0) {
     return (
       <div className="text-center py-12 text-gray-400 dark:text-zinc-600">
-        <p className="text-sm font-bold uppercase">No transaction history</p>
+        <p className="text-sm font-bold uppercase">{emptyMessage ?? 'No transaction history'}</p>
       </div>
     );
   }

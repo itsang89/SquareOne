@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MessageCircle, HandCoins } from 'lucide-react';
+import { MessageCircle, HandCoins, Search, X } from 'lucide-react';
 import { NeoButton, Avatar, NeoModal } from '../components/NeoComponents';
 import { useAppContext } from '../context/AppContext';
 import { calculateFriendBalance, shouldGrayTransaction } from '../utils/calculations';
@@ -11,6 +11,7 @@ import { EditFriendModal } from '../components/FriendDetail/EditFriendModal';
 import { useToast } from '../components/ToastContext';
 import { useTimeout } from '../hooks/useTimeout';
 import { formatCurrency } from '../utils/formatters';
+import { matchesTransactionQuery } from '../utils/search';
 
 export const FriendDetail: React.FC = () => {
   const { id } = useParams();
@@ -21,6 +22,7 @@ export const FriendDetail: React.FC = () => {
   const friend = id ? getFriendById(id) : undefined;
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showOptions, setShowOptions] = useState(false);
+  const [query, setQuery] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -56,6 +58,18 @@ export const FriendDetail: React.FC = () => {
     if (!friend) return 0;
     return calculateFriendBalance(friend.id, allTransactions);
   }, [friend, allTransactions]);
+
+  const friendStats = useMemo(() => ({
+    count: friendTransactions.length,
+    total: friendTransactions.reduce((s, t) => s + t.amount, 0),
+    largest: friendTransactions.length > 0 ? Math.max(...friendTransactions.map(t => t.amount)) : 0,
+  }), [friendTransactions]);
+
+  const filteredFriendTransactions = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return friendTransactions;
+    return friendTransactions.filter(tx => matchesTransactionQuery(tx, q, []));
+  }, [friendTransactions, query]);
 
   const handleUpdateFriend = async (name: string, avatar: string) => {
     if (!friend) return;
@@ -137,6 +151,21 @@ export const FriendDetail: React.FC = () => {
             <div className="absolute bottom-2 left-0 w-full h-4 bg-neo-green/50 dark:bg-neo-green/30 -z-0 skew-x-12"></div>
         </div>
 
+        {friendStats.count > 0 && (
+          <div className="grid grid-cols-3 gap-2 w-full z-10 mb-6">
+            {[
+              { label: 'Transactions', value: String(friendStats.count) },
+              { label: 'Total', value: formatCurrency(friendStats.total) },
+              { label: 'Largest', value: formatCurrency(friendStats.largest) },
+            ].map(({ label, value }) => (
+              <div key={label} className="bg-neo-bg dark:bg-zinc-800 border-2 border-black p-2 text-center shadow-neo-sm">
+                <p className="text-[9px] font-black uppercase tracking-widest text-gray-500 dark:text-zinc-400 mb-0.5">{label}</p>
+                <p className="text-sm font-black dark:text-zinc-100 leading-tight">{value}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-4 w-full z-10">
             <NeoButton variant="primary" onClick={() => navigate(`/settle/${friend.id}`)}>
                 <HandCoins size={18} /> Settle Up
@@ -150,12 +179,32 @@ export const FriendDetail: React.FC = () => {
       </section>
 
       <main className="px-6 flex-1 overflow-y-auto">
+        {friendTransactions.length > 0 && (
+          <div className="pt-4 pb-1">
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search by title, note or amount..."
+                className="w-full pl-8 pr-8 py-2 border-2 border-black text-xs font-bold bg-white dark:bg-zinc-900 dark:text-zinc-100 focus:outline-none focus:shadow-neo-sm transition-shadow placeholder:text-gray-300 dark:placeholder:text-zinc-600"
+              />
+              {query && (
+                <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <X size={13} className="text-gray-400" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         <TransactionList
-          transactions={friendTransactions}
+          transactions={filteredFriendTransactions}
           onEdit={handleEdit}
           onDelete={handleDelete}
           deletingId={deletingId}
           getIsGrayed={(tx) => shouldGrayTransaction(tx, friend.id, allTransactions)}
+          emptyMessage={query ? 'No results' : undefined}
         />
       </main>
 

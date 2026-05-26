@@ -125,9 +125,25 @@ export function getLastActivity(friendId: string, transactions: Transaction[]): 
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-/**
- * Check if a transaction should be grayed
- */
+export function calculateMonthlyTotals(
+  transactions: Transaction[],
+  months = 6
+): { month: string; total: number }[] {
+  const now = new Date();
+  return Array.from({ length: months }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (months - 1 - i), 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const total = transactions
+      .filter(tx => !tx.isSettlement && tx.payerId === 'me' && tx.date.slice(0, 7) === key)
+      .reduce((s, tx) => s + tx.amount, 0);
+    return {
+      month: d.toLocaleDateString(undefined, { month: 'short' }),
+      total: Math.round(total * 100) / 100,
+    };
+  });
+}
+
+
 export function shouldGrayTransaction(tx: Transaction, friendId: string, transactions: Transaction[]): boolean {
   if (!friendId || !transactions) return false;
 

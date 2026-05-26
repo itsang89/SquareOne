@@ -110,3 +110,21 @@ Three buttons exist with no handlers (documented in `improvement.md`):
 - `TransactionType` is `string` (open union) — built-in labels live in `constants.ts`; user-defined ones come from `customTypes` in `AppContext`.
 - Tests go in `utils/*.test.ts` only (Vitest is configured to include only that path).
 - `@/` is aliased to the repo root (`vite.config.ts`).
+
+## Behavioral Guidelines
+
+### Think Before Coding
+
+Before implementing, state assumptions explicitly. If multiple interpretations exist, present them rather than picking silently. If a simpler approach exists, say so. If something is unclear, name what's confusing and ask rather than guessing.
+
+### Simplicity First
+
+Write the minimum code that solves the problem — no features beyond what was asked, no abstractions for single-use code, no "flexibility" that wasn't requested. If a solution is 200 lines and could be 50, rewrite it.
+
+### Surgical Changes
+
+Touch only what the task requires. Don't improve adjacent code, comments, or formatting that wasn't part of the request. Match existing style. If a change makes a pre-existing import or variable unused, remove it; don't remove other pre-existing dead code unless asked.
+
+### Goal-Driven Execution
+
+Transform tasks into verifiable goals before starting. For multi-step tasks, state a brief plan with a verify step for each item. Clarifying questions should come before implementation, not after mistakes.

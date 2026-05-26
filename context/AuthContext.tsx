@@ -165,15 +165,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
-      
+
       // Skip if we're already in the middle of loading a profile from signInWithPassword
       if (isLoadingProfileRef.current && event === 'SIGNED_IN') {
         return;
       }
-      
+
+      // Token refresh happens on tab focus and on a background timer — it doesn't
+      // change the user identity, so just update the session silently without
+      // triggering a loading state or re-fetching the profile.
+      if (event === 'TOKEN_REFRESHED') {
+        if (mounted) setSession(session);
+        return;
+      }
+
       setSession(session);
       setLoading(true);
-      
+
       try {
         if (session?.user) {
           await migrateGuestData(session.user.id);

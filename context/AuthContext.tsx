@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '../utils/supabase';
-import { clearGuestLocalData } from '../utils/guestStorage';
+import { clearGuestLocalData, readGuestSnapshot } from '../utils/guestStorage';
 import { User } from '../types';
 
 // Build the hash-based redirect URL so Supabase lands inside the HashRouter SPA.
@@ -19,6 +19,7 @@ interface AuthContextType {
   signInWithApple: () => Promise<{ error: any }>;
   signInAsGuest: () => void;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,6 +33,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Monotonically-increasing counter used to detect and discard stale profile
   // responses that arrive after a timeout fallback has already been applied.
   const profileRequestIdRef = useRef(0);
+
+  const migrateGuestData = async (uid: string): Promise<void> => {
+    const snapshot = readGuestSnapshot();
+    if (!snapshot || (snapshot.friends.length === 0 && snapshot.transactions.length === 0)) {
+      clearGuestLocalData();
+      return;
+    }
+    try {
+      const friendRows = snapshot.friends.map(f => ({
+        id: f.id,
+        user_id: uid,
+        name: f.name,
+        avatar: f.avatar,
+      }));
+      const transactionRows = snapshot.transactions.map(tx => ({
+        id: tx.id,
+        user_id: uid,
+        title: tx.title,
+        amount: tx.amount,
+        date: tx.date,
+        type: tx.type,
+        payer_id: tx.payerId === 'me' ? uid : tx.payerId,
+        friend_id: tx.friendId === 'me' ? tx.payerId : tx.friendId,
+        note: tx.note ?? null,
+        is_settlement: tx.isSettlement ?? false,
+      }));
+      await Promise.all([
+        supabase.from('friends').upsert(friendRows, { ignoreDuplicates: true }),
+        supabase.from('transactions').upsert(transactionRows, { ignoreDuplicates: true }),
+      ]);
+      clearGuestLocalData();
+    } catch (err) {
+      console.warn('Guest data migration failed, data preserved for retry:', err);
+    }
+  };
 
   // Load user profile from database with timeout.
   // Uses a request-ID guard so that if the DB query resolves after the timeout
@@ -104,7 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         setSession(session);
         if (session?.user) {
-          clearGuestLocalData();
+          await migrateGuestData(session.user.id);
           const profile = await loadUserProfile(session.user);
           // profile is null only when a newer request superseded this one; skip
           if (mounted && profile !== null) setUser(profile);
@@ -129,18 +165,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
-      
+
       // Skip if we're already in the middle of loading a profile from signInWithPassword
       if (isLoadingProfileRef.current && event === 'SIGNED_IN') {
         return;
       }
-      
+
+      // Token refresh happens on tab focus and on a background timer — it doesn't
+      // change the user identity, so just update the session silently without
+      // triggering a loading state or re-fetching the profile.
+      if (event === 'TOKEN_REFRESHED') {
+        if (mounted) setSession(session);
+        return;
+      }
+
       setSession(session);
       setLoading(true);
-      
+
       try {
         if (session?.user) {
-          clearGuestLocalData();
+          await migrateGuestData(session.user.id);
           const profile = await loadUserProfile(session.user);
           if (mounted && profile !== null) {
             // Keep the same object reference when the user identity hasn't changed
@@ -177,7 +221,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       if (data.user) {
-        clearGuestLocalData();
+        await migrateGuestData(data.user.id);
         const profile = await loadUserProfile(data.user);
         if (profile !== null) setUser(profile);
         setSession(data.session);
@@ -254,6 +298,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSession(null); // No session for guest
   };
 
+  const refreshUser = async () => {
+    if (!session?.user) return;
+    const profile = await loadUserProfile(session.user);
+    if (profile !== null) setUser(profile);
+  };
+
   const signOut = async () => {
     setIsProcessing(true);
     try {
@@ -276,6 +326,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signInWithApple,
     signInAsGuest,
     signOut,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

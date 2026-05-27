@@ -73,6 +73,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const transactionsRef = useRef<Transaction[]>([]);
   /** Tracks which user ID has already had its first data load, so background refreshes don't show skeletons. */
   const loadedUserIdRef = useRef<string | null>(null);
+  /** Shared debounce timer for all Realtime subscription callbacks. */
+  const realtimeRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     transactionsRef.current = transactions;
   }, [transactions]);
@@ -242,6 +244,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (!user || user.id === 'guest') return;
 
+    const scheduleRealtimeRefresh = () => {
+      if (realtimeRefreshTimer.current) clearTimeout(realtimeRefreshTimer.current);
+      realtimeRefreshTimer.current = setTimeout(() => void loadData(), 400);
+    };
+
     const friendsChannel = supabase
       .channel('friends-changes')
       .on(
@@ -252,7 +259,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           table: 'friends',
           filter: `user_id=eq.${user.id}`,
         },
-        () => loadData()
+        scheduleRealtimeRefresh
       )
       .subscribe();
 
@@ -266,7 +273,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           table: 'transactions',
           filter: `user_id=eq.${user.id}`,
         },
-        () => loadData()
+        scheduleRealtimeRefresh
       )
       .subscribe();
 
@@ -280,9 +287,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           table: 'custom_types',
           filter: `user_id=eq.${user.id}`,
         },
-        () => {
-          void loadCustomTypes();
-        }
+        scheduleRealtimeRefresh
       )
       .subscribe();
 

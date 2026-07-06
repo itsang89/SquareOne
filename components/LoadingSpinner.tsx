@@ -23,15 +23,15 @@ export const LoadingSpinner: React.FC<{ size?: 'sm' | 'md' | 'lg', className?: s
 };
 
 export const FullPageLoading: React.FC = () => (
-  <motion.div 
-    className="fixed inset-0 bg-neo-bg flex flex-col items-center justify-center gap-4 z-[100]"
+  <motion.div
+    className="fixed inset-0 bg-neo-bg dark:bg-zinc-950 flex flex-col items-center justify-center gap-4 z-[100]"
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
     exit={{ opacity: 0 }}
   >
     <LoadingSpinner size="lg" />
-    <motion.span 
-      className="font-bold uppercase tracking-widest text-xl"
+    <motion.span
+      className="font-bold uppercase tracking-widest text-xl text-black dark:text-zinc-100"
       animate={{ opacity: [0.5, 1, 0.5] }}
       transition={{ duration: 1.5, repeat: Infinity }}
     >

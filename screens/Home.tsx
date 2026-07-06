@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowUpRight, ArrowDownLeft, Pencil, Trash2, Search } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Avatar, NeoCard } from '../components/NeoComponents';
+import { NeoCard } from '../components/NeoCard';
+import { Avatar } from '../components/Avatar';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';

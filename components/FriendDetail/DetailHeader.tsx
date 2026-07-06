@@ -1,6 +1,6 @@
 import React from 'react';
 import { Edit3, Trash2, MoreVertical } from 'lucide-react';
-import { BackButton } from '../NeoComponents';
+import { BackButton } from '../BackButton';
 
 interface DetailHeaderProps {
   onEdit: () => void;

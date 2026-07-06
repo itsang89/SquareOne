@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { PRESET_AVATARS } from '../../constants';
-import { NeoModal, NeoInput, NeoButton } from '../NeoComponents';
+import { NeoModal } from '../NeoModal';
+import { NeoInput } from '../NeoInput';
+import { NeoButton } from '../NeoButton';
 import { Friend } from '../../types';
 
 interface EditFriendModalProps {

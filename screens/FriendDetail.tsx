@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MessageCircle, HandCoins, Search, X } from 'lucide-react';
-import { NeoButton, Avatar, NeoModal } from '../components/NeoComponents';
+import { NeoButton } from '../components/NeoButton';
+import { NeoModal } from '../components/NeoModal';
+import { Avatar } from '../components/Avatar';
 import { useAppContext } from '../context/AppContext';
 import { calculateFriendBalance, shouldGrayTransaction } from '../utils/calculations';
 import { Transaction } from '../types';

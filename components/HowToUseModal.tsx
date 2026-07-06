@@ -1,18 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Users, 
-  Receipt, 
-  Handshake, 
-  ChevronRight, 
+import {
+  Handshake,
+  ChevronRight,
   ChevronLeft,
   Plus,
-  ArrowRight,
   Check
 } from 'lucide-react';
 import { NeoModal } from './NeoModal';
 import { NeoButton } from './NeoButton';
-import { slideInRight, slideInLeft, springs } from '../utils/animations';
+import { springs } from '../utils/animations';
 import { useAnimations } from '../hooks/useAnimations';
 
 interface HowToUseModalProps {
@@ -127,11 +124,14 @@ export const HowToUseModal: React.FC<HowToUseModalProps> = ({ isOpen, onClose })
   const [direction, setDirection] = useState(1); // 1 for next, -1 for back
   const { getVariants, getTransition } = useAnimations();
 
-  useEffect(() => {
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (prevIsOpen !== isOpen) {
+    setPrevIsOpen(isOpen);
     if (isOpen) {
       setCurrentStep(0);
+      setDirection(1);
     }
-  }, [isOpen]);
+  }
 
   const handleNext = () => {
     if (currentStep < STEPS.length - 1) {

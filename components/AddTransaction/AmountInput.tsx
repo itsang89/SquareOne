@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 import { Delete, Divide, X, Minus, Plus, Equal } from 'lucide-react';
-import { formatCurrency } from '../../utils/formatters';
 import { evaluateExpression } from '../../utils/calculator';
 
 interface AmountInputProps {
@@ -47,11 +46,13 @@ export const AmountInput: React.FC<AmountInputProps> = ({
 
   // Keep refs stable so the effect closure never goes stale
   const handleNumpadRef = useRef(handleNumpad);
-  handleNumpadRef.current = handleNumpad;
   const onToggleNumpadRef = useRef(onToggleNumpad);
-  onToggleNumpadRef.current = onToggleNumpad;
   const showNumpadRef = useRef(showNumpad);
-  showNumpadRef.current = showNumpad;
+  useEffect(() => {
+    handleNumpadRef.current = handleNumpad;
+    onToggleNumpadRef.current = onToggleNumpad;
+    showNumpadRef.current = showNumpad;
+  });
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {

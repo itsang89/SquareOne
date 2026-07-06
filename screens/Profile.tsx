@@ -91,7 +91,7 @@ export const Profile: React.FC = () => {
       a.click();
       window.URL.revokeObjectURL(url);
       success('Exported!', 'Your transaction history has been downloaded.');
-    } catch (error) {
+    } catch {
       showError('Export failed', 'Something went wrong while generating CSV.');
     }
   };
@@ -115,8 +115,9 @@ export const Profile: React.FC = () => {
       await refreshUser();
       success('Profile updated');
       setShowEditProfile(false);
-    } catch (error: any) {
-      showError('Update failed', error.message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      showError('Update failed', message);
     } finally {
       setIsUpdating(false);
     }
@@ -144,8 +145,9 @@ export const Profile: React.FC = () => {
       await refetch();
       success('Data cleared', 'All your transactions and friends have been removed.');
       setShowClearConfirm(false);
-    } catch (error: any) {
-      showError('Failed to clear data', error.message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      showError('Failed to clear data', message);
     } finally {
       setIsUpdating(false);
     }

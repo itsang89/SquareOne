@@ -22,6 +22,7 @@ export function useNumberCounter(
   useEffect(() => {
     // If reduced motion, update instantly
     if (prefersReducedMotion) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDisplayValue(targetValue);
       previousValueRef.current = targetValue;
       return;

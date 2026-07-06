@@ -31,6 +31,6 @@ export function evaluateExpression(expr: string): string {
     // Format to max 2 decimal places
     return (Math.round(result * 100) / 100).toString();
   } catch {
-    return expr;
+    return '0';
   }
 }

@@ -1,26 +1,26 @@
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { Transition, Variants } from 'framer-motion';
+
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
+
+function subscribeToReducedMotion(callback: () => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  const mql = window.matchMedia(REDUCED_MOTION_QUERY);
+  mql.addEventListener('change', callback);
+  return () => mql.removeEventListener('change', callback);
+}
+
+function readReducedMotion(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia(REDUCED_MOTION_QUERY).matches;
+}
 
 /**
  * Hook to detect if user prefers reduced motion
  * Returns true if reduced motion is preferred
  */
 export function useReducedMotion(): boolean {
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setPrefersReducedMotion(mediaQuery.matches);
-
-    const handleChange = (event: MediaQueryListEvent) => {
-      setPrefersReducedMotion(event.matches);
-    };
-
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
-
-  return prefersReducedMotion;
+  return useSyncExternalStore(subscribeToReducedMotion, readReducedMotion, () => false);
 }
 
 /**

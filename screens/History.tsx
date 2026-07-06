@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, Filter, Pencil, Trash2 } from 'lucide-react';
@@ -31,19 +31,19 @@ export const History: React.FC = () => {
   const { success, error: showError } = useToast();
   const { getVariants, getTransition } = useAnimations();
   
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
   const [sortBy, setSortBy] = useState<SortType>('date');
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  useTimeout(() => setDeletingId(null), deletingId ? 3000 : null, [deletingId]);
-
-  useEffect(() => {
+  const [prevLocationKey, setPrevLocationKey] = useState(location.key);
+  if (prevLocationKey !== location.key) {
+    setPrevLocationKey(location.key);
     const q = (location.state as HistoryLocationState | null)?.historySearchQuery;
-    if (typeof q === 'string') {
-      setSearchQuery(q);
-    }
-  }, [location.key, location.state]);
+    if (typeof q === 'string') setSearchQuery(q);
+  }
+
+  useTimeout(() => setDeletingId(null), deletingId ? 3000 : null, [deletingId]);
 
   const handleEdit = (tx: Transaction) => {
     navigate('/add', { state: { editTransaction: tx } });

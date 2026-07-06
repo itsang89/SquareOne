@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { formatDate } from '../../utils/formatters';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { NeoModal } from '../NeoModal';
 import { NeoButton } from '../NeoButton';
 

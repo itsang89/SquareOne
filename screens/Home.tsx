@@ -234,7 +234,10 @@ export const Home: React.FC = () => {
                       <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fontSize: 9 }} tickFormatter={(v) => `$${v}`} width={38} axisLine={false} tickLine={false} />
                       <Tooltip
-                        formatter={(v: number) => [formatCurrency(v), 'You paid']}
+                        formatter={(v: number | string | undefined) => [
+                          formatCurrency(typeof v === 'number' ? v : 0),
+                          'You paid',
+                        ]}
                         contentStyle={{ border: '2px solid black', borderRadius: 0, fontWeight: 700, fontSize: 12 }}
                         cursor={{ fill: 'rgba(0,0,0,0.05)' }}
                       />

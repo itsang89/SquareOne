@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-export function useTimeout(callback: () => void, delay: number | null, deps: any[] = []) {
+export function useTimeout(callback: () => void, delay: number | null, deps: readonly unknown[] = []) {
   const savedCallback = useRef(callback);
 
   useEffect(() => {
@@ -12,5 +12,6 @@ export function useTimeout(callback: () => void, delay: number | null, deps: any
       const id = setTimeout(() => savedCallback.current(), delay);
       return () => clearTimeout(id);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [delay, ...deps]);
 }

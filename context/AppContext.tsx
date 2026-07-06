@@ -224,13 +224,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!customTypesError) {
         setCustomTypes((customTypesData || []).map((r: { name: string }) => r.name));
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Unexpected error loading data:', err);
       // Set empty data instead of throwing
       setFriends([]);
       setTransactions([]);
       setCustomTypes([]);
-      setError(err instanceof Error ? err : new Error(err.message || 'Failed to load data'));
+      setError(err instanceof Error ? err : new Error(String(err) || 'Failed to load data'));
     } finally {
       setLoading(false);
     }
@@ -293,6 +293,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .subscribe();
 
     return () => {
+      if (realtimeRefreshTimer.current) {
+        clearTimeout(realtimeRefreshTimer.current);
+        realtimeRefreshTimer.current = null;
+      }
       supabase.removeChannel(friendsChannel);
       supabase.removeChannel(transactionsChannel);
       supabase.removeChannel(customTypesChannel);
@@ -413,9 +417,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Optimistic update handled by real-time subscription or manual refresh
       await loadData();
       return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error adding transaction:', err);
-      return { success: false, error: err instanceof Error ? err : new Error(err.message || 'Failed to add transaction') };
+      return { success: false, error: err instanceof Error ? err : new Error(String(err) || 'Failed to add transaction') };
     } finally {
       setIsProcessing(false);
     }
@@ -458,9 +462,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       await loadData();
       return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error updating transaction:', err);
-      return { success: false, error: err instanceof Error ? err : new Error(err.message || 'Failed to update transaction') };
+      return { success: false, error: err instanceof Error ? err : new Error(String(err) || 'Failed to update transaction') };
     } finally {
       setIsProcessing(false);
     }
@@ -496,7 +500,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setIsProcessing(true);
     try {
-      const dbUpdates: any = {};
+      const dbUpdates: { name?: string; avatar?: string } = {};
       if (updates.name !== undefined) dbUpdates.name = updates.name;
       if (updates.avatar !== undefined) dbUpdates.avatar = updates.avatar;
 
@@ -510,9 +514,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       await loadData();
       return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error updating friend:', err);
-      return { success: false, error: err instanceof Error ? err : new Error(err.message || 'Failed to update friend') };
+      return { success: false, error: err instanceof Error ? err : new Error(String(err) || 'Failed to update friend') };
     } finally {
       setIsProcessing(false);
     }
@@ -550,9 +554,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       await loadData();
       return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error deleting transaction:', err);
-      return { success: false, error: err instanceof Error ? err : new Error(err.message || 'Failed to delete transaction') };
+      return { success: false, error: err instanceof Error ? err : new Error(String(err) || 'Failed to delete transaction') };
     } finally {
       setIsProcessing(false);
     }
@@ -596,9 +600,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       await loadData();
       return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error adding friend:', err);
-      return { success: false, error: err instanceof Error ? err : new Error(err.message || 'Failed to add friend') };
+      return { success: false, error: err instanceof Error ? err : new Error(String(err) || 'Failed to add friend') };
     } finally {
       setIsProcessing(false);
     }
@@ -646,9 +650,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       await loadData();
       return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error deleting friend:', err);
-      return { success: false, error: err instanceof Error ? err : new Error(err.message || 'Failed to delete friend') };
+      return { success: false, error: err instanceof Error ? err : new Error(String(err) || 'Failed to delete friend') };
     } finally {
       setIsProcessing(false);
     }

@@ -37,6 +37,7 @@ const AddTransactionInner: React.FC<AddTransactionInnerProps> = ({ editTransacti
   const [showNoteModal, setShowNoteModal] = useState(false);
 
   const stayOnPageRef = useRef(false);
+  const [pendingAction, setPendingAction] = useState<'stay' | 'save' | null>(null);
 
   const effectiveCustomTypes = useMemo(() => {
     const t = editTransaction?.type;
@@ -151,11 +152,14 @@ const AddTransactionInner: React.FC<AddTransactionInnerProps> = ({ editTransacti
       } else {
         showError('Failed to add transaction', result.error?.message);
       }
+      setPendingAction(null);
     },
   });
 
   const handleSubmitRef = useRef(handleSubmit);
-  handleSubmitRef.current = handleSubmit;
+  useEffect(() => {
+    handleSubmitRef.current = handleSubmit;
+  });
 
   const appliedPrefillRef = useRef(false);
   useEffect(() => {
@@ -313,10 +317,11 @@ const AddTransactionInner: React.FC<AddTransactionInnerProps> = ({ editTransacti
               fullWidth
               onClick={() => {
                 stayOnPageRef.current = true;
+                setPendingAction('stay');
                 handleSubmit();
               }}
               variant="secondary"
-              isLoading={isSubmitting && stayOnPageRef.current}
+              isLoading={isSubmitting && pendingAction === 'stay'}
             >
               Save & Add +
             </NeoButton>
@@ -325,10 +330,11 @@ const AddTransactionInner: React.FC<AddTransactionInnerProps> = ({ editTransacti
             fullWidth
             onClick={() => {
               stayOnPageRef.current = false;
+              setPendingAction('save');
               handleSubmit();
             }}
             variant="primary"
-            isLoading={isSubmitting && !stayOnPageRef.current}
+            isLoading={isSubmitting && pendingAction === 'save'}
           >
             Save Transaction
           </NeoButton>

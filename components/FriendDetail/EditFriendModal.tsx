@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { PRESET_AVATARS } from '../../constants';
 import { NeoModal } from '../NeoModal';
 import { NeoInput } from '../NeoInput';
@@ -22,13 +22,6 @@ export const EditFriendModal: React.FC<EditFriendModalProps> = ({
 }) => {
   const [name, setName] = useState(friend.name);
   const [avatar, setAvatar] = useState(friend.avatar);
-
-  useEffect(() => {
-    if (isOpen) {
-      setName(friend.name);
-      setAvatar(friend.avatar);
-    }
-  }, [isOpen, friend]);
 
   const handleSave = async () => {
     if (name.trim()) {

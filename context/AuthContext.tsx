@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { User as SupabaseUser, Session } from '@supabase/supabase-js';
+import { User as SupabaseUser, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../utils/supabase';
 import { clearGuestLocalData, readGuestSnapshot } from '../utils/guestStorage';
 import { toDbTransaction } from '../utils/transactions';
@@ -14,10 +14,10 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   isProcessing: boolean;
-  signInWithPassword: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, name?: string) => Promise<{ error: any }>;
-  signInWithGoogle: () => Promise<{ error: any }>;
-  signInWithApple: () => Promise<{ error: any }>;
+  signInWithPassword: (email: string, password: string) => Promise<{ error: AuthError | Error | null }>;
+  signUp: (email: string, password: string, name?: string) => Promise<{ error: AuthError | Error | null }>;
+  signInWithGoogle: () => Promise<{ error: AuthError | Error | null }>;
+  signInWithApple: () => Promise<{ error: AuthError | Error | null }>;
   signInAsGuest: () => void;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -218,9 +218,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       return { error: null };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Sign in error:', error);
-      return { error };
+      return { error: error instanceof Error ? new Error(error.message) : null };
     } finally {
       setIsProcessing(false);
       isLoadingProfileRef.current = false;
@@ -230,7 +230,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (email: string, password: string, name?: string) => {
     setIsProcessing(true);
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {

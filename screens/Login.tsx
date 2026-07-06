@@ -8,7 +8,7 @@ import { NeoCard } from '../components/NeoCard';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ToastContext';
 import { isValidEmail } from '../utils/validation';
-import { springs, slideInRight, slideInLeft, staggerContainer, staggerItem } from '../utils/animations';
+import { springs, staggerContainer, staggerItem } from '../utils/animations';
 import { useAnimations } from '../hooks/useAnimations';
 
 export const Login: React.FC = () => {

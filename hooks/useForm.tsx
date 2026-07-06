@@ -6,16 +6,16 @@ interface FormConfig<T> {
   onSubmit: (values: T) => Promise<void>;
 }
 
-export function useForm<T extends Record<string, any>>({ 
-  initialValues, 
-  validate, 
-  onSubmit 
+export function useForm<T extends Record<string, unknown>>({
+  initialValues,
+  validate,
+  onSubmit
 }: FormConfig<T>) {
   const [values, setValues] = useState<T>(initialValues);
   const [errors, setErrors] = useState<Partial<Record<keyof T, string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = useCallback((name: keyof T, value: any) => {
+  const handleChange = useCallback((name: keyof T, value: T[keyof T]) => {
     setValues(prev => ({ ...prev, [name]: value }));
     // Clear error when field changes
     if (errors[name]) {

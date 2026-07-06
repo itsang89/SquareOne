@@ -11,7 +11,7 @@ import { calculateFriendBalance } from '../utils/calculations';
 import { Transaction } from '../types';
 import { useToast } from '../components/ToastContext';
 import { DatePicker } from '../components/AddTransaction/DatePicker';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { formatDate } from '../utils/formatters';
 import { AnimatedNumber } from '../components/AnimatedNumber';
 import { springs } from '../utils/animations';
 import { celebrateSettlement } from '../utils/confetti';
@@ -106,8 +106,9 @@ export const SettleUp: React.FC = () => {
       } else {
         showError('Settlement failed', result.error?.message);
       }
-    } catch (error: any) {
-      showError('Something went wrong', error.message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      showError('Something went wrong', message);
     } finally {
       setIsSubmitting(false);
     }

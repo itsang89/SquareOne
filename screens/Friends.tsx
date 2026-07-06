@@ -75,8 +75,8 @@ export const Friends: React.FC = () => {
       } else {
         showError('Failed to add friend', result.error?.message);
       }
-    } catch (error: any) {
-      showError('Error', error.message);
+    } catch (error: unknown) {
+      showError('Error', error instanceof Error ? error.message : String(error));
     } finally {
       setIsAdding(false);
     }

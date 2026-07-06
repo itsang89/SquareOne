@@ -37,6 +37,9 @@ export const BottomNav: React.FC = () => {
   const excludedPaths = ['/', '/login', '/add', '/settle'];
   if (excludedPaths.includes(path) || path.startsWith('/settle')) return null;
 
+  const friendMatch = path.match(/^\/friends\/([^/]+)$/);
+  const preselectedFriendId = friendMatch ? friendMatch[1] : undefined;
+
   return (
     <nav 
       className="fixed bottom-0 left-0 w-full bg-white dark:bg-zinc-900 border-t-2 border-black z-50 h-[80px] pb-4 shadow-[0_-4px_0_0_rgba(0,0,0,0.05)]"
@@ -48,8 +51,9 @@ export const BottomNav: React.FC = () => {
         
         {/* Floating Add Button Wrapper */}
         <div className="relative -top-6">
-            <Link 
-              to="/add" 
+            <Link
+              to="/add"
+              state={preselectedFriendId ? { preselectedFriendId } : undefined}
               className="flex items-center justify-center w-16 h-16 bg-neo-green border-2 border-black shadow-neo hover:scale-105 active:shadow-neo-pressed active:translate-y-[4px] active:translate-x-[4px] transition-all"
               aria-label="Add Transaction"
             >

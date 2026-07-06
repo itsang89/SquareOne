@@ -18,13 +18,14 @@ import { TRANSACTION_TAGS } from '../constants';
 
 const PRESET_TYPE_LABELS = new Set(TRANSACTION_TAGS.map((t) => t.label));
 
-type AddLocationState = { editTransaction?: Transaction } | null | undefined;
+type AddLocationState = { editTransaction?: Transaction; preselectedFriendId?: string } | null | undefined;
 
 interface AddTransactionInnerProps {
   editTransaction?: Transaction;
+  preselectedFriendId?: string;
 }
 
-const AddTransactionInner: React.FC<AddTransactionInnerProps> = ({ editTransaction }) => {
+const AddTransactionInner: React.FC<AddTransactionInnerProps> = ({ editTransaction, preselectedFriendId }) => {
   const navigate = useNavigate();
   const { friends, addTransaction, updateTransaction, customTypes, addCustomType } = useAppContext();
   const { success, error: showError } = useToast();
@@ -65,13 +66,16 @@ const AddTransactionInner: React.FC<AddTransactionInnerProps> = ({ editTransacti
         : {
             amount: '0',
             direction: 'they-owe' as const,
-            selectedFriendId: null as string | null,
+            selectedFriendId:
+              preselectedFriendId && friends.some((f) => f.id === preselectedFriendId)
+                ? preselectedFriendId
+                : null,
             selectedTag: null as TransactionType | null,
             date: new Date().toISOString().split('T')[0],
             note: '',
             customTitle: '',
           },
-    [editTransaction]
+    [editTransaction, preselectedFriendId, friends]
   );
 
   const {
@@ -349,9 +353,15 @@ const AddTransactionInner: React.FC<AddTransactionInnerProps> = ({ editTransacti
 
 export const AddTransaction: React.FC = () => {
   const location = useLocation();
-  const editTransaction = (location.state as AddLocationState)?.editTransaction;
+  const state = location.state as AddLocationState;
+  const editTransaction = state?.editTransaction;
+  const preselectedFriendId = state?.preselectedFriendId;
 
   return (
-    <AddTransactionInner key={editTransaction?.id ?? 'new'} editTransaction={editTransaction} />
+    <AddTransactionInner
+      key={editTransaction?.id ?? (preselectedFriendId ? `prefill-${preselectedFriendId}` : 'new')}
+      editTransaction={editTransaction}
+      preselectedFriendId={preselectedFriendId}
+    />
   );
 };

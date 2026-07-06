@@ -13,7 +13,7 @@ import { TransactionSkeleton } from '../components/LoadingSkeleton';
 import { formatCurrency } from '../utils/formatters';
 import { staggerContainer, staggerItem, springs } from '../utils/animations';
 import { useAnimations } from '../hooks/useAnimations';
-import { matchesTransactionQuery, normalizeSearchQuery } from '../utils/search';
+import { matchesTransactionQuery, normalizeSearchQuery, getTransactionCounterparty } from '../utils/search';
 import { useSearch } from '../context/SearchContext';
 
 type FilterType = 'All' | 'Poker' | 'Meals' | 'Loans' | 'Unsettled';
@@ -243,18 +243,10 @@ export const History: React.FC = () => {
                     animate="visible"
                   >
                     {txs.map(tx => {
-                    let friend = null;
-                    let friendIdForGraying = null;
-                    if (tx.friendId !== 'me') {
-                      friend = friends.find(f => f.id === tx.friendId);
-                      friendIdForGraying = tx.friendId;
-                    } else if (tx.payerId !== 'me') {
-                      friend = friends.find(f => f.id === tx.payerId);
-                      friendIdForGraying = tx.payerId;
-                    }
+                    const { friend, counterpartyId: friendIdForGraying } = getTransactionCounterparty(tx, friends);
                     const friendName = friend?.name || 'Unknown';
                     const friendAvatar = friend?.avatar || '';
-                    
+
                     const isGrayed = friendIdForGraying ? shouldGrayTransaction(tx, friendIdForGraying, transactions) : false;
                     
                     return (

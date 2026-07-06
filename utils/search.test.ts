@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   filterFriendsByQuery,
   filterTransactionsByQuery,
+  getTransactionCounterparty,
   matchesTransactionQuery,
   normalizeSearchQuery,
   searchAll,
@@ -80,5 +81,34 @@ describe('searchAll', () => {
     const r = searchAll(friends, [tx1], 'alex');
     expect(r.friends).toHaveLength(1);
     expect(r.transactions).toHaveLength(1);
+  });
+});
+
+describe('getTransactionCounterparty', () => {
+  it('returns the friend referenced by friendId when it is not "me"', () => {
+    const { friend, counterpartyId } = getTransactionCounterparty(tx1, friends);
+    expect(friend?.id).toBe('f1');
+    expect(counterpartyId).toBe('f1');
+  });
+
+  it('falls back to payerId when friendId is "me"', () => {
+    const flipped: Transaction = { ...tx1, payerId: 'f2', friendId: 'me' };
+    const { friend, counterpartyId } = getTransactionCounterparty(flipped, friends);
+    expect(friend?.id).toBe('f2');
+    expect(counterpartyId).toBe('f2');
+  });
+
+  it('returns undefined friend and null id when both sides are "me"', () => {
+    const self: Transaction = { ...tx1, payerId: 'me', friendId: 'me' };
+    const { friend, counterpartyId } = getTransactionCounterparty(self, friends);
+    expect(friend).toBeUndefined();
+    expect(counterpartyId).toBeNull();
+  });
+
+  it('resolves friend as undefined when the uuid is not in the friends list', () => {
+    const orphan: Transaction = { ...tx1, friendId: 'unknown-uuid' };
+    const { friend, counterpartyId } = getTransactionCounterparty(orphan, friends);
+    expect(friend).toBeUndefined();
+    expect(counterpartyId).toBe('unknown-uuid');
   });
 });

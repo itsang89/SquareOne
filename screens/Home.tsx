@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { calculateTotalOwed, calculateTotalOwing, calculateNetBalance, calculateDebtOrigins, calculateMonthlyTotals, shouldGrayTransaction } from '../utils/calculations';
+import { getTransactionCounterparty } from '../utils/search';
 import { Transaction } from '../types';
 import { useTimeout } from '../hooks/useTimeout';
 import { useToast } from '../components/ToastContext';
@@ -259,15 +260,7 @@ export const Home: React.FC = () => {
              ) : recentTransactions.length > 0 ? (
                <div className="flex flex-col gap-3">
                   {recentTransactions.map(tx => {
-                    let friend = null;
-                    let friendIdForGraying = null;
-                    if (tx.friendId !== 'me') {
-                      friend = friends.find(f => f.id === tx.friendId);
-                      friendIdForGraying = tx.friendId;
-                    } else if (tx.payerId !== 'me') {
-                      friend = friends.find(f => f.id === tx.payerId);
-                      friendIdForGraying = tx.payerId;
-                    }
+                    const { friend, counterpartyId: friendIdForGraying } = getTransactionCounterparty(tx, friends);
                     const friendName = friend ? friend.name : 'Unknown';
                     const isGrayed = friendIdForGraying ? shouldGrayTransaction(tx, friendIdForGraying, transactions) : false;
                     

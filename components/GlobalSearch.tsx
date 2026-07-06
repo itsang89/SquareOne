@@ -5,7 +5,7 @@ import { Search, X } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { useSearch } from '../context/SearchContext';
 import { NeoInput, Avatar } from './NeoComponents';
-import { searchAll } from '../utils/search';
+import { searchAll, getTransactionCounterparty } from '../utils/search';
 import { formatCurrency } from '../utils/formatters';
 import type { Friend, Transaction } from '../types';
 import { modalBackdrop, modalContent } from '../utils/animations';
@@ -165,12 +165,7 @@ export const GlobalSearch: React.FC = () => {
                       </h3>
                       <ul className="space-y-2">
                         {txMatches.map((tx) => {
-                          let friend: Friend | undefined;
-                          if (tx.friendId !== 'me') {
-                            friend = friends.find((x) => x.id === tx.friendId);
-                          } else if (tx.payerId !== 'me') {
-                            friend = friends.find((x) => x.id === tx.payerId);
-                          }
+                          const { friend } = getTransactionCounterparty(tx, friends);
                           const name = friend?.name ?? 'Unknown';
                           return (
                             <li key={tx.id}>

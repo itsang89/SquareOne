@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '../utils/supabase';
 import { clearGuestLocalData, readGuestSnapshot } from '../utils/guestStorage';
+import { toDbTransaction } from '../utils/transactions';
 import { User } from '../types';
 
 // Build the hash-based redirect URL so Supabase lands inside the HashRouter SPA.
@@ -47,18 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: f.name,
         avatar: f.avatar,
       }));
-      const transactionRows = snapshot.transactions.map(tx => ({
-        id: tx.id,
-        user_id: uid,
-        title: tx.title,
-        amount: tx.amount,
-        date: tx.date,
-        type: tx.type,
-        payer_id: tx.payerId === 'me' ? uid : tx.payerId,
-        friend_id: tx.friendId === 'me' ? tx.payerId : tx.friendId,
-        note: tx.note ?? null,
-        is_settlement: tx.isSettlement ?? false,
-      }));
+      const transactionRows = snapshot.transactions.map(tx => toDbTransaction(tx, uid));
       await Promise.all([
         supabase.from('friends').upsert(friendRows, { ignoreDuplicates: true }),
         supabase.from('transactions').upsert(transactionRows, { ignoreDuplicates: true }),

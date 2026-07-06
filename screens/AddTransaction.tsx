@@ -85,6 +85,7 @@ const AddTransactionInner: React.FC<AddTransactionInnerProps> = ({ editTransacti
     handleChange,
     handleSubmit,
     resetForm,
+    setValues,
   } = useForm({
     initialValues,
     validate: (v) => {
@@ -155,6 +156,15 @@ const AddTransactionInner: React.FC<AddTransactionInnerProps> = ({ editTransacti
 
   const handleSubmitRef = useRef(handleSubmit);
   handleSubmitRef.current = handleSubmit;
+
+  const appliedPrefillRef = useRef(false);
+  useEffect(() => {
+    if (appliedPrefillRef.current) return;
+    if (!preselectedFriendId || editTransaction) return;
+    if (!friends.some((f) => f.id === preselectedFriendId)) return;
+    appliedPrefillRef.current = true;
+    setValues((prev) => ({ ...prev, selectedFriendId: preselectedFriendId }));
+  }, [preselectedFriendId, editTransaction, friends, setValues]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {

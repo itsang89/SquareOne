@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { formatDate } from '../../utils/formatters';
 import { NeoModal } from '../NeoModal';
-import { NeoButton } from '../NeoComponents';
+import { NeoButton } from '../NeoButton';
 
 interface DatePickerProps {
   selectedDate: string;

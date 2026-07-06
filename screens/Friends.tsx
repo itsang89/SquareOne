@@ -1,7 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserPlus, ArrowUpRight, ArrowDownLeft, Check, Search } from 'lucide-react';
-import { Avatar, NeoButton, NeoModal, NeoInput } from '../components/NeoComponents';
+import { NeoButton } from '../components/NeoButton';
+import { NeoModal } from '../components/NeoModal';
+import { NeoInput } from '../components/NeoInput';
+import { Avatar } from '../components/Avatar';
 import { DataLoadErrorBanner } from '../components/DataLoadErrorBanner';
 import { useAppContext } from '../context/AppContext';
 import { FriendSkeleton } from '../components/LoadingSkeleton';

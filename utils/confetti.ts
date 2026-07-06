@@ -46,31 +46,3 @@ export function celebrateSettlement() {
     startVelocity: 45,
   });
 }
-
-/**
- * Quick celebration burst for smaller wins
- */
-export function quickCelebration() {
-  confetti({
-    particleCount: 100,
-    spread: 70,
-    origin: { y: 0.6 },
-    zIndex: 9999,
-  });
-}
-
-/**
- * Confetti from a specific element position
- */
-export function celebrateFromElement(element: HTMLElement) {
-  const rect = element.getBoundingClientRect();
-  const x = (rect.left + rect.width / 2) / window.innerWidth;
-  const y = (rect.top + rect.height / 2) / window.innerHeight;
-
-  confetti({
-    particleCount: 150,
-    spread: 80,
-    origin: { x, y },
-    zIndex: 9999,
-  });
-}

@@ -47,13 +47,3 @@ export interface ExpenseChartData {
   color: string;
   [key: string]: unknown;
 }
-
-export interface AuthResult {
-  success: boolean;
-  error?: Error;
-}
-
-export interface AppActionResult {
-  success: boolean;
-  error?: Error;
-}

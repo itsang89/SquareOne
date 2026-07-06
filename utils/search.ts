@@ -6,16 +6,38 @@ export function normalizeSearchQuery(raw: string): string {
 }
 
 /**
- * Resolves the counterparty friend name for search (same logic as History).
+ * Resolves the counterparty friend for a transaction. The frontend
+ * `Transaction` shape uses the sentinel `'me'` for the signed-in user; the
+ * other side carries the friend UUID. This helper unwraps both cases and
+ * returns the resolved friend (or undefined if neither side points at a
+ * friend) plus the UUID that was used to find them.
+ *
+ * Resolution order, matching the inline copies in Home / History / Search:
+ *   1. tx.friendId !== 'me'  -> counterparty is the friend named by friendId
+ *   2. tx.payerId  !== 'me'  -> counterparty is the friend named by payerId
+ *   3. otherwise              -> no friend (self-transfer; shouldn't occur)
+ */
+export function getTransactionCounterparty(
+  tx: Transaction,
+  friends: Friend[],
+): { friend: Friend | undefined; counterpartyId: string | null } {
+  if (tx.friendId !== 'me') {
+    const friend = friends.find((f) => f.id === tx.friendId);
+    return { friend, counterpartyId: tx.friendId };
+  }
+  if (tx.payerId !== 'me') {
+    const friend = friends.find((f) => f.id === tx.payerId);
+    return { friend, counterpartyId: tx.payerId };
+  }
+  return { friend: undefined, counterpartyId: null };
+}
+
+/**
+ * Lowercased counterparty name for search filtering.
+ * Thin wrapper over `getTransactionCounterparty`.
  */
 export function getTransactionCounterpartyName(tx: Transaction, friends: Friend[]): string {
-  let friend: Friend | undefined;
-  if (tx.friendId !== 'me') {
-    friend = friends.find((f) => f.id === tx.friendId);
-  } else if (tx.payerId !== 'me') {
-    friend = friends.find((f) => f.id === tx.payerId);
-  }
-  return friend?.name.toLowerCase() ?? '';
+  return getTransactionCounterparty(tx, friends).friend?.name.toLowerCase() ?? '';
 }
 
 /**

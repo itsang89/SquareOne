@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { TRANSACTION_TAGS } from '../../constants';
 import { TransactionType } from '../../types';
 import { NeoModal } from '../NeoModal';
-import { NeoInput, NeoButton } from '../NeoComponents';
+import { NeoInput } from '../NeoInput';
+import { NeoButton } from '../NeoButton';
 
 interface TypeSelectorProps {
   selectedType: TransactionType | null;

@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Settings, Moon, Sun, Monitor, Download, Trash2, HelpCircle, ArrowRight, Edit3, LogOut } from 'lucide-react';
-import { NeoCard, Avatar, NeoButton, NeoInput, NeoModal } from '../components/NeoComponents';
+import { NeoButton } from '../components/NeoButton';
+import { NeoInput } from '../components/NeoInput';
+import { NeoModal } from '../components/NeoModal';
+import { NeoCard } from '../components/NeoCard';
+import { Avatar } from '../components/Avatar';
 import { HowToUseModal } from '../components/HowToUseModal';
 import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';

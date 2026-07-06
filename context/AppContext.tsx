@@ -11,6 +11,7 @@ import {
   readCustomTypesFromLocal,
   writeCustomTypesToLocal,
 } from '../utils/customTypesStorage';
+import { toDbTransaction } from '../utils/transactions';
 import { AuthContext } from './AuthContext';
 
 function transactionInvolvesFriend(t: Transaction, friendId: string): boolean {
@@ -401,18 +402,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setIsProcessing(true);
     try {
-      const dbTransaction = {
-        id: transaction.id,
-        user_id: user.id,
-        title: transaction.title,
-        amount: transaction.amount,
-        date: transaction.date,
-        type: transaction.type,
-        payer_id: transaction.payerId === 'me' ? user.id : (transaction.friendId === 'me' ? transaction.payerId : transaction.payerId),
-        friend_id: transaction.friendId === 'me' ? transaction.payerId : transaction.friendId,
-        note: transaction.note || null,
-        is_settlement: transaction.isSettlement || false,
-      };
+      const dbTransaction = toDbTransaction(transaction, user.id);
 
       const { error } = await supabase
         .from('transactions')
@@ -458,18 +448,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setIsProcessing(true);
     try {
-      const dbTransaction = {
-        id: transaction.id,
-        user_id: user.id,
-        title: transaction.title,
-        amount: transaction.amount,
-        date: transaction.date,
-        type: transaction.type,
-        payer_id: transaction.payerId === 'me' ? user.id : (transaction.friendId === 'me' ? transaction.payerId : transaction.payerId),
-        friend_id: transaction.friendId === 'me' ? transaction.payerId : transaction.friendId,
-        note: transaction.note || null,
-        is_settlement: transaction.isSettlement || false,
-      };
+      const dbTransaction = toDbTransaction(transaction, user.id);
 
       const { error } = await supabase
         .from('transactions')

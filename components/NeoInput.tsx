@@ -20,7 +20,7 @@ export const NeoInput: React.FC<NeoInputProps> = ({
   const controls = useAnimation();
   const { getVariants, getTransition } = useAnimations();
   const previousError = useRef(error);
-  
+
   // Trigger shake animation when error appears
   useEffect(() => {
     if (error && error !== previousError.current) {
@@ -28,7 +28,7 @@ export const NeoInput: React.FC<NeoInputProps> = ({
     }
     previousError.current = error;
   }, [error, controls]);
-  
+
   return (
     <div className={`${widthClass} mb-4`}>
       {label && (
@@ -50,59 +50,7 @@ export const NeoInput: React.FC<NeoInputProps> = ({
         {...props}
       />
       {error && (
-        <motion.span 
-          className="block mt-1 text-neo-red text-xs font-black uppercase tracking-tight"
-          variants={getVariants(fadeInDown)}
-          initial="hidden"
-          animate="visible"
-          transition={getTransition(springs.gentle)}
-        >
-          {error}
-        </motion.span>
-      )}
-    </div>
-  );
-};
-
-export const NeoTextArea: React.FC<Omit<HTMLMotionProps<'textarea'>, 'ref'> & { label?: string; error?: string }> = ({
-  label,
-  error,
-  className = '',
-  ...props
-}) => {
-  const controls = useAnimation();
-  const { getVariants, getTransition } = useAnimations();
-  const previousError = useRef(error);
-  
-  useEffect(() => {
-    if (error && error !== previousError.current) {
-      controls.start('shake');
-    }
-    previousError.current = error;
-  }, [error, controls]);
-  
-  return (
-    <div className="w-full mb-4">
-      {label && (
-        <label className="block font-black uppercase text-sm mb-1 tracking-wider dark:text-white">
-          {label}
-        </label>
-      )}
-      <motion.textarea
-        className={`
-          w-full
-          border-2 border-black p-3
-          font-bold placeholder:text-gray-400 dark:placeholder:text-zinc-500
-          focus:outline-none focus:ring-0 focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-shadow min-h-[100px]
-          ${error ? 'bg-neo-red/10 border-neo-red' : 'bg-white dark:bg-zinc-900 dark:text-zinc-100'}
-          ${className}
-        `}
-        variants={getVariants(shakeX)}
-        animate={controls}
-        {...props}
-      />
-      {error && (
-        <motion.span 
+        <motion.span
           className="block mt-1 text-neo-red text-xs font-black uppercase tracking-tight"
           variants={getVariants(fadeInDown)}
           initial="hidden"

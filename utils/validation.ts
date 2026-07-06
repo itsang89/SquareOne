@@ -21,10 +21,3 @@ export function isValidAmount(amount: string | number): boolean {
   const num = parseFloat(evaluated);
   return !isNaN(num) && num > 0;
 }
-
-/**
- * Validate required string
- */
-export function isRequired(value: string | null | undefined): boolean {
-  return !!value && value.trim().length > 0;
-}

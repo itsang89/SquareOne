@@ -1,7 +1,7 @@
 import React from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 import { Friend } from '../../types';
-import { Avatar } from '../NeoComponents';
+import { Avatar } from '../Avatar';
 
 interface FriendSelectorProps {
   friends: Friend[];

@@ -23,7 +23,7 @@ const Profile = lazy(() => import('./screens/Profile').then(m => ({ default: m.P
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
 
-  if (loading) {
+  if (loading && !user) {
     return <FullPageLoading />;
   }
 

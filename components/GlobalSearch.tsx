@@ -10,15 +10,7 @@ import { formatCurrency } from '../utils/formatters';
 import type { Friend, Transaction } from '../types';
 import { modalBackdrop, modalContent } from '../utils/animations';
 import { useAnimations } from '../hooks/useAnimations';
-
-const FOCUSABLE = [
-  'button:not([disabled])',
-  '[href]',
-  'input:not([disabled])',
-  'select:not([disabled])',
-  'textarea:not([disabled])',
-  '[tabindex]:not([tabindex="-1"])',
-].join(',');
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 const DEBOUNCE_MS = 220;
 
@@ -29,7 +21,6 @@ export const GlobalSearch: React.FC = () => {
   const { getVariants } = useAnimations();
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   const [input, setInput] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -53,6 +44,8 @@ export const GlobalSearch: React.FC = () => {
   const hasQuery = debounced.trim().length > 0;
   const noResults = hasQuery && friendMatches.length === 0 && txMatches.length === 0;
 
+  useFocusTrap(dialogRef, open, closeSearch, { initialFocusDelay: 'raf' });
+
   useEffect(() => {
     const onShortcut = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey) || e.key !== 'k') return;
@@ -64,45 +57,6 @@ export const GlobalSearch: React.FC = () => {
     window.addEventListener('keydown', onShortcut);
     return () => window.removeEventListener('keydown', onShortcut);
   }, [openSearch]);
-
-  useEffect(() => {
-    if (!open) return;
-
-    previousFocusRef.current = document.activeElement as HTMLElement;
-    const dialog = dialogRef.current;
-    if (dialog) {
-      const firstFocusable = dialog.querySelector<HTMLElement>(FOCUSABLE);
-      requestAnimationFrame(() => firstFocusable?.focus());
-    }
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        closeSearch();
-        return;
-      }
-      if (e.key !== 'Tab' || !dialog) return;
-      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE));
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey) {
-        if (document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        }
-      } else if (document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      previousFocusRef.current?.focus();
-    };
-  }, [open, closeSearch]);
 
   const goFriend = (f: Friend) => {
     closeSearch();

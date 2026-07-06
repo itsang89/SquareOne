@@ -37,21 +37,26 @@ All screen-level routes are **code-split** via `React.lazy` in `App.tsx`; Vite `
 
 ### State Management
 
-Two React Context providers hold all global state:
+Four React Context providers hold all global state:
 
 **`AuthContext`** (`context/AuthContext.tsx`)
 - Holds `user: User | null` and `session`.
 - `user.id === 'guest'` is the sentinel for guest mode — no Supabase calls anywhere.
 - Profile load uses `Promise.race` with a 5 s timeout and a `profileRequestIdRef` counter to discard stale responses from superseded requests.
+- `migrateGuestData(uid)` runs before clearing guest data — see Guest Mode below.
 - Auth redirect URLs always use the hash form via `authRedirectTo`.
 
 **`AppContext`** (`context/AppContext.tsx`)
 - Holds `friends`, `transactions`, `customTypes`, `loading`, `error`, `isProcessing`.
 - On mount, branches on `user.id === 'guest'`: guest reads/writes `localStorage` via `utils/guestStorage.ts`; authenticated reads/writes Supabase.
-- For authenticated sessions, subscribes to three Supabase Realtime channels (`friends-changes`, `transactions-changes`, `custom-types-changes`). Each fires `loadData()` on any row change.
+- For authenticated sessions, subscribes to three Supabase Realtime channels (`friends-changes`, `transactions-changes`, `custom-types-changes`). All three feed a single 400 ms debounced refresh (`scheduleRealtimeRefresh`) that calls `loadData()`.
 - `loadedUserIdRef` prevents showing the loading skeleton on background refreshes after first load.
 - On partial query failure, `error` is set but the successful snapshot is preserved (never overwritten with `[]`). `transactionsRef` keeps the last good transactions for balance calculations when only the transactions query fails.
 - All CRUD methods return `{ success: boolean; error?: Error }`.
+
+**`SearchContext`** (`context/SearchContext.tsx`) — single `open` flag + `openSearch()`/`closeSearch()` for the global command palette (`components/GlobalSearch.tsx`).
+
+**`ToastContext`** (`context/ToastContext.tsx`) — `useToast()` hook with `success()`/`error()`/`show()`, auto-dismissing after 5 s.
 
 ### Data / DB Field Mapping
 
@@ -62,21 +67,26 @@ The frontend `Transaction` type uses camelCase (`payerId`, `friendId`, `isSettle
 - Sentinel: `user.id === 'guest'` (set by `signInAsGuest()` in `AuthContext`).
 - Persisted to `localStorage` under key `squareone_guest_data` as `{ friends: GuestPersistedFriend[], transactions: Transaction[] }`.
 - `utils/guestStorage.ts` owns all read/write helpers.
-- Custom types for guests use a separate key via `utils/customTypesStorage.ts`.
-- `clearGuestLocalData()` is called in `AuthContext` whenever a real session attaches. **Known issue**: this discards guest data on sign-up (see `improvement.md` item #2).
+- Custom types for guests use a separate key (`squareone_custom_types`) via `utils/customTypesStorage.ts`.
+- **Guest → account migration**: `migrateGuestData(uid)` in `AuthContext` runs on every successful sign-in/sign-up and on `onAuthStateChange`. It upserts friends and transactions to Supabase under the new `user.id` (using `ignoreDuplicates`), then calls `clearGuestLocalData()`. Wrapped in try/catch — a migration failure logs a warning and leaves local data in place for retry; login is never blocked.
 
 ### Balance Calculations
 
 Friend balances are computed **entirely on the client** from raw transaction history — there are no balance columns in the DB. `utils/calculations.ts` is the single source of truth:
 - `calculateFriendBalancesMap(transactions)` — one pass over all transactions, returns a `Map<friendId, balance>`.
 - `calculateFriendBalance(friendId, transactions)` — single-friend convenience.
+- `calculateTotalOwed` / `calculateTotalOwing` / `calculateNetBalance` — aggregate across all friends.
+- `getLastActivity(friendId, transactions)` — human-readable "Today / Yesterday / N days ago / N weeks ago".
+- `calculateMonthlyTotals(transactions, months = 6)` — last-N-months series for the home dashboard chart.
+- `shouldGrayTransaction(tx, friendId, transactions)` — used by `History` to dim rows that have been settled since.
 - Positive balance = friend owes you; negative = you owe them.
 - Settlement transactions (`isSettlement: true`) reverse the balance direction.
 
 ### Design System
 
 The app uses a **Neo-brutalist** design system:
-- Core primitives are in `components/NeoComponents.tsx` (Card, Button, Input, Modal, etc.).
+- Component primitives each live in their own file (`components/NeoButton.tsx`, `components/NeoInput.tsx`, `components/NeoModal.tsx`); `components/NeoComponents.tsx` re-exports `NeoButton` and adds `NeoCard`, `BackButton`, plus a few composed wrappers — import the specific file when possible.
+- Feature components live in their own folders (`components/AddTransaction/`, `components/FriendDetail/`, etc.) — keep `screens/` focused on layout/composition.
 - Tailwind custom colors are under the `neo` key (`neo-yellow`, `neo-green`, `neo-red`, `neo-blue`, `neo-purple`, `neo-pink`, `neo-orange`, `neo-bg`, `neo-surface`) — defined in `tailwind.config.js`.
 - Box shadows: `shadow-neo`, `shadow-neo-sm`, `shadow-neo-lg`, `shadow-neo-pressed`.
 - Font: Space Grotesk.
@@ -97,10 +107,16 @@ The amount field in `AddTransaction` accepts **arithmetic expressions** (e.g. `1
 
 ### Known Inert UI
 
-Three buttons exist with no handlers (documented in `improvement.md`):
-- Bell icon on `Home` (line 85) — `unsettledCount` logic is also miscounted.
-- Nudge button on `FriendDetail` (line 144) — `onClick={() => {}}`.
-- Camera button on `AddTransaction` (line 271) — no onClick.
+Two buttons exist with no handlers (see `improvement.md` items #5 and #9):
+- Nudge button on `FriendDetail` (around `screens/FriendDetail.tsx:170`) — `onClick={() => {}}`.
+- Camera button on `AddTransaction` (around `screens/AddTransaction.tsx:287`) — no `onClick` prop.
+
+(The earlier Bell icon on `Home` and its `unsettledCount` miscount have since been removed.)
+
+## Deeper Reference
+
+- `docs/architecture.md` — system diagrams, routing, state management, animation layer.
+- `docs/database.md` — full Postgres schema, RLS policies, real-time setup.
 
 ## Key Conventions
 
@@ -110,6 +126,7 @@ Three buttons exist with no handlers (documented in `improvement.md`):
 - `TransactionType` is `string` (open union) — built-in labels live in `constants.ts`; user-defined ones come from `customTypes` in `AppContext`.
 - Tests go in `utils/*.test.ts` only (Vitest is configured to include only that path).
 - `@/` is aliased to the repo root (`vite.config.ts`).
+- Supabase auth session storage is custom (`utils/supabase.ts`): tokens go to `localStorage` by default, or `sessionStorage` when `localStorage['squareone_remember_me'] === 'false'`. Toggling that key flips persistence without code changes.
 
 ## Behavioral Guidelines
 

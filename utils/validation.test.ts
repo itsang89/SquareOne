@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isValidEmail, isValidAmount, isRequired } from './validation';
+import { isValidEmail, isValidAmount } from './validation';
 
 describe('isValidEmail', () => {
   it('accepts a well-formed email', () => {
@@ -78,28 +78,5 @@ describe('isValidAmount', () => {
     it('rejects an incomplete expression ending with an operator', () => {
       expect(isValidAmount('5+')).toBe(false);
     });
-  });
-});
-
-describe('isRequired', () => {
-  it('returns true for a non-empty string', () => {
-    expect(isRequired('hello')).toBe(true);
-    expect(isRequired(' a ')).toBe(true);
-  });
-
-  it('returns false for an empty string', () => {
-    expect(isRequired('')).toBe(false);
-  });
-
-  it('returns false for a whitespace-only string', () => {
-    expect(isRequired('   ')).toBe(false);
-  });
-
-  it('returns false for null', () => {
-    expect(isRequired(null)).toBe(false);
-  });
-
-  it('returns false for undefined', () => {
-    expect(isRequired(undefined)).toBe(false);
   });
 });

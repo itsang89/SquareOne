@@ -15,8 +15,7 @@ import { PRESET_AVATARS } from '../constants';
 import { useToast } from '../components/ToastContext';
 import { springs, fadeIn, staggerContainer, staggerItem, bounceIn, moonRotate, sunRotateScale, monitorPulse } from '../utils/animations';
 import { useAnimations } from '../hooks/useAnimations';
-
-type Theme = 'light' | 'dark' | 'system';
+import { applyTheme, getStoredTheme, Theme } from '../utils/theme';
 
 export const Profile: React.FC = () => {
   const { transactions, friends, refetch } = useAppContext();
@@ -25,10 +24,7 @@ export const Profile: React.FC = () => {
   const navigate = useNavigate();
   const { getVariants, getTransition } = useAnimations();
   
-  const [theme, setTheme] = useState<Theme>(() => {
-    const stored = localStorage.getItem('squareone_theme');
-    return (stored as Theme) || 'light';
-  });
+  const [theme, setTheme] = useState<Theme>(getStoredTheme);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showHowToUse, setShowHowToUse] = useState(false);
@@ -59,17 +55,7 @@ export const Profile: React.FC = () => {
   }, [user]);
 
   useEffect(() => {
-    const body = document.body;
-    body.classList.remove('dark', 'light');
-    
-    if (theme === 'system') {
-      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      body.classList.add(isDark ? 'dark' : 'light');
-    } else {
-      body.classList.add(theme);
-    }
-    
-    localStorage.setItem('squareone_theme', theme);
+    applyTheme(theme);
   }, [theme]);
 
   const handleExportCSV = () => {

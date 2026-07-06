@@ -2,6 +2,9 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './styles/globals.css';
+import { applyTheme, getStoredTheme } from './utils/theme';
+
+applyTheme(getStoredTheme());
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

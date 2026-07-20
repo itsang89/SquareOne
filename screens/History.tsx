@@ -5,6 +5,8 @@ import { Search, Pencil, Calendar, X } from 'lucide-react';
 import { BackButton } from '../components/BackButton';
 import { Avatar } from '../components/Avatar';
 import { DataLoadErrorBanner } from '../components/DataLoadErrorBanner';
+import { NeoButton } from '../components/NeoButton';
+import { NeoCard } from '../components/NeoCard';
 import { useAppContext } from '../context/AppContext';
 import { Transaction } from '../types';
 import { shouldGrayTransaction } from '../utils/calculations';
@@ -437,9 +439,15 @@ export const History: React.FC = () => {
             </div>
           ))
         ) : (
-          <div className="py-12 text-center">
-            <p className="text-sm font-bold uppercase text-gray-400 dark:text-zinc-600">No transactions found</p>
-          </div>
+          <NeoCard className="bg-neo-green/30 dark:bg-neo-green/20 flex flex-col items-center gap-3 py-10 text-center">
+            <p className="text-lg font-black uppercase tracking-tight dark:text-zinc-100">No transactions found</p>
+            <p className="text-xs font-bold uppercase text-gray-600 dark:text-zinc-400 max-w-xs">
+              Adjust your filters, or log a new expense to get started.
+            </p>
+            <NeoButton variant="primary" onClick={() => navigate('/add')} className="mt-2">
+              Add Transaction
+            </NeoButton>
+          </NeoCard>
         )}
 
         <div className="py-8 text-center opacity-30">

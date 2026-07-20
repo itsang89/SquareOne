@@ -130,6 +130,37 @@ export const SettleUp: React.FC = () => {
     );
   }
 
+  if (balance === 0) {
+    return (
+      <div className="min-h-screen bg-neo-bg dark:bg-zinc-950 transition-colors duration-300">
+        <header className="w-full max-w-md mx-auto p-6 flex items-center justify-between">
+          <BackButton to={`/friends/${friend.id}`} />
+          <div className="bg-neo-yellow text-black px-4 py-2 border-2 border-black shadow-neo-sm transform rotate-1">
+            <h1 className="text-xl font-black uppercase tracking-wide">Settle Up</h1>
+          </div>
+          <div className="w-10"></div>
+        </header>
+        <div className="flex flex-col items-center justify-center px-6 gap-6 pt-16">
+          <Handshake size={80} strokeWidth={1.5} className="text-neo-greenDark" />
+          <p className="text-2xl font-black uppercase tracking-tight dark:text-zinc-100 text-center">
+            All settled with {friend.name}!
+          </p>
+          <p className="text-sm font-bold uppercase text-gray-500 dark:text-zinc-500 text-center max-w-xs">
+            Nothing to settle right now.
+          </p>
+          <NeoButton
+            variant="primary"
+            fullWidth
+            className="max-w-xs"
+            onClick={() => navigate(`/friends/${friend.id}`)}
+          >
+            Back to {friend.name}
+          </NeoButton>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-neo-bg dark:bg-zinc-950 flex flex-col font-display pb-6 transition-colors duration-300">
         <header className="w-full max-w-md mx-auto p-6 flex items-center justify-between">

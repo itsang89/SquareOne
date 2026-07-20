@@ -13,14 +13,13 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 - [ ] **1.** Group expenses — split one bill across multiple friends at once
 - [ ] **2.** Nudge button — share/copy a payment-request message from `FriendDetail` *(still disabled with "Soon" badge; button at `screens/FriendDetail.tsx:173`)*
 - [ ] **3.** Currency/locale preference — `formatCurrency` is still hard-coded to USD (`utils/formatters.ts:4`)
-- [ ] **4.** Note field requires extra modal tap — the Note is accessed via a separate modal in `AddTransaction`; inline the field in the main form
-- [ ] **5.** Friend cards show first name only — "Owes You" and Friends list show `friend.name.split(' ')[0]`; name collisions when two friends share a first name cause confusion
-- [ ] **6.** Empty states lack CTAs — Home and History show "No recent transactions" / "No transactions found" with no link to the creation flow
-- [ ] **7.** Net position sign convention unclear — the `+$50.00` / `-$50.00` display doesn't label whether the user is ahead or behind; a "You're ahead" / "You're behind" label would reduce first-use confusion
-- [ ] **8.** Settle Up at zero balance — settle screen shows 25%/50%/Full presets even when `balance === 0`; should disable or show "Already settled!"
-- [ ] **9.** Global search results lack direction — transaction results in the command palette show the amount but not the direction (who paid)
-- [ ] **10.** Profile has no sync status — the Profile screen (the settings hub) doesn't indicate whether data is local-only (guest) or synced to Supabase
-- [ ] **11.** Bottom Nav no contextual actions — on Friend Detail the most relevant action (Settle Up) is buried in the page body instead of surfaced in the nav
+- [x] **4.** Note field requires extra modal tap — ~~inline~~ done (2026-07-20): replaced modal in `screens/AddTransaction.tsx` with inline `NeoInput` below `TypeSelector`
+- [x] **5.** Friend cards show first name only — ~~two-line name~~ done (2026-07-20): `screens/Home.tsx` Active card now shows first name + full name below
+- [x] **6.** Empty states lack CTAs — ~~empty states~~ done (2026-07-20): `screens/Home.tsx` + `screens/History.tsx` empty states now show "Add Transaction" CTA card
+- [x] **7.** Settle Up at zero balance — ~~disable form / show "Already settled!"~~ done (2026-07-20): `screens/SettleUp.tsx` shows "All settled with {name}!" celebration when `balance === 0`
+- [ ] **8.** Global search results lack direction — transaction results in the command palette show the amount but not the direction (who paid)
+- [ ] **9.** Profile has no sync status — the Profile screen (the settings hub) doesn't indicate whether data is local-only (guest) or synced to Supabase
+- [ ] **10.** Bottom Nav no contextual actions — on Friend Detail the most relevant action (Settle Up) is buried in the page body instead of surfaced in the nav
 
 ---
 
@@ -70,6 +69,8 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 
 ### 4. Inline the Note field in Add Transaction
 
+**Status:** ✅ Done (2026-07-20).
+
 | Field | Detail |
 |--------|--------|
 | **What** | In `screens/AddTransaction.tsx`, the Note field is behind a modal: user taps "Add Note" → modal opens → types note → taps "Done" → modal closes. This is three taps for a one-line text input. |
@@ -82,6 +83,8 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 ---
 
 ### 5. Show full name (not just first name) in friend cards
+
+**Status:** ✅ Done (2026-07-20) — applied only to the Home Active card (two-line layout with full name below). `Friends.tsx` already shows the full name via `{friend.name}` and was left unchanged.
 
 | Field | Detail |
 |--------|--------|
@@ -96,6 +99,8 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 
 ### 6. Empty states with direct CTAs
 
+**Status:** ✅ Done (2026-07-20) — `screens/Home.tsx` (Recent Moves) and `screens/History.tsx` empty states now render a `NeoCard` with a motivational line and an "Add Transaction" `NeoButton` linking to `/add`.
+
 | Field | Detail |
 |--------|--------|
 | **What** | `screens/Home.tsx` ("No recent transactions") and `screens/History.tsx` ("No transactions found") display empty messages without any suggested action. |
@@ -106,19 +111,9 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 
 ---
 
-### 7. Label the net position direction
+### 7. Settle Up when balance is already zero
 
-| Field | Detail |
-|--------|--------|
-| **What** | The dashboard's big "Total Net Position" display shows `+$50.00` or `-$50.00` without explicitly stating whether the user is a net creditor or debtor. The color coding helps, but first-time users may not intuit the sign convention. |
-| **Why** | Positive = friend owes you / negative = you owe them is a reasonable convention, but it is never stated. A user who expects the opposite sign will read their balance backwards. |
-| **How** | Add a small label below the animated number: "You're ahead" when `netBalance >= 0`, "You're behind" when `netBalance < 0`. Use the same muted uppercase style as the "Total Net Position" label. |
-| **UI** | Below the `AnimatedNumber` in `screens/Home.tsx`, add: `<p className="text-black/60 dark:text-black/70 text-[10px] font-black uppercase tracking-widest mt-1">{netBalance >= 0 ? "You're ahead" : "You're behind"}</p>`. |
-| **Placement** | `screens/Home.tsx` (Net Position Widget). |
-
----
-
-### 8. Settle Up when balance is already zero
+**Status:** ✅ Done (2026-07-20) — `screens/SettleUp.tsx` shows a celebration screen with `Handshake` icon and "All settled with {name}!" plus a "Back to {name}" button when `balance === 0`.
 
 | Field | Detail |
 |--------|--------|
@@ -130,7 +125,7 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 
 ---
 
-### 9. Global search results show transaction direction
+### 8. Global search results show transaction direction
 
 | Field | Detail |
 |--------|--------|
@@ -142,7 +137,7 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 
 ---
 
-### 10. Profile screen sync status indicator
+### 9. Profile screen sync status indicator
 
 | Field | Detail |
 |--------|--------|
@@ -154,7 +149,7 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 
 ---
 
-### 11. Bottom Nav contextual action on Friend Detail
+### 10. Bottom Nav contextual action on Friend Detail
 
 | Field | Detail |
 |--------|--------|

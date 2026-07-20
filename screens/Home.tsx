@@ -2,6 +2,7 @@ import React, { useMemo, useState, useCallback } from 'react';
 import { ArrowUpRight, ArrowDownLeft, Pencil, Search } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { NeoCard } from '../components/NeoCard';
+import { NeoButton } from '../components/NeoButton';
 import { Avatar } from '../components/Avatar';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
@@ -153,6 +154,9 @@ export const Home: React.FC = () => {
                           </div>
                           <div className="text-center w-full">
                               <p className="text-sm font-bold truncate w-full dark:text-zinc-100">{friend.name.split(' ')[0]}</p>
+                              {friend.name.split(' ').length > 1 && (
+                                <p className="text-[10px] text-gray-500 dark:text-zinc-500 truncate w-full">{friend.name}</p>
+                              )}
                               <p className={`text-xs font-bold ${friend.balance >= 0 ? 'text-neo-greenDark' : 'text-neo-red'}`}>
                                   {friend.balance >= 0 ? '+' : '-'}{formatCurrency(Math.abs(friend.balance))}
                               </p>
@@ -324,9 +328,15 @@ export const Home: React.FC = () => {
                   })}
                </div>
              ) : (
-               <div className="text-center py-8 text-gray-400 dark:text-zinc-600 text-sm font-bold uppercase">
-                 No recent transactions
-               </div>
+               <NeoCard className="bg-neo-green/30 dark:bg-neo-green/20 flex flex-col items-center gap-3 py-8 text-center">
+                 <p className="text-lg font-black uppercase tracking-tight dark:text-zinc-100">Nothing here yet</p>
+                 <p className="text-xs font-bold uppercase text-gray-600 dark:text-zinc-400 max-w-xs">
+                   Add your first expense to start tracking who owes who.
+                 </p>
+                 <Link to="/add" className="mt-2">
+                   <NeoButton variant="primary">Add Transaction</NeoButton>
+                 </Link>
+               </NeoCard>
              )}
         </section>
       </div>

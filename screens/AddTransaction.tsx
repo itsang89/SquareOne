@@ -4,7 +4,6 @@ import { X } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Transaction, TransactionType } from '../types';
 import { NeoButton } from '../components/NeoButton';
-import { NeoModal } from '../components/NeoModal';
 import { NeoInput } from '../components/NeoInput';
 import { FriendSelector } from '../components/AddTransaction/FriendSelector';
 import { AmountInput } from '../components/AddTransaction/AmountInput';
@@ -34,7 +33,6 @@ const AddTransactionInner: React.FC<AddTransactionInnerProps> = ({ editTransacti
   const [showFriendPicker, setShowFriendPicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showNumpad, setShowNumpad] = useState(false);
-  const [showNoteModal, setShowNoteModal] = useState(false);
 
   const stayOnPageRef = useRef(false);
   const [pendingAction, setPendingAction] = useState<'stay' | 'save' | null>(null);
@@ -288,23 +286,22 @@ const AddTransactionInner: React.FC<AddTransactionInnerProps> = ({ editTransacti
           onAddCustomType={handleAddCustomType}
         />
 
-        <div className="flex gap-3">
-          <button
+        <NeoInput
+          label="Note"
+          placeholder="What was this for?"
+          value={values.note}
+          onChange={(e) => handleChange('note', e.target.value)}
+        />
+
+        <button
             onClick={() => {
               setShowNumpad(false);
               setShowDatePicker(true);
             }}
-            className="flex-1 flex items-center justify-center gap-2 h-12 border-2 border-black bg-white dark:bg-zinc-900 text-sm font-bold shadow-neo-sm active:shadow-none active:translate-y-1 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all dark:text-zinc-100"
+            className="w-full flex items-center justify-center gap-2 h-12 border-2 border-black bg-white dark:bg-zinc-900 text-sm font-bold shadow-neo-sm active:shadow-none active:translate-y-1 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all dark:text-zinc-100"
           >
             {new Date(values.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
           </button>
-          <button
-            onClick={() => setShowNoteModal(true)}
-            className="flex-1 flex items-center justify-center gap-2 h-12 border-2 border-black bg-white dark:bg-zinc-900 text-sm font-bold shadow-neo-sm active:shadow-none active:translate-y-1 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all dark:text-zinc-100"
-          >
-            {values.note ? 'Note added' : 'Add Note'}
-          </button>
-        </div>
       </div>
 
       <div className="shrink-0 bg-white dark:bg-zinc-900 pb-6 px-5 pt-4 border-t-2 border-black">
@@ -347,19 +344,6 @@ const AddTransactionInner: React.FC<AddTransactionInnerProps> = ({ editTransacti
         isOpen={showDatePicker}
         onClose={() => setShowDatePicker(false)}
       />
-
-      <NeoModal isOpen={showNoteModal} onClose={() => setShowNoteModal(false)} title="Add Note">
-        <NeoInput
-          label="Note"
-          placeholder="What was this for?"
-          value={values.note}
-          onChange={(e) => handleChange('note', e.target.value)}
-          autoFocus
-        />
-        <NeoButton fullWidth onClick={() => setShowNoteModal(false)} variant="primary">
-          Done
-        </NeoButton>
-      </NeoModal>
     </div>
   );
 };

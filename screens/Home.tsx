@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { ArrowUpRight, ArrowDownLeft, Pencil, Trash2, Search } from 'lucide-react';
+import React, { useMemo, useState, useCallback } from 'react';
+import { ArrowUpRight, ArrowDownLeft, Pencil, Search } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { NeoCard } from '../components/NeoCard';
 import { Avatar } from '../components/Avatar';
@@ -9,13 +9,13 @@ import { useAuth } from '../context/AuthContext';
 import { calculateTotalOwed, calculateTotalOwing, calculateNetBalance, calculateDebtOrigins, calculateMonthlyTotals, shouldGrayTransaction } from '../utils/calculations';
 import { getTransactionCounterparty } from '../utils/search';
 import { Transaction } from '../types';
-import { useTimeout } from '../hooks/useTimeout';
 import { useToast } from '../components/ToastContext';
 import { TransactionSkeleton, FriendSkeleton } from '../components/LoadingSkeleton';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { AnimatedNumber } from '../components/AnimatedNumber';
 import { DataLoadErrorBanner } from '../components/DataLoadErrorBanner';
 import { useSearch } from '../context/SearchContext';
+import { DeleteConfirmButton } from '../components/DeleteConfirmButton';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
@@ -23,27 +23,27 @@ export const Home: React.FC = () => {
   const { user } = useAuth();
   const { openSearch } = useSearch();
   const { success, error: showError } = useToast();
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [armedDeleteId, setArmedDeleteId] = useState<string | null>(null);
 
-  useTimeout(() => setDeletingId(null), deletingId ? 3000 : null, [deletingId]);
+  const handleEdit = useCallback(
+    (tx: Transaction) => {
+      navigate('/add', { state: { editTransaction: tx } });
+    },
+    [navigate]
+  );
 
-  const handleEdit = (tx: Transaction) => {
-    navigate('/add', { state: { editTransaction: tx } });
-  };
-
-  const handleDelete = async (tx: Transaction) => {
-    if (deletingId === tx.id) {
+  const handleDelete = useCallback(
+    async (tx: Transaction) => {
       const result = await deleteTransaction(tx.id);
       if (result.success) {
         success('Transaction deleted');
       } else {
         showError('Failed to delete transaction', result.error?.message);
       }
-      setDeletingId(null);
-    } else {
-      setDeletingId(tx.id);
-    }
-  };
+      setArmedDeleteId(null);
+    },
+    [deleteTransaction, success, showError]
+  );
   
   const totalOwed = useMemo(() => calculateTotalOwed(transactions), [transactions]);
   const totalOwing = useMemo(() => calculateTotalOwing(transactions), [transactions]);
@@ -269,7 +269,7 @@ export const Home: React.FC = () => {
                     const isGrayed = friendIdForGraying ? shouldGrayTransaction(tx, friendIdForGraying, transactions) : false;
                     
                     return (
-                      <div key={tx.id} className={`group bg-white dark:bg-zinc-900 border-2 border-transparent hover:border-black hover:shadow-neo-sm p-3 rounded-lg flex items-center justify-between transition-all ${isGrayed ? 'opacity-50 grayscale' : tx.isSettlement ? 'opacity-75' : ''} ${deletingId === tx.id ? 'border-neo-red' : ''}`}>
+                      <div key={tx.id} className={`group bg-white dark:bg-zinc-900 border-2 border-transparent hover:border-black hover:shadow-neo-sm p-3 rounded-lg flex items-center justify-between transition-all ${isGrayed ? 'opacity-50 grayscale' : tx.isSettlement ? 'opacity-75' : ''} ${armedDeleteId === tx.id ? 'border-neo-red shadow-neo-sm' : ''}`}>
                           <div className="flex items-center gap-3 flex-1 min-w-0">
                               <div className={`w-10 h-10 border-2 border-black rounded flex items-center justify-center shadow-sm shrink-0 ${
                                   isGrayed ? 'bg-gray-300 dark:bg-zinc-700' :
@@ -313,22 +313,11 @@ export const Home: React.FC = () => {
                                    <Pencil size={14} />
                                  </button>
                                )}
-                               <button
-                                 type="button"
-                                 onClick={(e) => {
-                                   e.stopPropagation();
-                                   handleDelete(tx);
-                                 }}
-                                 className={`p-1.5 rounded-md border-2 border-black transition-all ${
-                                   deletingId === tx.id 
-                                     ? 'bg-neo-red text-white shadow-neo-sm' 
-                                     : 'bg-white dark:bg-zinc-800 hover:bg-neo-red/20 dark:text-zinc-100'
-                                 }`}
-                                 title={deletingId === tx.id ? 'Click again to confirm delete' : 'Delete transaction'}
-                                 aria-label="Delete transaction"
-                               >
-                                 <Trash2 size={14} />
-                               </button>
+                               <DeleteConfirmButton
+                                 onConfirm={() => handleDelete(tx)}
+                                 onArmedChange={(armed) => setArmedDeleteId(armed ? tx.id : null)}
+                                 ariaLabel="Delete transaction"
+                               />
                           </div>
                       </div>
                     );

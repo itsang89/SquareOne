@@ -1,13 +1,15 @@
 import React from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import { Transaction } from '../../types';
 import { formatCurrency, formatDate } from '../../utils/formatters';
+import { DeleteConfirmButton } from '../DeleteConfirmButton';
 
 interface TransactionListProps {
   transactions: Transaction[];
   onEdit: (tx: Transaction) => void;
   onDelete: (tx: Transaction) => void;
-  deletingId: string | null;
+  armedDeleteId: string | null;
+  onArmedChange: (txId: string, armed: boolean) => void;
   getIsGrayed: (tx: Transaction) => boolean;
   emptyMessage?: string;
 }
@@ -16,7 +18,8 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   transactions,
   onEdit,
   onDelete,
-  deletingId,
+  armedDeleteId,
+  onArmedChange,
   getIsGrayed,
   emptyMessage,
 }) => {
@@ -34,22 +37,23 @@ export const TransactionList: React.FC<TransactionListProps> = ({
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .map(tx => {
           const isGrayed = getIsGrayed(tx);
+          const isArmed = armedDeleteId === tx.id;
           return (
-            <div 
-              key={tx.id} 
-              className={`bg-white dark:bg-zinc-900 border-2 border-black p-4 shadow-neo flex items-center justify-between group active:shadow-neo-pressed active:translate-x-[2px] active:translate-y-[2px] transition-all hover:bg-blue-50 dark:hover:bg-zinc-800 ${isGrayed ? 'opacity-50 grayscale' : tx.isSettlement ? 'opacity-60' : ''} ${deletingId === tx.id ? 'border-neo-red' : ''}`}
+            <div
+              key={tx.id}
+              className={`bg-white dark:bg-zinc-900 border-2 border-black p-4 shadow-neo flex items-center justify-between group active:shadow-neo-pressed active:translate-x-[2px] active:translate-y-[2px] transition-all hover:bg-blue-50 dark:hover:bg-zinc-800 ${isGrayed ? 'opacity-50 grayscale' : tx.isSettlement ? 'opacity-60' : ''} ${isArmed ? 'border-neo-red ring-2 ring-neo-red/40 ring-offset-2 ring-offset-neo-bg dark:ring-offset-zinc-950' : ''}`}
             >
               <div className="flex items-center gap-4 flex-1 min-w-0">
                 <div className={`w-12 h-12 border-2 border-black flex items-center justify-center shrink-0 shadow-sm ${
                   isGrayed ? 'bg-gray-300 dark:bg-zinc-700' :
-                  tx.type === 'Meal' ? 'bg-neo-blue' : 
-                  tx.type === 'Transport' ? 'bg-neo-yellow' : 
+                  tx.type === 'Meal' ? 'bg-neo-blue' :
+                  tx.type === 'Transport' ? 'bg-neo-yellow' :
                   tx.type === 'Loan' ? 'bg-neo-green' :
                   tx.type === 'Poker' ? 'bg-neo-purple' : 'bg-neo-orange'
                 }`}>
                   <span className="text-xl text-black">
-                    {tx.isSettlement ? '✓' : tx.type === 'Meal' ? '🍕' : 
-                     tx.type === 'Transport' ? '🚕' : 
+                    {tx.isSettlement ? '✓' : tx.type === 'Meal' ? '🍕' :
+                     tx.type === 'Transport' ? '🚕' :
                      tx.type === 'Loan' ? '💸' :
                      tx.type === 'Poker' ? '🃏' : '📝'}
                   </span>
@@ -81,21 +85,12 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                     <Pencil size={16} />
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete(tx);
-                  }}
-                  className={`p-2 rounded-md border-2 border-black transition-all ${
-                    deletingId === tx.id 
-                      ? 'bg-neo-red text-white shadow-neo-sm' 
-                      : 'bg-white dark:bg-zinc-800 dark:text-zinc-100 hover:bg-neo-red/20'
-                  }`}
-                  aria-label="Delete transaction"
-                >
-                  <Trash2 size={16} />
-                </button>
+                <DeleteConfirmButton
+                  onConfirm={() => onDelete(tx)}
+                  onArmedChange={(armed) => onArmedChange(tx.id, armed)}
+                  ariaLabel="Delete transaction"
+                  size="expanded"
+                />
               </div>
             </div>
           );

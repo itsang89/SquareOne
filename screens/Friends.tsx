@@ -121,7 +121,7 @@ export const Friends: React.FC = () => {
                         : 'bg-white dark:bg-zinc-900 text-gray-500 dark:text-zinc-500 border-gray-400 dark:border-zinc-700 hover:border-black dark:hover:border-zinc-100 hover:text-black dark:hover:text-zinc-100'
                     }`}
                 >
-                    {f === 'High-Low' ? '$$ High-Low' : f}
+                    {f === 'High-Low' ? 'Largest Balance' : f}
                 </button>
             ))}
         </div>

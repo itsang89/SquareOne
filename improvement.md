@@ -1,6 +1,6 @@
 # SquareOne — improvement backlog
 
-**App snapshot:** SquareOne is a **neo-brutalist** expense-sharing app: friends, transactions, settle-up, history, and **Recharts** on the dashboard (Pie "Debt Origins" + Bar "Monthly Spending"). Auth and data use **Supabase** (Postgres + realtime). **Guest mode** persists friends/transactions in **localStorage** (`utils/guestStorage.ts`); custom types go to `squareone_custom_types`. Stack: **React 19**, **Vite 6**, **TypeScript** (`strict`), **React Router 7** (`HashRouter`), **Framer Motion**, **Tailwind**, **Lucide**, **react-number-format**. Tooling: **Vitest** (utils tests), **ESLint** flat config. Modals use **NeoModal** with dialog semantics, focus trap, and Escape-to-close. Supabase OAuth and email confirmation use **hash redirects** (`origin/#/dashboard`) via `authRedirectTo` in `context/AuthContext.tsx`. **Load failures:** `AppContext` sets `error` on friends/transactions query failure, preserves partial snapshots (`transactionsRef` for balances), and **Home / Friends / History** show `DataLoadErrorBanner` with Retry. **Friend detail** shows aggregate stats (count / total / largest) and a per-friend search bar. **History** has search + sort + filter chips. **Profile** has CSV export and clear-all-data. Camera button removed from AddTransaction (2026-07-20).
+**App snapshot:** SquareOne is a **neo-brutalist** expense-sharing app: friends, transactions, settle-up, history, and **Recharts** on the dashboard (Pie "Debt Origins" + Bar "Monthly Spending"). Auth and data use **Supabase** (Postgres + realtime). **Guest mode** persists friends/transactions in **localStorage** (`utils/guestStorage.ts`); custom types go to `squareone_custom_types`. Stack: **React 19**, **Vite 6**, **TypeScript** (`strict`), **React Router 7** (`HashRouter`), **Framer Motion**, **Tailwind**, **Lucide**, **react-number-format**. Tooling: **Vitest** (utils tests), **ESLint** flat config. Modals use **NeoModal** with dialog semantics, focus trap, and Escape-to-close. Supabase OAuth and email confirmation use **hash redirects** (`origin/#/dashboard`) via `authRedirectTo` in `context/AuthContext.tsx`. **Load failures:** `AppContext` sets `error` on friends/transactions query failure, preserves partial snapshots (`transactionsRef` for balances), and **Home / Friends / History** show `DataLoadErrorBanner` with Retry. **Friend detail** shows aggregate stats (count / total / largest) and a per-friend search bar. **History** has search + sort + filter chips. **Profile** has CSV export and clear-all-data. Two-step delete (Home / History / FriendDetail) uses `components/DeleteConfirmButton.tsx` — click once to arm a red "Confirm Delete" chip with a draining bar, click again within 3 s to confirm. Friends sort tabs include "Largest Balance" (formerly "$$ High-Low"). Camera button removed from AddTransaction (2026-07-20).
 
 **Linked docs:** [README.md](./README.md), [docs/architecture.md](./docs/architecture.md), [docs/database.md](./docs/database.md), [CONTRIBUTING.md](./CONTRIBUTING.md), [llms.txt](./llms.txt).
 
@@ -12,18 +12,15 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 
 - [ ] **1.** Group expenses — split one bill across multiple friends at once
 - [ ] **2.** Nudge button — share/copy a payment-request message from `FriendDetail` *(still disabled with "Soon" badge; button at `screens/FriendDetail.tsx:173`)*
-- [x] **3.** ~~History: date-range filter and custom-type chips~~ — *done (2026-07-20); dynamic chips from `customTypes`, date presets, custom range picker, clear pill*
-- [ ] **4.** Currency/locale preference — `formatCurrency` is still hard-coded to USD (`utils/formatters.ts:4`)
-- [ ] **5.** Double-click delete with no visual countdown — two-step delete (click once to arm, click again to confirm) has no countdown indicator; a stray second click permanently deletes the transaction
-- [ ] **6.** "High-Low" filter label unclear — Friends filter tab shows `$$ High-Low` which most users won't understand; "Largest Balance" is clearer
-- [ ] **7.** Note field requires extra modal tap — the Note is accessed via a separate modal in `AddTransaction`; inline the field in the main form
-- [ ] **8.** Friend cards show first name only — "Owes You" and Friends list show `friend.name.split(' ')[0]`; name collisions when two friends share a first name cause confusion
-- [ ] **9.** Empty states lack CTAs — Home and History show "No recent transactions" / "No transactions found" with no link to the creation flow
-- [ ] **10.** Net position sign convention unclear — the `+$50.00` / `-$50.00` display doesn't label whether the user is ahead or behind; a "You're ahead" / "You're behind" label would reduce first-use confusion
-- [ ] **11.** Settle Up at zero balance — settle screen shows 25%/50%/Full presets even when `balance === 0`; should disable or show "Already settled!"
-- [ ] **12.** Global search results lack direction — transaction results in the command palette show the amount but not the direction (who paid)
-- [ ] **13.** Profile has no sync status — the Profile screen (the settings hub) doesn't indicate whether data is local-only (guest) or synced to Supabase
-- [ ] **14.** Bottom Nav no contextual actions — on Friend Detail the most relevant action (Settle Up) is buried in the page body instead of surfaced in the nav
+- [ ] **3.** Currency/locale preference — `formatCurrency` is still hard-coded to USD (`utils/formatters.ts:4`)
+- [ ] **4.** Note field requires extra modal tap — the Note is accessed via a separate modal in `AddTransaction`; inline the field in the main form
+- [ ] **5.** Friend cards show first name only — "Owes You" and Friends list show `friend.name.split(' ')[0]`; name collisions when two friends share a first name cause confusion
+- [ ] **6.** Empty states lack CTAs — Home and History show "No recent transactions" / "No transactions found" with no link to the creation flow
+- [ ] **7.** Net position sign convention unclear — the `+$50.00` / `-$50.00` display doesn't label whether the user is ahead or behind; a "You're ahead" / "You're behind" label would reduce first-use confusion
+- [ ] **8.** Settle Up at zero balance — settle screen shows 25%/50%/Full presets even when `balance === 0`; should disable or show "Already settled!"
+- [ ] **9.** Global search results lack direction — transaction results in the command palette show the amount but not the direction (who paid)
+- [ ] **10.** Profile has no sync status — the Profile screen (the settings hub) doesn't indicate whether data is local-only (guest) or synced to Supabase
+- [ ] **11.** Bottom Nav no contextual actions — on Friend Detail the most relevant action (Settle Up) is buried in the page body instead of surfaced in the nav
 
 ---
 
@@ -57,21 +54,7 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 
 ---
 
-### 3. History: date-range filter and custom-type chips
-
-| Field | Detail |
-|--------|--------|
-| **What** | `screens/History.tsx:19,189` filter chips are hard-coded to `['All', 'Poker', 'Meals', 'Loans', 'Unsettled']`. Users who add custom transaction types (e.g. "Rent", "Holiday") cannot filter by them. There is also no date-range filter beyond the display grouping ("Today / This Week / This Month"). |
-| **Why** | As the ledger grows, being locked to five static filters makes the history screen increasingly hard to navigate; custom types are a first-class feature but they are invisible to the filter system. |
-| **How** | (a) Build the filter chip list dynamically from `[...TRANSACTION_TAGS.map(t => t.label), ...customTypes]` read from `AppContext`, deduplicated and sorted. (b) Add a date-range dropdown or calendar pair (reuse the existing `DatePicker` component) with presets: "Last 7 days / Last 30 days / Last 3 months / All time". (c) Keep `FilterType` as a union of `string | 'All' | 'Unsettled'` to allow any type value. |
-| **Logic** | Replace the hard-coded `FilterType` union with `type FilterType = string`. The existing `typeMap` lookup in `filteredTransactions` (line 80) is replaced with a direct string comparison (`tx.type === activeFilter`). Date-range filtering: `filteredTransactions.filter(tx => new Date(tx.date) >= rangeStart)`. |
-| **UI** | Filter chips remain horizontal scrollable; add a calendar icon button at the end that opens a date-range popover. A "Clear filters" pill appears when any non-default filter is active. |
-| **Placement** | `screens/History.tsx` (state, filter logic, chip rendering), `context/AppContext.tsx` (`customTypes` already exposed), `components/AddTransaction/DatePicker.tsx` (reuse for range selection). |
-| **Conflicts** | The existing `FilterType` type alias and `typeMap` object in `History.tsx` are replaced; `handleFilterReset` (line 151) must also clear the date range state. |
-
----
-
-### 4. Currency/locale preference
+### 3. Currency/locale preference
 
 | Field | Detail |
 |--------|--------|
@@ -85,33 +68,7 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 
 ---
 
-### 5. Visual countdown for two-step delete
-
-| Field | Detail |
-|--------|--------|
-| **What** | In `screens/Home.tsx` and `screens/History.tsx`, delete confirmation uses a two-step pattern: click once to arm (button turns red), click again within 3 s to confirm. The timeout is silent with no visible countdown. |
-| **Why** | Users who arm deletion then get distracted may not realize the action is still armed, leading to accidental deletion on a stray tap. The current `useTimeout` pattern also silently resets after 3 s with no user-visible timer. |
-| **How** | Replace the silent `useTimeout` reset with a visible countdown. When `deletingId` is set, render a circular SVG progress ring (or animated width bar) around the trash icon that depletes over 3 s. When the timeout fires, reset `deletingId` and restore the normal button state. The animation should use Framer Motion or CSS `transition` on a `dashoffset` value. |
-| **Logic** | No state changes needed — `deletingId` is already the source of truth. Add a `countdownProgress` state (0 → 1) driven by `useEffect` with `setInterval(100ms)`, clearing on reset. |
-| **UI** | Replace the static red fill with a ring: `<svg viewBox="0 0 24 24"><circle r="10" fill="none" stroke="gray" stroke-width="2"/><circle r="10" fill="none" stroke="neo-red" stroke-width="2" stroke-dasharray={circumference} stroke-dashoffset={circumference * countdownProgress}/></svg>`. The ring depletes clockwise as time runs out. |
-| **Placement** | `screens/Home.tsx` (delete button in recent transactions), `screens/History.tsx` (delete button on each row), `components/TransactionRow.tsx` (if extracted). |
-| **Conflicts** | The pattern also exists in `screens/FriendDetail.tsx` — apply the same countdown there. No logic changes; purely presentational. |
-
----
-
-### 6. Rename "$$ High-Low" filter to "Largest Balance"
-
-| Field | Detail |
-|--------|--------|
-| **What** | `screens/Friends.tsx:124` renders a filter tab with the label `$$ High-Low`. This is clever but opaque — most users will not immediately understand it means "sort by absolute balance, descending." |
-| **Why** | Cryptic labels reduce discoverability and increase onboarding friction. "Largest Balance" (or "Highest Amount") is unambiguous and self-explanatory. |
-| **How** | Rename the tab label from `$$ High-Low` to `Largest Balance`. Update the `FilterType` union comment and the empty state text if it references the old label. |
-| **UI** | One-line change: `f === 'High-Low' ? 'Largest Balance' : f` in the render. |
-| **Placement** | `screens/Friends.tsx:124`. |
-
----
-
-### 7. Inline the Note field in Add Transaction
+### 4. Inline the Note field in Add Transaction
 
 | Field | Detail |
 |--------|--------|
@@ -124,7 +81,7 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 
 ---
 
-### 8. Show full name (not just first name) in friend cards
+### 5. Show full name (not just first name) in friend cards
 
 | Field | Detail |
 |--------|--------|
@@ -137,7 +94,7 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 
 ---
 
-### 9. Empty states with direct CTAs
+### 6. Empty states with direct CTAs
 
 | Field | Detail |
 |--------|--------|
@@ -149,7 +106,7 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 
 ---
 
-### 10. Label the net position direction
+### 7. Label the net position direction
 
 | Field | Detail |
 |--------|--------|
@@ -161,7 +118,7 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 
 ---
 
-### 11. Settle Up when balance is already zero
+### 8. Settle Up when balance is already zero
 
 | Field | Detail |
 |--------|--------|
@@ -173,7 +130,7 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 
 ---
 
-### 12. Global search results show transaction direction
+### 9. Global search results show transaction direction
 
 | Field | Detail |
 |--------|--------|
@@ -185,7 +142,7 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 
 ---
 
-### 13. Profile screen sync status indicator
+### 10. Profile screen sync status indicator
 
 | Field | Detail |
 |--------|--------|
@@ -197,7 +154,7 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 
 ---
 
-### 14. Bottom Nav contextual action on Friend Detail
+### 11. Bottom Nav contextual action on Friend Detail
 
 | Field | Detail |
 |--------|--------|
@@ -216,7 +173,7 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 |--------|---------|
 | **TODO / FIXME** | None in `*.ts` / `*.tsx`. |
 | **Inert buttons** | 1 remaining: Nudge (`FriendDetail.tsx:173` — disabled with "Soon" badge, no onClick). Camera button removed 2026-07-20. Proposal #2 addresses Nudge. |
-| **Hard-coded USD** | `formatters.ts:4 currency: 'USD'`. Proposal #4 addresses this. |
+| **Hard-coded USD** | `formatters.ts:4 currency: 'USD'`. Proposal #3 addresses this. |
 | **`npm audit`** | Run before releases; last run reported 0 vulnerabilities. |
 | **Context `error`** | Set when friends/transactions queries fail; banner + Retry on Home, Friends, History. |
 | **Owes You / You Owe** | "Owes You" section on Home renamed to "Active" with original `balance !== 0` filter restored (2026-07-20). |

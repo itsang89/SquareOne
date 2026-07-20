@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MessageCircle, HandCoins, Search, X } from 'lucide-react';
 import { NeoButton } from '../components/NeoButton';
@@ -11,7 +11,6 @@ import { DetailHeader } from '../components/FriendDetail/DetailHeader';
 import { TransactionList } from '../components/FriendDetail/TransactionList';
 import { EditFriendModal } from '../components/FriendDetail/EditFriendModal';
 import { useToast } from '../components/ToastContext';
-import { useTimeout } from '../hooks/useTimeout';
 import { formatCurrency } from '../utils/formatters';
 import { matchesTransactionQuery } from '../utils/search';
 
@@ -22,31 +21,31 @@ export const FriendDetail: React.FC = () => {
   const { success, error: showError } = useToast();
   
   const friend = id ? getFriendById(id) : undefined;
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showOptions, setShowOptions] = useState(false);
   const [query, setQuery] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [armedDeleteId, setArmedDeleteId] = useState<string | null>(null);
 
-  useTimeout(() => setDeletingId(null), deletingId ? 3000 : null, [deletingId]);
+  const handleEdit = useCallback(
+    (tx: Transaction) => {
+      navigate('/add', { state: { editTransaction: tx } });
+    },
+    [navigate]
+  );
 
-  const handleEdit = (tx: Transaction) => {
-    navigate('/add', { state: { editTransaction: tx } });
-  };
-
-  const handleDelete = async (tx: Transaction) => {
-    if (deletingId === tx.id) {
+  const handleDelete = useCallback(
+    async (tx: Transaction) => {
       const result = await deleteTransaction(tx.id);
       if (result.success) {
         success('Transaction deleted');
       } else {
         showError('Failed to delete', result.error?.message);
       }
-      setDeletingId(null);
-    } else {
-      setDeletingId(tx.id);
-    }
-  };
+      setArmedDeleteId(null);
+    },
+    [deleteTransaction, success, showError]
+  );
 
   const friendTransactions = useMemo(() => {
     if (!friend) return [];
@@ -204,7 +203,8 @@ export const FriendDetail: React.FC = () => {
           transactions={filteredFriendTransactions}
           onEdit={handleEdit}
           onDelete={handleDelete}
-          deletingId={deletingId}
+          armedDeleteId={armedDeleteId}
+          onArmedChange={(txId, armed) => setArmedDeleteId(armed ? txId : null)}
           getIsGrayed={(tx) => shouldGrayTransaction(tx, friend.id, allTransactions)}
           emptyMessage={query ? 'No results' : undefined}
         />

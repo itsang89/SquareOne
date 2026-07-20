@@ -17,8 +17,8 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 - [x] **5.** Friend cards show first name only — ~~two-line name~~ done (2026-07-20): `screens/Home.tsx` Active card now shows first name + full name below
 - [x] **6.** Empty states lack CTAs — ~~empty states~~ done (2026-07-20): `screens/Home.tsx` + `screens/History.tsx` empty states now show "Add Transaction" CTA card
 - [x] **7.** Settle Up at zero balance — ~~disable form / show "Already settled!"~~ done (2026-07-20): `screens/SettleUp.tsx` shows "All settled with {name}!" celebration when `balance === 0`
-- [ ] **8.** Global search results lack direction — transaction results in the command palette show the amount but not the direction (who paid)
-- [ ] **9.** Profile has no sync status — the Profile screen (the settings hub) doesn't indicate whether data is local-only (guest) or synced to Supabase
+- [x] **8.** Global search results lack direction — transaction results in the command palette show the amount but not the direction (who paid)
+- [x] **9.** Profile has no sync status — the Profile screen (the settings hub) doesn't indicate whether data is local-only (guest) or synced to Supabase
 - [ ] **10.** Bottom Nav no contextual actions — on Friend Detail the most relevant action (Settle Up) is buried in the page body instead of surfaced in the nav
 
 ---

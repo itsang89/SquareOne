@@ -179,7 +179,16 @@ export const GlobalSearch: React.FC = () => {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex justify-between gap-2">
                                     <span className="font-bold truncate dark:text-zinc-100">{name}</span>
-                                    <span className="font-bold shrink-0 text-sm">
+                                    <span
+                                      className={`font-bold shrink-0 text-sm ${
+                                        tx.isSettlement
+                                          ? 'dark:text-zinc-300'
+                                          : tx.payerId === 'me'
+                                            ? 'text-neo-greenDark'
+                                            : 'text-neo-red'
+                                      }`}
+                                    >
+                                      {tx.isSettlement ? '✓ ' : tx.payerId === 'me' ? '+' : '-'}
                                       {formatCurrency(tx.amount)}
                                     </span>
                                   </div>

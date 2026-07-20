@@ -158,6 +158,14 @@ export const Profile: React.FC = () => {
     navigate('/login');
   };
 
+  const handleExitGuestMode = () => {
+    signOut().finally(() => {
+      navigate('/login');
+    });
+  };
+
+  const isGuest = user?.id === 'guest';
+
   return (
     <div className="min-h-screen pb-24 bg-neo-bg dark:bg-zinc-950 font-display transition-colors duration-300">
         <header className="sticky top-0 z-20 bg-neo-bg/95 dark:bg-zinc-950/95 backdrop-blur-sm p-6 flex items-center justify-between border-b-2 border-transparent dark:border-black">
@@ -281,6 +289,28 @@ export const Profile: React.FC = () => {
                         <div className="mt-4 pt-4 border-t-2 border-black flex justify-between text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-zinc-500">
                             <span>Joined</span>
                             <span>{joinedDate || 'Recently'}</span>
+                        </div>
+                        <div className="mt-4 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className={`w-2 h-2 rounded-full ${
+                                isGuest ? 'bg-neo-yellow' : 'bg-neo-green'
+                              }`}
+                              aria-hidden
+                            />
+                            <span className="text-xs font-black uppercase tracking-widest dark:text-zinc-300">
+                              {isGuest ? 'Local only' : 'Synced'}
+                            </span>
+                          </div>
+                          {isGuest && (
+                            <button
+                              type="button"
+                              onClick={handleExitGuestMode}
+                              className="text-xs font-black uppercase tracking-widest underline decoration-2 underline-offset-4 hover:text-neo-blue"
+                            >
+                              Sign in to sync
+                            </button>
+                          )}
                         </div>
                     </motion.div>
                   )}

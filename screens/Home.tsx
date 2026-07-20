@@ -126,10 +126,10 @@ export const Home: React.FC = () => {
             </div>
         </section>
 
-        {/* Owes You */}
+        {/* Active */}
         <section>
             <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-black uppercase border-l-4 border-black dark:border-zinc-100 pl-2 dark:text-zinc-100">Owes You</h3>
+                <h3 className="text-lg font-black uppercase border-l-4 border-black dark:border-zinc-100 pl-2 dark:text-zinc-100">Active</h3>
                 <Link to="/friends" className="text-xs font-bold uppercase underline decoration-2 dark:text-zinc-100">View All</Link>
             </div>
 
@@ -162,7 +162,7 @@ export const Home: React.FC = () => {
               </div>
             ) : (
               <div className="text-center py-8 text-gray-400 dark:text-zinc-600 text-sm font-bold uppercase">
-                Nobody owes you money
+                No active balances
               </div>
             )}
         </section>

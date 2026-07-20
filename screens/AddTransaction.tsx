@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { X, Camera } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Transaction, TransactionType } from '../types';
 import { NeoButton } from '../components/NeoButton';
@@ -303,9 +303,6 @@ const AddTransactionInner: React.FC<AddTransactionInnerProps> = ({ editTransacti
             className="flex-1 flex items-center justify-center gap-2 h-12 border-2 border-black bg-white dark:bg-zinc-900 text-sm font-bold shadow-neo-sm active:shadow-none active:translate-y-1 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all dark:text-zinc-100"
           >
             {values.note ? 'Note added' : 'Add Note'}
-          </button>
-          <button className="w-12 flex items-center justify-center border-2 border-black bg-white dark:bg-zinc-900 text-sm font-bold shadow-neo-sm active:shadow-none active:translate-y-1 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all dark:text-zinc-100">
-            <Camera size={18} />
           </button>
         </div>
       </div>

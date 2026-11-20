@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, Moon, Sun, Monitor, Download, Trash2, HelpCircle, ArrowRight, Edit3, LogOut, KeyRound } from 'lucide-react';
+import { Settings, Moon, Sun, Monitor, Download, Trash2, HelpCircle, ArrowRight, Edit3, LogOut, KeyRound, Tags, Repeat } from 'lucide-react';
 import { NeoButton } from '../components/NeoButton';
 import { NeoInput } from '../components/NeoInput';
 import { NeoModal } from '../components/NeoModal';
@@ -18,7 +18,7 @@ import { useAnimations } from '../hooks/useAnimations';
 import { applyTheme, getStoredTheme, Theme } from '../utils/theme';
 
 export const Profile: React.FC = () => {
-  const { transactions, friends, refetch } = useAppContext();
+  const { entries, friends, accounts, categories, refetch } = useAppContext();
   const { user, signOut, refreshUser } = useAuth();
   const { success, error: showError } = useToast();
   const navigate = useNavigate();
@@ -60,37 +60,36 @@ export const Profile: React.FC = () => {
 
   const handleExportCSV = () => {
     try {
-      const headers = ['Date', 'Title', 'Type', 'Amount', 'Payer', 'Friend', 'Note', 'Settlement'];
-      const rows = transactions.map(tx => {
-        const friend = friends.find(f => f.id === tx.friendId || (tx.payerId === f.id && tx.friendId === 'me'));
-        const friendName = friend?.name || tx.friendId;
-        const payerName = tx.payerId === 'me' ? 'Me' : friendName;
-        
-        return [
-          new Date(tx.date).toLocaleDateString(),
-          tx.title,
-          tx.type,
-          tx.amount.toFixed(2),
-          payerName,
-          friendName,
-          tx.note || '',
-          tx.isSettlement ? 'Yes' : 'No',
-        ];
-      });
+      const name = (list: { id: string; name: string }[], id?: string) => list.find((x) => x.id === id)?.name ?? '';
+      const headers = ['Date', 'Kind', 'Title', 'Category', 'Account', 'To account', 'Amount', 'Currency', 'FX to HKD', 'Friend', 'Friend shares', 'Note'];
+      const rows = entries.map(e => [
+        new Date(e.occurredAt).toISOString(),
+        e.kind,
+        e.title,
+        name(categories, e.categoryId),
+        name(accounts, e.accountId),
+        name(accounts, e.toAccountId),
+        e.amount.toFixed(2),
+        e.currency,
+        String(e.fxRate),
+        name(friends, e.friendId),
+        e.shares.map(sh => `${name(friends, sh.friendId)}:${sh.amount.toFixed(2)}`).join('; '),
+        e.note || '',
+      ]);
 
       const csvContent = [
         headers.join(','),
-        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+        ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
       ].join('\n');
 
       const blob = new Blob([csvContent], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `squareone-transactions-${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `squareone-entries-${new Date().toISOString().split('T')[0]}.csv`;
       a.click();
       window.URL.revokeObjectURL(url);
-      success('Exported!', 'Your transaction history has been downloaded.');
+      success('Exported!', 'Your entries have been downloaded.');
     } catch {
       showError('Export failed', 'Something went wrong while generating CSV.');
     }
@@ -141,7 +140,7 @@ export const Profile: React.FC = () => {
       if (friendsError) throw friendsError;
 
       await refetch();
-      success('Data cleared', 'All your transactions and friends have been removed.');
+      success('Data cleared', 'All your entries and friends have been removed.');
       setShowClearConfirm(false);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -352,6 +351,25 @@ export const Profile: React.FC = () => {
                 </NeoCard>
             </section>
 
+            {[
+              { to: '/settings/categories', label: 'Categories', icon: Tags },
+              { to: '/settings/subscriptions', label: 'Subscriptions', icon: Repeat },
+            ].map(({ to, label, icon: Icon }) => (
+              <Link
+                key={to}
+                to={to}
+                className="w-full bg-white dark:bg-zinc-900 border-2 border-black p-4 shadow-neo-sm flex items-center justify-between gap-3 hover:bg-purple-50 dark:hover:bg-zinc-800"
+              >
+                <span className="flex items-center gap-3 font-bold uppercase text-sm dark:text-zinc-100">
+                  <span className="w-8 h-8 bg-neo-yellow border-2 border-black grid place-items-center text-black">
+                    <Icon size={16} aria-hidden="true" />
+                  </span>
+                  {label}
+                </span>
+                <ArrowRight size={16} aria-hidden="true" className="dark:text-zinc-100" />
+              </Link>
+            ))}
+
             {(
               <Link
                 to="/profile/agent-access"
@@ -382,7 +400,7 @@ export const Profile: React.FC = () => {
                             </div>
                             <div className="text-left">
                                 <span className="block font-bold uppercase text-sm">Export to CSV</span>
-                                <span className="block text-[10px] text-gray-500 dark:text-zinc-500 font-bold uppercase tracking-wider">Transaction history</span>
+                                <span className="block text-[10px] text-gray-500 dark:text-zinc-500 font-bold uppercase tracking-wider">All entries</span>
                             </div>
                         </div>
                         <ArrowRight size={18} className="-rotate-45 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform text-black dark:text-zinc-100" />
@@ -450,7 +468,7 @@ export const Profile: React.FC = () => {
           title="Clear All Data?"
         >
           <p className="font-bold text-gray-600 mb-6 uppercase text-sm tracking-tight">
-            This will permanently delete ALL your transactions and friends. This action cannot be undone.
+            This will permanently delete ALL your entries and friends. This action cannot be undone.
           </p>
           <div className="flex gap-3">
             <NeoButton fullWidth onClick={() => setShowClearConfirm(false)} variant="neutral">Cancel</NeoButton>

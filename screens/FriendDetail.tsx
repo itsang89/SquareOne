@@ -1,23 +1,21 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MessageCircle, HandCoins, Search, X } from 'lucide-react';
 import { NeoButton } from '../components/NeoButton';
 import { NeoModal } from '../components/NeoModal';
 import { Avatar } from '../components/Avatar';
 import { useAppContext } from '../context/AppContext';
-import { shouldGrayTransaction } from '../utils/transactions';
-import { Transaction } from '../types';
 import { DetailHeader } from '../components/FriendDetail/DetailHeader';
-import { TransactionList } from '../components/FriendDetail/TransactionList';
+import { EntryRow } from '../components/EntryRow';
 import { EditFriendModal } from '../components/FriendDetail/EditFriendModal';
 import { useToast } from '../components/ToastContext';
 import { formatCurrency } from '../utils/formatters';
-import { matchesTransactionQuery } from '../utils/search';
+import { matchesEntryQuery } from '../utils/search';
 
 export const FriendDetail: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { transactions: allTransactions, getFriendById, deleteTransaction, updateFriend, deleteFriend, isProcessing } = useAppContext();
+  const { entries, accounts, categories, friends, getFriendById, updateFriend, deleteFriend, isProcessing } = useAppContext();
   const { success, error: showError } = useToast();
   
   const friend = id ? getFriendById(id) : undefined;
@@ -25,49 +23,29 @@ export const FriendDetail: React.FC = () => {
   const [query, setQuery] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [armedDeleteId, setArmedDeleteId] = useState<string | null>(null);
 
-  const handleEdit = useCallback(
-    (tx: Transaction) => {
-      navigate('/add', { state: { editTransaction: tx } });
-    },
-    [navigate]
+  const lookups = useMemo(() => ({ accounts, categories, friends }), [accounts, categories, friends]);
+  const friendEntries = useMemo(
+    () => (friend ? entries.filter((e) => e.friendId === friend.id || e.shares.some((s) => s.friendId === friend.id)) : []),
+    [entries, friend]
   );
-
-  const handleDelete = useCallback(
-    async (tx: Transaction) => {
-      const result = await deleteTransaction(tx.id);
-      if (result.success) {
-        success('Transaction deleted');
-      } else {
-        showError('Failed to delete', result.error?.message);
-      }
-      setArmedDeleteId(null);
-    },
-    [deleteTransaction, success, showError]
-  );
-
-  const friendTransactions = useMemo(() => {
-    if (!friend) return [];
-    return allTransactions.filter(t => 
-      (t.friendId === friend.id && t.payerId === 'me') || 
-      (t.payerId === friend.id && t.friendId === 'me')
-    );
-  }, [allTransactions, friend]);
 
   const calculatedBalance = friend?.balance ?? 0;
 
-  const friendStats = useMemo(() => ({
-    count: friendTransactions.length,
-    total: friendTransactions.reduce((s, t) => s + t.amount, 0),
-    largest: friendTransactions.length > 0 ? Math.max(...friendTransactions.map(t => t.amount)) : 0,
-  }), [friendTransactions]);
+  const friendStats = useMemo(() => {
+    let lent = 0;
+    let repaid = 0;
+    for (const e of friendEntries) {
+      if (e.kind === 'settlement') repaid += e.amount;
+      else lent += e.shares.find((s) => s.friendId === friend?.id)?.amount ?? 0;
+    }
+    return { count: friendEntries.length, lent, repaid };
+  }, [friendEntries, friend]);
 
-  const filteredFriendTransactions = useMemo(() => {
+  const filteredEntries = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return friendTransactions;
-    return friendTransactions.filter(tx => matchesTransactionQuery(tx, q, []));
-  }, [friendTransactions, query]);
+    return q ? friendEntries.filter((e) => matchesEntryQuery(e, q, lookups)) : friendEntries;
+  }, [friendEntries, query, lookups]);
 
   const handleUpdateFriend = async (name: string, avatar: string) => {
     if (!friend) return;
@@ -152,9 +130,9 @@ export const FriendDetail: React.FC = () => {
         {friendStats.count > 0 && (
           <div className="grid grid-cols-3 gap-2 w-full z-10 mb-6">
             {[
-              { label: 'Transactions', value: String(friendStats.count) },
-              { label: 'Total', value: formatCurrency(friendStats.total) },
-              { label: 'Largest', value: formatCurrency(friendStats.largest) },
+              { label: 'Entries', value: String(friendStats.count) },
+              { label: 'Lent', value: formatCurrency(friendStats.lent) },
+              { label: 'Repaid', value: formatCurrency(friendStats.repaid) },
             ].map(({ label, value }) => (
               <div key={label} className="bg-neo-bg dark:bg-zinc-800 border-2 border-black p-2 text-center shadow-neo-sm">
                 <p className="text-[9px] font-black uppercase tracking-widest text-gray-500 dark:text-zinc-400 mb-0.5">{label}</p>
@@ -165,7 +143,7 @@ export const FriendDetail: React.FC = () => {
         )}
 
         <div className="grid grid-cols-2 gap-4 w-full z-10">
-            <NeoButton variant="primary" onClick={() => navigate(`/settle/${friend.id}`)}>
+            <NeoButton variant="primary" onClick={() => navigate('/add', { state: { kind: 'settlement', friendId: friend.id } })}>
                 <HandCoins size={18} /> Settle Up
             </NeoButton>
             <NeoButton variant="secondary" disabled className="relative opacity-60 cursor-not-allowed">
@@ -174,10 +152,13 @@ export const FriendDetail: React.FC = () => {
                 <span className="absolute -top-2 -right-2 bg-neo-yellow text-black text-[9px] font-black uppercase px-1.5 py-0.5 border border-black leading-none">Soon</span>
             </NeoButton>
         </div>
+        <NeoButton fullWidth variant="neutral" className="mt-4 z-10" onClick={() => navigate('/add', { state: { splitFriendId: friend.id } })}>
+          Split an expense
+        </NeoButton>
       </section>
 
       <main className="px-6 flex-1 overflow-y-auto">
-        {friendTransactions.length > 0 && (
+        {friendEntries.length > 0 && (
           <div className="pt-4 pb-1">
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
@@ -185,7 +166,7 @@ export const FriendDetail: React.FC = () => {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search by title, note or amount..."
+                placeholder="Search this history..."
                 className="w-full pl-8 pr-8 py-2 border-2 border-black text-xs font-bold bg-white dark:bg-zinc-900 dark:text-zinc-100 focus:outline-none focus:shadow-neo-sm transition-shadow placeholder:text-gray-300 dark:placeholder:text-zinc-600"
               />
               {query && (
@@ -196,15 +177,13 @@ export const FriendDetail: React.FC = () => {
             </div>
           </div>
         )}
-        <TransactionList
-          transactions={filteredFriendTransactions}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          armedDeleteId={armedDeleteId}
-          onArmedChange={(txId, armed) => setArmedDeleteId(armed ? txId : null)}
-          getIsGrayed={(tx) => shouldGrayTransaction(tx, friend.id, allTransactions)}
-          emptyMessage={query ? 'No results' : undefined}
-        />
+        {filteredEntries.length === 0 ? (
+          <p className="text-center py-10 font-black uppercase text-gray-400 dark:text-zinc-600">{query ? 'No results' : 'No history yet'}</p>
+        ) : (
+          <div className="mt-4 border-2 border-black shadow-neo-sm divide-y-2 divide-black/10">
+            {filteredEntries.map((e) => <EntryRow key={e.id} entry={e} lookups={lookups} forFriend={friend.id} />)}
+          </div>
+        )}
       </main>
 
       <EditFriendModal
@@ -221,7 +200,7 @@ export const FriendDetail: React.FC = () => {
         title="Delete Friend?"
       >
         <p className="font-bold text-gray-600 dark:text-zinc-400 mb-6 uppercase text-sm tracking-tight">
-          This will permanently delete {friend.name} and all associated transactions. This action cannot be undone.
+          This will permanently delete {friend.name} and entries that only involve them. This action cannot be undone.
         </p>
         <div className="flex gap-3">
           <NeoButton fullWidth onClick={() => setShowDeleteConfirm(false)} variant="neutral">Cancel</NeoButton>

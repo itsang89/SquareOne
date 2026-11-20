@@ -84,26 +84,6 @@ export interface Subscription {
 export type SubscriptionInput = Omit<Subscription, 'id' | 'fxRate' | 'currency' | 'active'> &
   Partial<Pick<Subscription, 'id' | 'fxRate' | 'currency' | 'active'>>;
 
-export type TransactionType = string;
-
-/**
- * Legacy friend-ledger view of an entry (see utils/transactions.ts). Kept so existing
- * screens keep working; one Transaction per (entry, friend) pair.
- */
-export interface Transaction {
-  id: string; // `${entryId}` for single-share rows, `${entryId}:${friendId}` otherwise
-  entryId?: string;
-  user_id?: string;
-  title: string;
-  amount: number;
-  date: string; // ISO date string
-  type: TransactionType;
-  payerId: string; // 'me' or friendId
-  friendId: string; // UUID - The other person involved
-  note?: string;
-  isSettlement?: boolean;
-}
-
 export interface ExpenseChartData {
   name: string;
   value: number;

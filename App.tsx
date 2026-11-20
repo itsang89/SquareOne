@@ -15,9 +15,12 @@ const Login = lazy(() => import('./screens/Login').then(m => ({ default: m.Login
 const Home = lazy(() => import('./screens/Home').then(m => ({ default: m.Home })));
 const Friends = lazy(() => import('./screens/Friends').then(m => ({ default: m.Friends })));
 const FriendDetail = lazy(() => import('./screens/FriendDetail').then(m => ({ default: m.FriendDetail })));
-const AddTransaction = lazy(() => import('./screens/AddTransaction').then(m => ({ default: m.AddTransaction })));
-const SettleUp = lazy(() => import('./screens/SettleUp').then(m => ({ default: m.SettleUp })));
-const History = lazy(() => import('./screens/History').then(m => ({ default: m.History })));
+const AddEntry = lazy(() => import('./screens/AddEntry').then(m => ({ default: m.AddEntry })));
+const Ledger = lazy(() => import('./screens/Ledger').then(m => ({ default: m.Ledger })));
+const Wallet = lazy(() => import('./screens/Wallet').then(m => ({ default: m.Wallet })));
+const Charts = lazy(() => import('./screens/Charts').then(m => ({ default: m.Charts })));
+const Categories = lazy(() => import('./screens/Categories').then(m => ({ default: m.Categories })));
+const Subscriptions = lazy(() => import('./screens/Subscriptions').then(m => ({ default: m.Subscriptions })));
 const Profile = lazy(() => import('./screens/Profile').then(m => ({ default: m.Profile })));
 const AgentAccess = lazy(() => import('./screens/AgentAccess').then(m => ({ default: m.AgentAccess })));
 const ConnectAgent = lazy(() => import('./screens/ConnectAgent').then(m => ({ default: m.ConnectAgent })));
@@ -74,23 +77,39 @@ const AppContent: React.FC = () => {
             path="/add"
             element={
               <ProtectedRoute>
-                <AddTransaction />
+                <AddEntry />
               </ProtectedRoute>
             }
           />
           <Route
-            path="/settle/:id"
+            path="/entry/:id"
             element={
               <ProtectedRoute>
-                <SettleUp />
+                <AddEntry />
               </ProtectedRoute>
             }
           />
           <Route
-            path="/history"
+            path="/ledger"
             element={
               <ProtectedRoute>
-                <History />
+                <Ledger />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/wallet"
+            element={
+              <ProtectedRoute>
+                <Wallet />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/charts"
+            element={
+              <ProtectedRoute>
+                <Charts />
               </ProtectedRoute>
             }
           />
@@ -99,6 +118,22 @@ const AppContent: React.FC = () => {
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings/categories"
+            element={
+              <ProtectedRoute>
+                <Categories />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings/subscriptions"
+            element={
+              <ProtectedRoute>
+                <Subscriptions />
               </ProtectedRoute>
             }
           />

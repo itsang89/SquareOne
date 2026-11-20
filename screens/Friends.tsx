@@ -17,7 +17,7 @@ type FilterType = 'A-Z' | 'High-Low' | 'Recent';
 
 export const Friends: React.FC = () => {
   const navigate = useNavigate();
-  const { friends, transactions, addFriend, loading, error, refetch } = useAppContext();
+  const { friends, entries, addFriend, loading, error, refetch } = useAppContext();
   const { openSearch } = useSearch();
   const { success, error: showError } = useToast();
   
@@ -39,20 +39,17 @@ export const Friends: React.FC = () => {
         break;
       case 'Recent':
         sorted.sort((a, b) => {
-          const getFriendLatestDate = (friendId: string) => {
-            const friendTransactions = transactions.filter(t => 
-              t.friendId === friendId || t.payerId === friendId
-            );
-            if (friendTransactions.length === 0) return 0;
-            return Math.max(...friendTransactions.map(t => new Date(t.date).getTime()));
+          const latest = (friendId: string) => {
+            const e = entries.find((x) => x.friendId === friendId || x.shares.some((sh) => sh.friendId === friendId));
+            return e ? new Date(e.occurredAt).getTime() : 0; // entries are newest first
           };
-          return getFriendLatestDate(b.id) - getFriendLatestDate(a.id);
+          return latest(b.id) - latest(a.id);
         });
         break;
     }
     
     return sorted;
-  }, [friends, transactions, filter]);
+  }, [friends, entries, filter]);
 
   const handleAddFriend = async () => {
     if (!newFriendName.trim()) {
@@ -95,7 +92,7 @@ export const Friends: React.FC = () => {
               type="button"
               onClick={openSearch}
               className="w-12 h-12 bg-white dark:bg-zinc-900 border-2 border-black shadow-neo active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all flex items-center justify-center hover:bg-gray-100 dark:hover:bg-zinc-800"
-              aria-label="Search friends and transactions"
+              aria-label="Search friends and entries"
             >
                 <Search className="text-black dark:text-zinc-100" strokeWidth={2.5} />
             </button>
@@ -165,14 +162,14 @@ export const Friends: React.FC = () => {
                           <p className={`text-2xl font-black tracking-tight font-mono ${
                               friend.balance > 0 ? 'text-neo-greenDark' : friend.balance < 0 ? 'text-neo-red' : 'text-gray-400 dark:text-zinc-600'
                           }`}>
-                              {friend.balance === 0 ? '$0.00' : `${friend.balance > 0 ? '+' : '-'}${formatCurrency(Math.abs(friend.balance))}`}
+                              {friend.balance === 0 ? formatCurrency(0) : `${friend.balance > 0 ? '+' : '-'}${formatCurrency(Math.abs(friend.balance))}`}
                           </p>
                           
                           {friend.balance !== 0 ? (
                                <div className={`flex items-center justify-center gap-1 border-2 border-black px-2 py-0.5 shadow-sm mt-1 ${
                                   friend.balance > 0 ? 'bg-neo-green text-black' : 'bg-neo-red text-white'
                                }`}>
-                                  <span className="text-[10px] font-bold uppercase leading-none">{friend.balance > 0 ? 'Incoming' : 'Outgoing'}</span>
+                                  <span className="text-[10px] font-bold uppercase leading-none">{friend.balance > 0 ? 'Owes you' : 'You owe'}</span>
                                   {friend.balance > 0 ? <ArrowDownLeft size={10} strokeWidth={4} /> : <ArrowUpRight size={10} strokeWidth={4}/>}
                               </div>
                           ) : (

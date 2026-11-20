@@ -6,9 +6,10 @@ import { useAppContext } from '../context/AppContext';
 import { useSearch } from '../context/SearchContext';
 import { NeoInput } from './NeoInput';
 import { Avatar } from './Avatar';
-import { searchAll, getTransactionCounterparty } from '../utils/search';
+import { searchAll } from '../utils/search';
+import { entryView } from '../utils/entryUi';
 import { formatCurrency } from '../utils/formatters';
-import type { Friend, Transaction } from '../types';
+import type { Entry, Friend } from '../types';
 import { modalBackdrop, modalContent } from '../utils/animations';
 import { useAnimations } from '../hooks/useAnimations';
 import { useFocusTrap } from '../hooks/useFocusTrap';
@@ -16,7 +17,7 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 const DEBOUNCE_MS = 220;
 
 export const GlobalSearch: React.FC = () => {
-  const { friends, transactions } = useAppContext();
+  const { friends, entries, accounts, categories } = useAppContext();
   const { open, openSearch, closeSearch: closeSearchCtx } = useSearch();
   const navigate = useNavigate();
   const { getVariants } = useAnimations();
@@ -38,9 +39,9 @@ export const GlobalSearch: React.FC = () => {
   }, [closeSearchCtx]);
 
   const { friendMatches, txMatches } = useMemo(() => {
-    const { friends: f, transactions: tx } = searchAll(friends, transactions, debounced);
+    const { friends: f, entries: tx } = searchAll({ friends, accounts, categories }, entries, debounced);
     return { friendMatches: f, txMatches: tx };
-  }, [friends, transactions, debounced]);
+  }, [friends, entries, accounts, categories, debounced]);
 
   const hasQuery = debounced.trim().length > 0;
   const noResults = hasQuery && friendMatches.length === 0 && txMatches.length === 0;
@@ -64,10 +65,9 @@ export const GlobalSearch: React.FC = () => {
     navigate(`/friends/${f.id}`);
   };
 
-  const goTransaction = (_tx: Transaction) => {
-    const q = debounced.trim();
+  const goEntry = (e: Entry) => {
     closeSearch();
-    navigate('/history', q ? { state: { historySearchQuery: q } } : undefined);
+    navigate(`/entry/${e.id}`);
   };
 
   return (
@@ -100,7 +100,7 @@ export const GlobalSearch: React.FC = () => {
               <Search className="shrink-0 text-black" size={22} strokeWidth={2.5} aria-hidden />
               <div className="flex-1 min-w-0">
                 <label htmlFor="global-search-input" className="sr-only">
-                  Search friends and transactions
+                  Search friends and entries
                 </label>
                 <NeoInput
                   id="global-search-input"
@@ -130,7 +130,7 @@ export const GlobalSearch: React.FC = () => {
             <div className="flex-1 overflow-y-auto no-scrollbar p-3 space-y-6 min-h-[40vh]">
               {!hasQuery ? (
                 <p className="text-sm font-bold text-gray-500 dark:text-zinc-500 text-center py-8">
-                  Type to search your friends and transactions.
+                  Type to search your friends and entries.
                 </p>
               ) : noResults ? (
                 <p className="text-sm font-bold uppercase text-gray-400 dark:text-zinc-600 text-center py-8">
@@ -160,41 +160,28 @@ export const GlobalSearch: React.FC = () => {
                     </section>
                   )}
                   {txMatches.length > 0 && (
-                    <section aria-label="Transactions">
+                    <section aria-label="Entries">
                       <h3 className="text-xs font-black uppercase tracking-widest mb-2 text-black dark:text-zinc-300">
-                        Transactions
+                        Entries
                       </h3>
                       <ul className="space-y-2">
-                        {txMatches.map((tx) => {
-                          const { friend } = getTransactionCounterparty(tx, friends);
-                          const name = friend?.name ?? 'Unknown';
+                        {txMatches.map((e) => {
+                          const v = entryView(e, { friends, accounts, categories });
                           return (
-                            <li key={tx.id}>
+                            <li key={e.id}>
                               <button
                                 type="button"
-                                onClick={() => goTransaction(tx)}
+                                onClick={() => goEntry(e)}
                                 className="w-full flex items-center gap-3 p-2 border-2 border-black bg-white dark:bg-zinc-950 shadow-neo-sm hover:bg-neo-purple/20 text-left transition-colors"
                               >
-                                <Avatar src={friend?.avatar ?? ''} alt={name} size="sm" />
+                                <span className="w-8 h-8 shrink-0 border-2 border-black grid place-items-center" style={{ backgroundColor: v.color }}>{v.icon}</span>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex justify-between gap-2">
-                                    <span className="font-bold truncate dark:text-zinc-100">{name}</span>
-                                    <span
-                                      className={`font-bold shrink-0 text-sm ${
-                                        tx.isSettlement
-                                          ? 'dark:text-zinc-300'
-                                          : tx.payerId === 'me'
-                                            ? 'text-neo-greenDark'
-                                            : 'text-neo-red'
-                                      }`}
-                                    >
-                                      {tx.isSettlement ? '✓ ' : tx.payerId === 'me' ? '+' : '-'}
-                                      {formatCurrency(tx.amount)}
-                                    </span>
+                                    <span className="font-bold truncate dark:text-zinc-100">{v.title}</span>
+                                    <span className="font-bold shrink-0 text-sm dark:text-zinc-100">{v.sign}{formatCurrency(v.amount, v.currency)}</span>
                                   </div>
                                   <p className="text-xs text-gray-600 dark:text-zinc-400 truncate">
-                                    {tx.isSettlement ? 'Settlement' : tx.title}
-                                    {tx.note ? ` • ${tx.note}` : ''}
+                                    {v.sub}{e.note ? ` • ${e.note}` : ''}
                                   </p>
                                 </div>
                               </button>

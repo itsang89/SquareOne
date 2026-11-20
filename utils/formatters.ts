@@ -1,11 +1,13 @@
-/**
- * Format a number as currency (USD)
- */
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount);
+const moneyFmt = new Map<string, Intl.NumberFormat>();
+
+/** Format a number as currency. HKD-first app, so HKD by default. */
+export function formatCurrency(amount: number, currency = 'HKD'): string {
+  let f = moneyFmt.get(currency);
+  if (!f) {
+    f = new Intl.NumberFormat('en-HK', { style: 'currency', currency });
+    moneyFmt.set(currency, f);
+  }
+  return f.format(amount);
 }
 
 /**

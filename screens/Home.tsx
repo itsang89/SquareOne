@@ -1,335 +1,109 @@
-import React, { useMemo, useState, useCallback } from 'react';
-import { ArrowUpRight, ArrowDownLeft, Pencil, Search } from 'lucide-react';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { NeoCard } from '../components/NeoCard';
-import { NeoButton } from '../components/NeoButton';
-import { Avatar } from '../components/Avatar';
+import React, { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAppContext } from '../context/AppContext';
-import { useAuth } from '../context/AuthContext';
-import { totalOwed as sumOwed, totalOwing as sumOwing } from '../utils/calculations';
-import { calculateDebtOrigins, calculateMonthlyTotals, shouldGrayTransaction } from '../utils/transactions';
-import { getTransactionCounterparty } from '../utils/search';
-import { Transaction } from '../types';
-import { useToast } from '../components/ToastContext';
-import { TransactionSkeleton, FriendSkeleton } from '../components/LoadingSkeleton';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { ArrowDownLeft, Plus, Search, Settings, Users } from 'lucide-react';
+import { NeoCard } from '../components/NeoCard';
+import { Avatar } from '../components/Avatar';
+import { EntryRow } from '../components/EntryRow';
+import { HomeStats } from '../components/HomeStats';
 import { AnimatedNumber } from '../components/AnimatedNumber';
 import { DataLoadErrorBanner } from '../components/DataLoadErrorBanner';
+import { TransactionSkeleton, FriendSkeleton } from '../components/LoadingSkeleton';
+import { useAppContext } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { useSearch } from '../context/SearchContext';
-import { DeleteConfirmButton } from '../components/DeleteConfirmButton';
+import { totalOwed } from '../utils/calculations';
+import { formatCurrency } from '../utils/formatters';
+
+const iconBtn =
+  'w-11 h-11 bg-white dark:bg-zinc-900 border-2 border-black shadow-neo-sm active:shadow-none active:translate-y-0.5 grid place-items-center text-black dark:text-zinc-100';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
-  const { friends, entries, transactions, deleteTransaction, loading, error, refetch } = useAppContext();
+  const { friends, entries, accounts, categories, loading, error, refetch } = useAppContext();
   const { user } = useAuth();
   const { openSearch } = useSearch();
-  const { success, error: showError } = useToast();
-  const [armedDeleteId, setArmedDeleteId] = useState<string | null>(null);
 
-  const handleEdit = useCallback(
-    (tx: Transaction) => {
-      navigate('/add', { state: { editTransaction: tx } });
-    },
-    [navigate]
+  const owed = useMemo(() => totalOwed(entries), [entries]);
+  const owing = useMemo(
+    () => friends.filter((f) => f.balance > 0.005).sort((a, b) => b.balance - a.balance),
+    [friends]
   );
+  const lookups = useMemo(() => ({ accounts, categories, friends }), [accounts, categories, friends]);
+  const recent = entries.slice(0, 10);
 
-  const handleDelete = useCallback(
-    async (tx: Transaction) => {
-      const result = await deleteTransaction(tx.id);
-      if (result.success) {
-        success('Transaction deleted');
-      } else {
-        showError('Failed to delete transaction', result.error?.message);
-      }
-      setArmedDeleteId(null);
-    },
-    [deleteTransaction, success, showError]
-  );
-  
-  const totalOwed = useMemo(() => sumOwed(entries), [entries]);
-  const totalOwing = useMemo(() => sumOwing(entries), [entries]);
-  const netBalance = totalOwed - totalOwing;
-  const debtOriginsData = useMemo(() => calculateDebtOrigins(transactions), [transactions]);
-  const monthlyData = useMemo(() => calculateMonthlyTotals(transactions), [transactions]);
-  
-  const friendsOwingMe = useMemo(() => {
-    return [...friends]
-      .filter(f => f.balance !== 0)
-      .sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
-  }, [friends]);
-  
-  const recentTransactions = useMemo(() => {
-    return [...transactions]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 10);
-  }, [transactions]);
-  
   return (
-    <div className="min-h-screen pb-24 bg-neo-bg dark:bg-zinc-950 transition-colors duration-300">
-      {/* Header */}
-      <header className="sticky top-0 z-20 bg-neo-bg/95 dark:bg-zinc-950/95 backdrop-blur-sm border-b-2 border-black px-5 py-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold uppercase leading-none dark:text-zinc-100">Hello, {user?.name || 'User'}</h2>
+    <div className="min-h-screen pb-28 bg-neo-bg dark:bg-zinc-950 transition-colors duration-300">
+      <header className="sticky top-0 z-20 bg-neo-bg/95 dark:bg-zinc-950/95 backdrop-blur-sm border-b-2 border-black px-5 py-3 flex items-center justify-between">
+        <div className="min-w-0">
+          <h2 className="text-xl font-bold uppercase leading-none truncate dark:text-zinc-100">Hello, {user?.name || 'User'}</h2>
           <p className="text-xs font-bold text-gray-500 dark:text-zinc-500 uppercase tracking-widest mt-1">Dashboard</p>
         </div>
         <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={openSearch}
-          className="w-12 h-12 bg-white dark:bg-zinc-900 border-2 border-black rounded-lg shadow-neo-sm active:shadow-none active:translate-y-1 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-zinc-800"
-          aria-label="Search friends and transactions"
-        >
-            <Search size={22} className="text-black dark:text-zinc-100" strokeWidth={2.5} />
-        </button>
+          <button type="button" onClick={openSearch} className={iconBtn} aria-label="Search"><Search size={20} strokeWidth={2.5} /></button>
+          <Link to="/friends" className={iconBtn} aria-label="Friends"><Users size={20} strokeWidth={2.5} /></Link>
+          <Link to="/profile" className={iconBtn} aria-label="Settings"><Settings size={20} strokeWidth={2.5} /></Link>
         </div>
       </header>
 
       <DataLoadErrorBanner error={error} loading={loading} onRetry={refetch} />
 
-      <div className="p-5 space-y-8">
-        {/* Net Position Widget */}
-        <section>
-            <div className="relative bg-neo-yellow border-2 border-black p-6 shadow-neo overflow-hidden rounded-lg">
-                <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/20 dark:bg-black/20 rounded-full blur-2xl pointer-events-none"></div>
-                
-                <div className="relative z-10 mb-6">
-                    <p className="text-black/70 dark:text-black/80 text-xs font-bold uppercase tracking-widest mb-1">Total Net Position</p>
-                    <p className="text-5xl font-bold tracking-tighter text-black">
-                      {netBalance >= 0 ? '+' : '-'}
-                      <AnimatedNumber value={Math.abs(netBalance)} decimals={2} prefix="$" />
-                    </p>
-                </div>
+      <div className="p-5 space-y-6">
+        <Link
+          to="/add"
+          className="flex items-center justify-center gap-3 w-full py-5 bg-neo-green border-2 border-black shadow-neo font-black uppercase text-xl text-black active:shadow-neo-pressed active:translate-x-1 active:translate-y-1 transition-all"
+        >
+          <Plus size={28} strokeWidth={3} /> Add entry
+        </Link>
 
-                <div className="relative z-10 flex gap-4 pt-4 border-t-2 border-black/10">
-                    <div className="flex-1">
-                        <p className="text-black/60 dark:text-black/70 text-[10px] font-black uppercase mb-1">You Owe</p>
-                        <p className="text-neo-red font-black text-xl tracking-tight">
-                          <AnimatedNumber value={totalOwing} decimals={2} prefix="$" />
-                        </p>
-                    </div>
-                    <div className="w-[2px] bg-black/10"></div>
-                    <div className="flex-1">
-                        <p className="text-black/60 dark:text-black/70 text-[10px] font-black uppercase mb-1">Owed To You</p>
-                        <p className="text-neo-greenDark font-black text-xl tracking-tight">
-                          <AnimatedNumber value={totalOwed} decimals={2} prefix="$" />
-                        </p>
-                    </div>
-                </div>
+        <HomeStats />
+
+        <section>
+          <Link to="/friends" className="block bg-neo-yellow border-2 border-black shadow-neo p-4 text-black">
+            <p className="text-xs font-bold uppercase tracking-widest text-black/70">Friends owe you</p>
+            <p className="text-3xl font-black tracking-tighter"><AnimatedNumber value={owed} decimals={2} prefix="HK$" /></p>
+          </Link>
+          {loading ? (
+            <div className="flex gap-4 overflow-x-auto py-4">{[1, 2, 3].map((i) => <FriendSkeleton key={i} />)}</div>
+          ) : owing.length > 0 && (
+            <div className="flex overflow-x-auto no-scrollbar gap-3 pt-4 snap-x">
+              {owing.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => navigate(`/friends/${f.id}`)}
+                  className="snap-start shrink-0 w-28 bg-white dark:bg-zinc-900 border-2 border-black p-3 shadow-neo-sm flex flex-col items-center gap-1"
+                >
+                  <div className="relative">
+                    <Avatar src={f.avatar} alt={f.name} size="md" />
+                    <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white bg-neo-greenDark grid place-items-center">
+                      <ArrowDownLeft size={12} className="text-white" />
+                    </span>
+                  </div>
+                  <p className="text-sm font-bold truncate w-full dark:text-zinc-100">{f.name.split(' ')[0]}</p>
+                  <p className="text-xs font-bold text-neo-greenDark">{formatCurrency(f.balance)}</p>
+                </button>
+              ))}
             </div>
+          )}
         </section>
 
-        {/* Active */}
         <section>
-            <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-black uppercase border-l-4 border-black dark:border-zinc-100 pl-2 dark:text-zinc-100">Active</h3>
-                <Link to="/friends" className="text-xs font-bold uppercase underline decoration-2 dark:text-zinc-100">View All</Link>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-black uppercase border-l-4 border-black dark:border-zinc-100 pl-2 dark:text-zinc-100">Recent</h3>
+            <Link to="/ledger" className="text-xs font-bold uppercase underline decoration-2 dark:text-zinc-100">Ledger</Link>
+          </div>
+          {loading ? (
+            [1, 2, 3, 4, 5].map((i) => <TransactionSkeleton key={i} />)
+          ) : recent.length > 0 ? (
+            <div className="border-2 border-black shadow-neo-sm divide-y-2 divide-black/10">
+              {recent.map((e) => <EntryRow key={e.id} entry={e} lookups={lookups} />)}
             </div>
-
-            {loading ? (
-              <div className="flex gap-4 overflow-x-auto pb-4">
-                {[1, 2, 3].map(i => <FriendSkeleton key={i} />)}
-              </div>
-            ) : friendsOwingMe.length > 0 ? (
-              <div className="flex overflow-x-auto no-scrollbar gap-4 pb-4 snap-x">
-                  {friendsOwingMe.map(friend => (
-                      <div 
-                        key={friend.id} 
-                        onClick={() => navigate(`/friends/${friend.id}`)}
-                        className="snap-start shrink-0 w-32 bg-white dark:bg-zinc-900 border-2 border-black p-3 rounded-lg shadow-neo-sm flex flex-col items-center gap-2 cursor-pointer hover:shadow-neo hover:-translate-y-1 transition-all active:shadow-neo-pressed active:translate-y-0"
-                      >
-                          <div className="relative">
-                              <Avatar src={friend.avatar} alt={friend.name} size="md" />
-                              <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white dark:border-zinc-900 flex items-center justify-center ${friend.balance >= 0 ? 'bg-neo-greenDark' : 'bg-neo-red'}`}>
-                                  {friend.balance >= 0 ? <ArrowDownLeft size={12} className="text-white"/> : <ArrowUpRight size={12} className="text-white"/>}
-                              </div>
-                          </div>
-                          <div className="text-center w-full">
-                              <p className="text-sm font-bold truncate w-full dark:text-zinc-100">{friend.name.split(' ')[0]}</p>
-                              {friend.name.split(' ').length > 1 && (
-                                <p className="text-[10px] text-gray-500 dark:text-zinc-500 truncate w-full">{friend.name}</p>
-                              )}
-                              <p className={`text-xs font-bold ${friend.balance >= 0 ? 'text-neo-greenDark' : 'text-neo-red'}`}>
-                                  {friend.balance >= 0 ? '+' : '-'}{formatCurrency(Math.abs(friend.balance))}
-                              </p>
-                          </div>
-                      </div>
-                  ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-400 dark:text-zinc-600 text-sm font-bold uppercase">
-                No active balances
-              </div>
-            )}
-        </section>
-
-        {/* Debt Origins & Event Insights */}
-        <section>
-            <h3 className="text-lg font-black uppercase border-l-4 border-black dark:border-zinc-100 pl-2 mb-4 dark:text-zinc-100">Debt Origins</h3>
-            {loading ? (
-              <NeoCard className="h-40 flex items-center justify-center bg-gray-50 dark:bg-zinc-800">
-                <div className="animate-pulse w-32 h-32 rounded-full border-4 border-gray-200 dark:border-zinc-700"></div>
-              </NeoCard>
-            ) : debtOriginsData.length > 0 ? (
-                <NeoCard className="bg-[#F7E8FF] dark:bg-purple-900/30 flex flex-row items-center gap-4">
-                    <div className="h-32 w-32 shrink-0 relative">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={debtOriginsData}
-                                    innerRadius={35}
-                                    outerRadius={60}
-                                    paddingAngle={0}
-                                    dataKey="value"
-                                    stroke="black"
-                                    strokeWidth={2}
-                                >
-                                    {debtOriginsData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                            </PieChart>
-                        </ResponsiveContainer>
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                             <div className="w-2 h-2 bg-black dark:bg-zinc-100 rounded-full"></div>
-                        </div>
-                    </div>
-                    
-                    <div className="flex-1 flex flex-col gap-2">
-                        {debtOriginsData.map((entry) => (
-                            <div key={entry.name} className="flex items-center justify-between bg-white dark:bg-zinc-900 border border-black p-1.5 rounded shadow-sm">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-3 h-3 border border-black" style={{ backgroundColor: entry.color }}></div>
-                                    <span className="text-xs font-bold uppercase dark:text-zinc-100">{entry.name}</span>
-                                </div>
-                                <span className="text-xs font-mono dark:text-zinc-300">{entry.value}%</span>
-                            </div>
-                        ))}
-                    </div>
-                </NeoCard>
-            ) : (
-                <NeoCard className="bg-gray-50 dark:bg-zinc-800 flex items-center justify-center py-10">
-                    <p className="text-xs font-bold uppercase text-gray-400 dark:text-zinc-600">No debt data available</p>
-                </NeoCard>
-            )}
-        </section>
-
-        {/* Monthly Spending */}
-        <section>
-            <h3 className="text-lg font-black uppercase border-l-4 border-black dark:border-zinc-100 pl-2 mb-4 dark:text-zinc-100">Monthly Spending</h3>
-            {loading ? (
-              <NeoCard className="h-40 flex items-center justify-center bg-gray-50 dark:bg-zinc-800">
-                <div className="animate-pulse w-full h-24 bg-gray-200 dark:bg-zinc-700 rounded"></div>
-              </NeoCard>
-            ) : (
-              <NeoCard className="bg-[#F0EBFF] dark:bg-purple-900/30 pt-4 pb-2 px-2">
-                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-zinc-400 mb-3 pl-2">You paid · last 6 months</p>
-                <div className="h-36">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={monthlyData} margin={{ top: 0, right: 4, left: 0, bottom: 0 }}>
-                      <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 9 }} tickFormatter={(v) => `$${v}`} width={38} axisLine={false} tickLine={false} />
-                      <Tooltip
-                        formatter={(v: number | string | undefined) => [
-                          formatCurrency(typeof v === 'number' ? v : 0),
-                          'You paid',
-                        ]}
-                        contentStyle={{ border: '2px solid black', borderRadius: 0, fontWeight: 700, fontSize: 12 }}
-                        cursor={{ fill: 'rgba(0,0,0,0.05)' }}
-                      />
-                      <Bar dataKey="total" fill="#C3B1E1" stroke="black" strokeWidth={1.5} radius={[2, 2, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </NeoCard>
-            )}
-        </section>
-
-        {/* Recent Activity */}
-        <section>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-black uppercase border-l-4 border-black dark:border-zinc-100 pl-2 dark:text-zinc-100">Recent Moves</h3>
-              <Link to="/history" className="text-xs font-bold uppercase underline decoration-2 dark:text-zinc-100">
-                More
-              </Link>
-            </div>
-             {loading ? (
-               <div className="flex flex-col gap-3">
-                 {[1, 2, 3, 4, 5].map(i => <TransactionSkeleton key={i} />)}
-               </div>
-             ) : recentTransactions.length > 0 ? (
-               <div className="flex flex-col gap-3">
-                  {recentTransactions.map(tx => {
-                    const { friend, counterpartyId: friendIdForGraying } = getTransactionCounterparty(tx, friends);
-                    const friendName = friend ? friend.name : 'Unknown';
-                    const isGrayed = friendIdForGraying ? shouldGrayTransaction(tx, friendIdForGraying, transactions) : false;
-                    
-                    return (
-                      <div key={tx.id} className={`group bg-white dark:bg-zinc-900 border-2 border-transparent hover:border-black hover:shadow-neo-sm p-3 rounded-lg flex items-center justify-between transition-all ${isGrayed ? 'opacity-50 grayscale' : tx.isSettlement ? 'opacity-75' : ''} ${armedDeleteId === tx.id ? 'border-neo-red shadow-neo-sm' : ''}`}>
-                          <div className="flex items-center gap-3 flex-1 min-w-0">
-                              <div className={`w-10 h-10 border-2 border-black rounded flex items-center justify-center shadow-sm shrink-0 ${
-                                  isGrayed ? 'bg-gray-300 dark:bg-zinc-700' :
-                                  tx.isSettlement ? 'bg-neo-green' :
-                                  tx.type === 'Meal' ? 'bg-neo-orange' : 
-                                  tx.type === 'Transport' ? 'bg-neo-yellow' : 
-                                  tx.type === 'Loan' ? 'bg-neo-green' : 
-                                  tx.type === 'Poker' ? 'bg-neo-purple' : 'bg-neo-blue'
-                              }`}>
-                                  <span className="text-lg font-bold text-black">
-                                      {tx.isSettlement ? '✓' : tx.type === 'Meal' ? '🍕' : tx.type === 'Transport' ? '🚕' : tx.type === 'Loan' ? '💸' : tx.type === 'Poker' ? '🃏' : '📝'}
-                                  </span>
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                  <p className={`font-bold text-sm leading-tight dark:text-zinc-100 ${isGrayed ? 'text-gray-500' : ''}`}>
-                                    {tx.isSettlement ? '✓ Settlement' : tx.title}
-                                  </p>
-                                  <p className={`text-[10px] font-bold uppercase tracking-wide ${isGrayed ? 'text-gray-400 dark:text-zinc-600' : 'text-gray-400 dark:text-zinc-500'}`}>
-                                      {tx.isSettlement 
-                                        ? `Settled with ${friendName}` 
-                                        : tx.payerId === 'me' ? 'You paid' : `${friendName} paid`
-                                      } • {formatDate(tx.date, 'short')}
-                                  </p>
-                              </div>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                               <p className={`font-black text-sm ${isGrayed ? 'text-gray-500 dark:text-zinc-600' : tx.isSettlement ? 'text-neo-greenDark' : tx.payerId === 'me' ? 'text-neo-greenDark' : 'text-neo-red'}`}>
-                                  {tx.isSettlement ? '✓ ' : ''}{tx.payerId === 'me' ? '+' : '-'}{formatCurrency(tx.amount)}
-                               </p>
-                               {!tx.isSettlement && (
-                                 <button
-                                   type="button"
-                                   onClick={(e) => {
-                                     e.stopPropagation();
-                                     handleEdit(tx);
-                                   }}
-                                   className="p-1.5 rounded-md border-2 border-black transition-all bg-white dark:bg-zinc-800 hover:bg-neo-blue/30 dark:text-zinc-100"
-                                   title="Edit transaction"
-                                   aria-label="Edit transaction"
-                                 >
-                                   <Pencil size={14} />
-                                 </button>
-                               )}
-                               <DeleteConfirmButton
-                                 onConfirm={() => handleDelete(tx)}
-                                 onArmedChange={(armed) => setArmedDeleteId(armed ? tx.id : null)}
-                                 ariaLabel="Delete transaction"
-                               />
-                          </div>
-                      </div>
-                    );
-                  })}
-               </div>
-             ) : (
-               <NeoCard className="bg-neo-green/30 dark:bg-neo-green/20 flex flex-col items-center gap-3 py-8 text-center">
-                 <p className="text-lg font-black uppercase tracking-tight dark:text-zinc-100">Nothing here yet</p>
-                 <p className="text-xs font-bold uppercase text-gray-600 dark:text-zinc-400 max-w-xs">
-                   Add your first expense to start tracking who owes who.
-                 </p>
-                 <Link to="/add" className="mt-2">
-                   <NeoButton variant="primary">Add Transaction</NeoButton>
-                 </Link>
-               </NeoCard>
-             )}
+          ) : (
+            <NeoCard className="text-center py-8">
+              <p className="text-lg font-black uppercase dark:text-zinc-100">Nothing here yet</p>
+              <p className="text-xs font-bold uppercase text-gray-500 mt-1">Tap Add entry to log your first expense.</p>
+            </NeoCard>
+          )}
         </section>
       </div>
     </div>

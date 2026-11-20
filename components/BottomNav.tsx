@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { Home, Users, Plus, History, Settings, LucideIcon } from 'lucide-react';
+import { Home, Plus, BookOpen, PieChart, Wallet, LucideIcon } from 'lucide-react';
 
 interface NavItemProps {
   to: string;
@@ -33,9 +33,8 @@ export const BottomNav: React.FC = () => {
   const location = useLocation();
   const path = location.pathname;
 
-  // Don't show nav on login or full-screen modal routes like 'add' or 'settle'
-  const excludedPaths = ['/', '/login', '/add', '/settle'];
-  if (excludedPaths.includes(path) || path.startsWith('/settle')) return null;
+  // Hide on login and the full-screen add/edit entry form
+  if (['/', '/login', '/add'].includes(path) || path.startsWith('/entry/')) return null;
 
   const friendMatch = path.match(/^\/friends\/([^/]+)$/);
   const preselectedFriendId = friendMatch ? friendMatch[1] : undefined;
@@ -47,22 +46,22 @@ export const BottomNav: React.FC = () => {
     >
       <div className="max-w-md mx-auto h-full flex items-center justify-around px-2 relative">
         <NavItem to="/dashboard" icon={Home} label="Home" isActive={path === '/dashboard'} />
-        <NavItem to="/friends" icon={Users} label="Friends" isActive={path === '/friends'} />
+        <NavItem to="/ledger" icon={BookOpen} label="Ledger" isActive={path === '/ledger'} />
         
         {/* Floating Add Button Wrapper */}
         <div className="relative -top-6">
             <Link
               to="/add"
-              state={preselectedFriendId ? { preselectedFriendId } : undefined}
+              state={preselectedFriendId ? { splitFriendId: preselectedFriendId } : undefined}
               className="flex items-center justify-center w-16 h-16 bg-neo-green border-2 border-black shadow-neo hover:scale-105 active:shadow-neo-pressed active:translate-y-[4px] active:translate-x-[4px] transition-all"
-              aria-label="Add Transaction"
+              aria-label="Add entry"
             >
                 <Plus size={32} className="text-black" strokeWidth={3} />
             </Link>
         </div>
 
-        <NavItem to="/history" icon={History} label="History" isActive={path === '/history'} />
-        <NavItem to="/profile" icon={Settings} label="Profile" isActive={path === '/profile'} />
+        <NavItem to="/charts" icon={PieChart} label="Charts" isActive={path === '/charts'} />
+        <NavItem to="/wallet" icon={Wallet} label="Wallet" isActive={path === '/wallet'} />
       </div>
     </nav>
   );

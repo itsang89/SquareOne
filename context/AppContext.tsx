@@ -1,9 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type {
-  Account, Category, Entry, EntryInput, Friend, Subscription, SubscriptionInput, Transaction,
+  Account, Category, Entry, EntryInput, Friend, Subscription, SubscriptionInput,
 } from '../types';
 import { friendBalancesMap, getLastActivity } from '../utils/calculations';
-import { entriesToTransactions, transactionToEntryInput } from '../utils/transactions';
 import { supabase } from '../utils/supabase';
 import { AuthContext } from './AuthContext';
 
@@ -44,14 +43,6 @@ interface AppContextType {
   updateFriend: (friendId: string, updates: Partial<Friend>) => Promise<Result>;
   deleteFriend: (friendId: string) => Promise<Result>;
   getFriendById: (friendId: string) => Friend | undefined;
-  // Legacy friend-ledger view, used by the pre-redesign screens
-  transactions: Transaction[];
-  addTransaction: (transaction: Transaction) => Promise<Result>;
-  updateTransaction: (transaction: Transaction) => Promise<Result>;
-  deleteTransaction: (transactionId: string) => Promise<Result>;
-  customTypes: string[]; // names of expense categories
-  addCustomType: (name: string) => Promise<Result>;
-  removeCustomType: (name: string) => Promise<Result>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -219,8 +210,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, [friendRows, entries]);
 
-  const transactions = useMemo(() => entriesToTransactions(entries, categories), [entries, categories]);
-
   /** Run a write for the signed-in user, then reload. Never throws. */
   const write = useCallback(
     async <T extends object = object>(label: string, fn: (uid: string) => Promise<T | void>): Promise<Result & T> => {
@@ -362,86 +351,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
   const getFriendById = useCallback((friendId: string) => friends.find((f) => f.id === friendId), [friends]);
 
-  // ---- Legacy friend-ledger API (old screens) ----
-  const categoryIdFor = useCallback(
-    async (name: string, uid: string): Promise<string | undefined> => {
-      const existing = categories.find((c) => c.kind === 'expense' && c.name === name);
-      if (existing || !name) return existing?.id;
-      const { data, error } = await supabase.from('categories').insert({ user_id: uid, name, kind: 'expense' }).select('id').single();
-      if (error) throw error;
-      return data.id as string;
-    },
-    [categories]
-  );
-
-  const addTransaction = useCallback(
-    (tx: Transaction) => write('adding transaction', async (uid) => {
-      const input = transactionToEntryInput(tx, await categoryIdFor(tx.type, uid));
-      if (!input) throw new Error('Amount must be greater than zero');
-      await saveEntry(input);
-    }),
-    [write, saveEntry, categoryIdFor]
-  );
-
-  const updateTransaction = useCallback(
-    (tx: Transaction) => write('updating transaction', async (uid) => {
-      const id = tx.entryId ?? tx.id;
-      const old = entries.find((e) => e.id === id);
-      const categoryId = await categoryIdFor(tx.type, uid);
-      // Plain ledger rows (no account, ≤1 share) are rebuilt from the row; richer entries keep their
-      // account/split and only take the edited text, date and this friend's amount.
-      if (!old || (!old.accountId && old.shares.length <= 1)) {
-        const input = transactionToEntryInput({ ...tx, entryId: id }, categoryId);
-        if (!input) throw new Error('Amount must be greater than zero');
-        return void (await saveEntry(input));
-      }
-      const next: Entry = { ...old, title: tx.title, note: tx.note, occurredAt: tx.date };
-      if (old.kind === 'expense') {
-        const oldShare = old.shares.find((s) => s.friendId === tx.friendId)?.amount ?? 0;
-        next.categoryId = categoryId ?? old.categoryId;
-        next.shares = old.shares.map((s) => (s.friendId === tx.friendId ? { ...s, amount: tx.amount } : s));
-        next.amount = Math.round((old.amount + tx.amount - oldShare) * 100) / 100;
-      } else {
-        next.amount = tx.amount;
-      }
-      await saveEntry(next);
-    }),
-    [write, saveEntry, categoryIdFor, entries]
-  );
-
-  const deleteTransaction = useCallback(
-    (txId: string) => {
-      const tx = transactions.find((t) => t.id === txId);
-      const entryId = tx?.entryId ?? txId;
-      const entry = entries.find((e) => e.id === entryId);
-      // A split row only removes that friend's share; everything else deletes the whole entry.
-      if (tx && entry && entry.kind === 'expense' && entry.shares.length > 1) {
-        const shares = entry.shares.filter((s) => s.friendId !== tx.friendId);
-        return write('deleting transaction', async () => { await saveEntry({ ...entry, shares }); });
-      }
-      return deleteEntry(entryId);
-    },
-    [transactions, entries, write, saveEntry, deleteEntry]
-  );
-
-  const customTypes = useMemo(() => categories.filter((c) => c.kind === 'expense' && !c.archived).map((c) => c.name), [categories]);
-  const addCustomType = useCallback(
-    async (name: string): Promise<Result> => {
-      const trimmed = name.trim();
-      if (!trimmed) return { success: false, error: new Error('Empty type name') };
-      if (customTypes.includes(trimmed)) return { success: true };
-      return addCategory({ name: trimmed, kind: 'expense' });
-    },
-    [customTypes, addCategory]
-  );
-  const removeCustomType = useCallback(
-    async (name: string): Promise<Result> => {
-      const c = categories.find((x) => x.kind === 'expense' && x.name === name.trim());
-      return c ? deleteCategory(c.id) : { success: true };
-    },
-    [categories, deleteCategory]
-  );
-
   const value = useMemo<AppContextType>(() => ({
     friends, accounts, categories, entries, subscriptions, loading, error, isProcessing, refetch: loadData,
     addEntry, updateEntry, deleteEntry,
@@ -449,14 +358,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addCategory, updateCategory, deleteCategory,
     addSubscription, updateSubscription, deleteSubscription,
     addFriend, updateFriend, deleteFriend, getFriendById,
-    transactions, addTransaction, updateTransaction, deleteTransaction,
-    customTypes, addCustomType, removeCustomType,
   }), [
     friends, accounts, categories, entries, subscriptions, loading, error, isProcessing, loadData,
     addEntry, updateEntry, deleteEntry, addAccount, updateAccount, deleteAccount,
     addCategory, updateCategory, deleteCategory, addSubscription, updateSubscription, deleteSubscription,
     addFriend, updateFriend, deleteFriend, getFriendById,
-    transactions, addTransaction, updateTransaction, deleteTransaction, customTypes, addCustomType, removeCustomType,
   ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

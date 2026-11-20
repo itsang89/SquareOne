@@ -335,19 +335,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }),
     [write]
   );
+  // The database refuses to delete a friend that has any entries or shares (it would rewrite history).
   const deleteFriend = useCallback(
-    (friendId: string) => write('deleting friend', async (uid) => {
-      // Receivable-only entries (no account) exist just for this friend's share; drop them so
-      // they don't turn into my own expense once the share cascades away.
-      const orphaned = entries
-        .filter((e) => e.kind === 'expense' && !e.accountId && e.shares.length > 0 && e.shares.every((s) => s.friendId === friendId))
-        .map((e) => e.id);
-      if (orphaned.length) ok(await supabase.from('entries').delete().in('id', orphaned).eq('user_id', uid));
-      // Legacy table is kept until cutover; clear this friend's rows so re-running the migration can't resurrect them.
-      ok(await supabase.from('transactions').delete().eq('friend_id', friendId).eq('user_id', uid));
-      ok(await supabase.from('friends').delete().eq('id', friendId).eq('user_id', uid));
-    }),
-    [write, entries]
+    (friendId: string) => write('deleting friend', async (uid) => ok(await supabase.from('friends').delete().eq('id', friendId).eq('user_id', uid))),
+    [write]
   );
   const getFriendById = useCallback((friendId: string) => friends.find((f) => f.id === friendId), [friends]);
 

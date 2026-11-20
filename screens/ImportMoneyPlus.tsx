@@ -12,7 +12,7 @@ const fmt = (n: number) => n.toLocaleString('en-HK', { minimumFractionDigits: 2,
 
 export function ImportMoneyPlus() {
   const { user } = useAuth();
-  const { accounts, categories, refetch } = useApp();
+  const { refetch } = useApp();
   const [rows, setRows] = useState<MoneyPlusRow[] | null>(null);
   const [skipped, setSkipped] = useState(0);
   const [error, setError] = useState('');
@@ -32,27 +32,21 @@ export function ImportMoneyPlus() {
     setError(''); setProgress(0);
     try {
       const p = previewImport(rows);
-      const have = new Set(accounts.map((a) => a.name.toLowerCase()));
-      const newAccounts = Object.keys(p.balances).filter((n) => !have.has(n.toLowerCase()))
-        .map((name, i) => ({ user_id: uid, name, archived: ARCHIVED_ACCOUNTS.includes(name), sort: accounts.length + i }));
-      const haveCat = new Set(categories.map((c) => `${c.kind}:${c.name}`));
-      const newCats = p.categories.filter((c) => !haveCat.has(`${c.kind}:${c.name}`)).map((c, i) => ({ user_id: uid, ...c, sort: categories.length + i }));
-      if (newAccounts.length) { const { error: e } = await supabase.from('accounts').insert(newAccounts); if (e) throw e; }
-      if (newCats.length) { const { error: e } = await supabase.from('categories').insert(newCats); if (e) throw e; }
-
-      const [{ data: accs, error: ea }, { data: cats, error: ec }] = await Promise.all([
-        supabase.from('accounts').select('id,name').eq('user_id', uid),
-        supabase.from('categories').select('id,kind,name').eq('user_id', uid),
-      ]);
-      if (ea || ec) throw ea ?? ec;
-      const accMap = new Map(accs!.map((a: { id: string; name: string }) => [a.name.toLowerCase(), a.id as string]));
-      const catMap = new Map(cats!.map((c: { id: string; kind: string; name: string }) => [`${c.kind}:${c.name}`, c.id as string]));
+      // Server-side, case-insensitive find-or-create under a per-user lock (safe across tabs and retries).
+      const currencyOf = (name: string) => rows.find((r) => r.account === name)?.currency ?? 'HKD';
+      const { data: maps, error: em } = await supabase.rpc('import_ensure_targets', {
+        p_accounts: Object.keys(p.balances).map((name) => ({ name, currency: currencyOf(name), archived: ARCHIVED_ACCOUNTS.includes(name) })),
+        p_categories: p.categories,
+      });
+      if (em) throw em;
+      const accMap = new Map(Object.entries(maps.accounts as Record<string, string>));
+      const catMap = new Map(Object.entries(maps.categories as Record<string, string>));
 
       let added = 0;
       for (let i = 0; i < rows.length; i += BATCH) {
         const batch = await Promise.all(rows.slice(i, i + BATCH).map(async (r) => ({
           user_id: uid,
-          ...(await toEntryRow(r, (n) => accMap.get(n.toLowerCase())!, (k, n) => catMap.get(`${k}:${n}`))),
+          ...(await toEntryRow(r, (n) => accMap.get(n.toLowerCase())!, (k, n) => catMap.get(`${k}:${n.toLowerCase()}`))),
         })));
         // Re-import is a no-op: rows whose deterministic request_id exists are skipped.
         const { data, error: e } = await supabase.from('entries')

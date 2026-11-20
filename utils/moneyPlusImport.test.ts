@@ -40,6 +40,19 @@ describe('Money+ import', () => {
     expect(ids[0]).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   });
 
+  it('request ids ignore row position and tell identical rows apart', async () => {
+    const dup = 'Date,Category,Amount,Type,Account,Member,Currency,Ledger,Note,Transfer to\n';
+    const a = '2026-11-19 10:00:00,Meal,10,Expense,Bank,Me,HKD,L,,\n';
+    const b = '2026-11-18 10:00:00,Meal,5,Expense,Bank,Me,HKD,L,,\n';
+    const ids = async (t: string) => Promise.all(parseMoneyPlus(t).rows.map(rowRequestId));
+    const first = await ids(dup + a + a + b);
+    expect(new Set(first).size).toBe(3); // two identical rows stay distinct
+    const shifted = await ids(dup + b.replace('18', '20') + a + a + b); // new top row shifts positions
+    expect(shifted.slice(1)).toEqual(first);
+    const usd = await ids(dup + a.replace('HKD', 'USD'));
+    expect(usd[0]).not.toBe(first[0]); // currency is part of the key
+  });
+
   it('maps rows to entries (HKT timestamps, transfer has no category)', async () => {
     const e = await toEntryRow(rows[2], (n) => `acc-${n}`, () => 'cat');
     expect(e).toMatchObject({ kind: 'transfer', account_id: 'acc-Bank', to_account_id: 'acc-Octopus', category_id: null, title: 'Transfer', occurred_at: '2026-11-17T00:00:00+08:00' });

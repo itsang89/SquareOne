@@ -15,7 +15,7 @@ import { useToast } from '../components/ToastContext';
 import { localDay, round2 } from '../utils/calculations';
 import { evaluateExpression } from '../utils/calculator';
 import { isValidAmount } from '../utils/validation';
-import { categoriesByUse, dayToIso, KIND_LABEL, lastUsedAccountId, latestFx, splitEqual } from '../utils/entryUi';
+import { categoriesByUse, dayToIso, KIND_LABEL, lastUsedAccountId, latestFx, splitEqual, tooSmallToSplit } from '../utils/entryUi';
 import { formatCurrency } from '../utils/formatters';
 import type { Entry, EntryKind } from '../types';
 
@@ -74,8 +74,10 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
 
   const liveAccounts = accounts.filter((a) => !a.archived || a.id === entry?.accountId || a.id === entry?.toAccountId);
   const fromId = accountId === undefined ? lastUsedAccountId(accounts, entries) : accountId ?? undefined;
-  const toId = toAccountId ?? liveAccounts.find((a) => a.id !== fromId)?.id;
   const account = accounts.find((a) => a.id === fromId);
+  // Transfers only move money between accounts in the same currency.
+  const sameCurrency = liveAccounts.filter((a) => a.id !== fromId && a.currency === account?.currency);
+  const toId = toAccountId ?? sameCurrency[0]?.id;
   const currency = account && !(entry && entry.accountId === account.id) ? account.currency : entry?.currency ?? account?.currency ?? 'HKD';
   const fxRate = currency === 'HKD' ? 1 : parseFloat(fx) || latestFx(entries)[currency] || 1;
 
@@ -97,6 +99,8 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
     : kind === 'settlement' && !friendId ? 'Pick a friend'
     : kind === 'transfer' && (!fromId || !toId || fromId === toId) ? 'Pick two different accounts'
     : (kind === 'income' || kind === 'transfer' || (kind === 'expense' && accountId !== null)) && !fromId ? 'Add an account in Wallet first'
+    : kind === 'transfer' && accounts.find((a) => a.id === toId)?.currency !== account?.currency ? 'Transfers need two accounts in the same currency'
+    : splitOn && kind === 'expense' && mode === 'equal' && tooSmallToSplit(total, shareIds.length) ? 'Too small to split equally'
     : mine < 0 ? 'Friends\' shares exceed the total'
     : null;
 
@@ -155,9 +159,9 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
     }
   };
 
-  const accountChips = ({ value, onPick, none }: { value?: string; onPick: (id: string | null) => void; none?: string }) => (
+  const accountChips = ({ value, onPick, none, from = liveAccounts }: { value?: string; onPick: (id: string | null) => void; none?: string; from?: typeof liveAccounts }) => (
     <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-      {liveAccounts.map((a) => (
+      {from.map((a) => (
         <Chip key={a.id} active={a.id === value} onClick={() => onPick(a.id)} color="bg-neo-yellow">{a.name}</Chip>
       ))}
       {none && <Chip active={value === undefined} onClick={() => onPick(null)} color="bg-neo-orange">{none}</Chip>}
@@ -246,7 +250,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
         {kind === 'transfer' && (
           <div>
             <FieldLabel>To account</FieldLabel>
-            {accountChips({ value: toId, onPick: (id) => id && setToAccountId(id) })}
+            {accountChips({ value: toId, from: sameCurrency, onPick: (id) => id && setToAccountId(id) })}
           </div>
         )}
 

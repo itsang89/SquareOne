@@ -35,10 +35,15 @@ export function latestFx(entries: Entry[]): Record<string, number> {
   return fx;
 }
 
-/** Split `total` equally between me and `n` friends. Friends get rounded shares; I absorb the remainder. */
+/**
+ * Split `total` equally between me and `n` friends. Friends get rounded shares; I absorb the remainder.
+ * Same rule as the agent API (agent_save_entry): a share that rounds to 0 means "too small to split".
+ */
 export function splitEqual(total: number, n: number): number {
   return n > 0 ? round2(total / (n + 1)) : 0;
 }
+
+export const tooSmallToSplit = (total: number, n: number): boolean => n > 0 && total > 0 && splitEqual(total, n) <= 0;
 
 /** Local YYYY-MM-DD → ISO timestamp. Keeps the original time-of-day when the day is unchanged; else noon. */
 export function dayToIso(day: string, original?: string): string {
@@ -83,7 +88,7 @@ export function entryView(e: Entry, { categories, accounts, friends }: Lookups, 
     return {
       ...base, title: e.title || cat?.name || KIND_LABEL[e.kind],
       sub: e.kind === 'settlement' ? (acc(e.accountId) ?? 'Offset') : `of ${e.amount.toFixed(2)}${acc(e.accountId) ? ` · ${acc(e.accountId)}` : ''}`,
-      amount: Math.abs(delta), sign: delta >= 0 ? '+' : '-', tone: delta >= 0 ? 'out' : 'in',
+      currency: 'HKD', amount: Math.abs(delta), sign: delta >= 0 ? '+' : '-', tone: delta >= 0 ? 'out' : 'in',
     };
   }
 

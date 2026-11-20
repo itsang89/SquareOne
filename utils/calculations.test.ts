@@ -18,6 +18,15 @@ const dinner = entry({
   shares: [{ friendId: 'alex', amount: 100 }, { friendId: 'bob', amount: 100 }],
 });
 
+describe('friend balances with fx', () => {
+  it('values a USD share at its rate, so an HKD repayment clears it', () => {
+    const usd = entry({ kind: 'expense', amount: 200, currency: 'USD', fxRate: 7.8, shares: [{ friendId: 'alex', amount: 100 }] });
+    expect(friendBalance('alex', [usd])).toBe(780);
+    const repay = entry({ kind: 'settlement', amount: 780, friendId: 'alex' });
+    expect(friendBalance('alex', [usd, repay])).toBe(0);
+  });
+});
+
 describe('friend balances', () => {
   it('adds shares and subtracts settlements', () => {
     const entries = [dinner, entry({ kind: 'settlement', amount: 40, friendId: 'alex', accountId: 'bank' })];

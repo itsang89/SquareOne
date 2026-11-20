@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoriesByUse, dayToIso, entryView, lastUsedAccountId, splitEqual } from './entryUi';
+import { categoriesByUse, dayToIso, entryView, lastUsedAccountId, splitEqual, tooSmallToSplit } from './entryUi';
 import { localDay } from './calculations';
 import type { Account, Category, Entry, Friend } from '../types';
 
@@ -32,6 +32,9 @@ describe('entryUi', () => {
     expect(splitEqual(90, 2)).toBe(30);
     expect(splitEqual(100, 2)).toBe(33.33);
     expect(splitEqual(100, 0)).toBe(0);
+    expect(tooSmallToSplit(0.01, 2)).toBe(true); // same rule as agent_save_entry
+    expect(tooSmallToSplit(0.03, 2)).toBe(false);
+    expect(tooSmallToSplit(0.01, 0)).toBe(false);
   });
 
   it('keeps time of day when the day is unchanged, else noon of the new day', () => {

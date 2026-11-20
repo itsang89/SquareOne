@@ -2,7 +2,8 @@
 import type { CategoryKind, EntryKind } from '../types';
 
 export interface MoneyPlusRow {
-  index: number; // position among bill rows; part of the idempotency hash
+  index: number; // position among bill rows; for error messages only
+  occurrence: number; // 0 for the first row with this exact content, 1 for the next identical one, ...
   date: string; // 'YYYY-MM-DD HH:mm:ss', local HKT
   category: string;
   amount: number;
@@ -54,6 +55,7 @@ export function parseMoneyPlus(text: string): { rows: MoneyPlusRow[]; skipped: n
   const col = Object.fromEntries(all[h].map((name, i) => [name, i]));
   const out: MoneyPlusRow[] = [];
   let n = 0, skipped = 0;
+  const seen = new Map<string, number>();
   for (const r of all.slice(h + 1)) {
     if (r.every((c) => !c.trim())) continue;
     const get = (n: string) => (r[col[n]] ?? '').trim();
@@ -66,8 +68,12 @@ export function parseMoneyPlus(text: string): { rows: MoneyPlusRow[]; skipped: n
     if (kind === 'transfer' && (!get('Transfer to') || get('Transfer to') === get('Account'))) {
       throw new Error(`Bad transfer in row ${n + 1}: ${r.join(',')}`);
     }
+    // Identical rows (same content) get 0,1,2... so they stay distinct but a shifted re-export still matches.
+    const sig = [get('Date'), get('Category'), get('Amount'), kind, get('Account'), get('Currency'), get('Note'), get('Transfer to')].join('|');
+    const occurrence = seen.get(sig) ?? 0;
+    seen.set(sig, occurrence + 1);
     out.push({
-      index: n++, date: get('Date'), category: get('Category'), amount, kind, account: get('Account'),
+      index: n++, occurrence, date: get('Date'), category: get('Category'), amount, kind, account: get('Account'),
       currency: get('Currency') || 'HKD', note: get('Note'), transferTo: get('Transfer to'),
     });
   }
@@ -94,9 +100,9 @@ export function previewImport(rows: MoneyPlusRow[]): ImportPreview {
   };
 }
 
-/** Deterministic UUID (SHA-256 of row content + index), so re-importing the same file adds nothing. */
+/** Deterministic UUID (SHA-256 of row content + occurrence among identical rows), independent of row position. */
 export async function rowRequestId(r: MoneyPlusRow): Promise<string> {
-  const data = new TextEncoder().encode(['moneyplus', r.index, r.date, r.category, r.amount, r.kind, r.account, r.transferTo, r.note].join('|'));
+  const data = new TextEncoder().encode(['moneyplus2', r.date, r.category, r.amount, r.kind, r.account, r.transferTo, r.currency, r.note, r.occurrence].join('|'));
   const h = new Uint8Array(await crypto.subtle.digest('SHA-256', data)).slice(0, 16);
   h[6] = (h[6] & 0x0f) | 0x50;
   h[8] = (h[8] & 0x3f) | 0x80;

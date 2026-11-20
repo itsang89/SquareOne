@@ -3,7 +3,7 @@ import type { Account, Category, CategoryKind, Entry } from '../types';
 /**
  * Pure functions over the entries model. Conventions:
  * - Entries are always paid by me. An expense's `amount` is the full total.
- * - Friend balance = sum of their shares − their settlements. Positive = they owe me.
+ * - Friend balance = sum of their shares − their settlements, in HKD (× fxRate per entry). Positive = they owe me.
  * - "My expense" = (amount − sum(shares)) × fxRate, in HKD. Income = amount × fxRate.
  * - Account balances are in the account's own currency (raw `amount`, no fx).
  * - Day/month bucketing uses the device's local time.
@@ -70,10 +70,10 @@ export function accountDeltas(e: Entry): [string, number][] {
   return out;
 }
 
-/** Friend balance movements an entry causes: [friendId, signed delta]. */
+/** Friend balance movements an entry causes: [friendId, signed delta in HKD (amount × fxRate, rounded per share)]. */
 export function friendDeltas(e: Entry): [string, number][] {
-  if (e.kind === 'expense') return e.shares.map((s) => [s.friendId, s.amount]);
-  if (e.kind === 'settlement' && e.friendId) return [[e.friendId, -e.amount]];
+  if (e.kind === 'expense') return e.shares.map((s) => [s.friendId, round2(s.amount * e.fxRate)]);
+  if (e.kind === 'settlement' && e.friendId) return [[e.friendId, -round2(e.amount * e.fxRate)]];
   return [];
 }
 

@@ -26,5 +26,5 @@ Order matters. The old app and the old agent API write `transactions` / `custom_
 6. Compare the friend balances to step 2 in the new app. Do **not** re-run `reconcile_legacy_transactions()` later: once you edit migrated entries it will (correctly) report differences.
 
 Notes
-- Keep the legacy tables for as long as you want a source snapshot. **Settings → Clear data** removes them too, together with entries, subscriptions and friends.
+- Keep the legacy tables for as long as you want a source snapshot. **Settings → Clear data** removes `transactions` too (not `custom_types`), together with entries, subscriptions and friends.
 - A friend with any entry or share cannot be deleted (it would rewrite history). There is no friend archive yet; rename instead.

@@ -5,21 +5,26 @@ import { FullPageLoading } from '../components/LoadingSpinner';
 import { NeoButton } from '../components/NeoButton';
 import { NeoCard } from '../components/NeoCard';
 import { useAuth } from '../context/AuthContext';
+import { defaultScopes } from '../utils/agentPermissions';
 import { supabase } from '../utils/supabase';
 import { Login } from './Login';
 
 const actionDetails: Record<string, { title: string; summary: (subject?: string) => string }> = {
   'data.export': {
     title: 'Approve history export',
-    summary: () => 'This sends your transaction history, including notes, to the agent. Its AI provider may process that data.',
+    summary: () => 'This sends all your entries, including notes, to the agent. Its AI provider may process that data.',
   },
   'data.clear': {
     title: 'Approve clearing history',
-    summary: () => 'This permanently deletes your friends and transactions, including settlements.',
+    summary: () => 'This permanently deletes all your entries, subscriptions and friends. Accounts and categories stay.',
   },
   'friends.delete': {
     title: 'Approve friend deletion',
-    summary: (subject) => `This permanently deletes ${subject ?? 'the selected friend'} and their transaction history.`,
+    summary: (subject) => `This permanently deletes ${subject ?? 'the selected friend'} and their history with you.`,
+  },
+  'accounts.delete': {
+    title: 'Approve account deletion',
+    summary: (subject) => `This permanently deletes the account ${subject ?? 'you selected'}. It only works if the account has no entries.`,
   },
 };
 
@@ -28,7 +33,7 @@ type Request = { label: string; operation?: string; subject?: string };
 function ReviewRequest({ code, kind }: { code: string; kind: 'connect' | 'action' }) {
   const { user } = useAuth();
   const [request, setRequest] = useState<Request | null>(null);
-  const [scopes, setScopes] = useState(['transactions:add']);
+  const [scopes, setScopes] = useState(defaultScopes);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');

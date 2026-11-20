@@ -26,7 +26,7 @@ export function AgentPermissions({ value, onChange, disabled }: {
           </fieldset>
         ))}
       </div>
-      <p className="mt-2 text-xs">Deleting a friend, exporting history, and clearing history require separate browser approval.</p>
+      <p className="mt-2 text-xs">Deleting an account or friend, exporting, and clearing data also need your approval in the browser each time.</p>
     </fieldset>
   );
 }

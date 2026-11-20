@@ -5,7 +5,7 @@ import { NeoButton } from '../components/NeoButton';
 import { NeoCard } from '../components/NeoCard';
 import { NeoInput } from '../components/NeoInput';
 import { useAuth } from '../context/AuthContext';
-import { permissionLabels } from '../utils/agentPermissions';
+import { defaultScopes, permissionLabels } from '../utils/agentPermissions';
 import { supabase } from '../utils/supabase';
 
 type AgentToken = {
@@ -26,11 +26,13 @@ type AgentEdit = {
 };
 
 const activityLabels: Record<string, string> = {
-  'transactions.add': 'added an expense', 'transactions.edit': 'edited an expense', 'transactions.move': 'changed an expense’s friend or payer',
-  'transactions.delete': 'deleted a transaction', 'friends.add': 'added a friend', 'friends.edit': 'edited a friend',
-  'friends.delete': 'deleted a friend and their history', 'categories.add': 'added a category',
-  'categories.delete': 'deleted a category', 'settlements.add': 'recorded a settlement',
-  'profile.edit': 'updated your profile', 'data.export': 'exported transaction history', 'data.clear': 'cleared account history',
+  'entries.add': 'added an entry', 'entries.edit': 'edited an entry', 'entries.delete': 'deleted an entry',
+  'accounts.add': 'added an account', 'accounts.edit': 'edited an account', 'accounts.archive': 'archived or restored an account',
+  'accounts.delete': 'deleted an account', 'categories.add': 'added a category', 'categories.edit': 'edited a category',
+  'subscriptions.add': 'added a subscription', 'subscriptions.edit': 'edited a subscription',
+  'subscriptions.pause': 'paused or resumed a subscription', 'friends.add': 'added a friend', 'friends.edit': 'edited a friend',
+  'friends.delete': 'deleted a friend and their history', 'profile.edit': 'updated your profile',
+  'data.export': 'exported all entries', 'data.clear': 'cleared account history',
 };
 
 export function AgentAccess() {
@@ -39,7 +41,7 @@ export function AgentAccess() {
   const [tokens, setTokens] = useState<AgentToken[] | null>(null);
   const [edits, setEdits] = useState<AgentEdit[]>([]);
   const [label, setLabel] = useState('');
-  const [scopes, setScopes] = useState(['transactions:add']);
+  const [scopes, setScopes] = useState(defaultScopes);
   const [secret, setSecret] = useState<{ id: string; value: string } | null>(null);
   const [editing, setEditing] = useState<{ id: string; scopes: string[] } | null>(null);
   const [pending, setPending] = useState<string | null>(null);

@@ -7,55 +7,109 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
-const expenseFields = ['title', 'type', 'amount', 'date', 'note'];
 const paginated = ['limit', 'offset'];
+// strings: --name VALUE | multi: repeatable | bools: presence flags | required: must be set | write: needs a request ID
 const commands = {
-  'friends.list': { options: paginated },
-  'friends.add': { required: ['name'], optional: ['avatar'], write: true },
-  'friends.edit': { required: ['id'], optional: ['name', 'avatar'], change: true, write: true },
+  'friends.list': { strings: paginated },
+  'friends.add': { required: ['name'], strings: ['avatar'], write: true },
+  'friends.edit': { required: ['id'], strings: ['name', 'avatar'], change: true, write: true },
   'friends.delete': { required: ['id'], write: true, approval: true },
-  'transactions.list': { options: paginated },
-  'transactions.add': {
-    required: ['title', 'type', 'amount', 'date', 'friend-id', 'payer'], optional: ['note'], write: true,
+  'accounts.list': { bools: ['all'] },
+  'accounts.add': { required: ['name'], strings: ['currency'], write: true },
+  'accounts.edit': { required: ['id'], strings: ['name', 'currency', 'sort'], change: true, write: true },
+  'accounts.archive': { required: ['id'], bools: ['unarchive'], write: true },
+  'accounts.delete': { required: ['id'], write: true, approval: true },
+  'categories.list': { strings: ['kind'], bools: ['all'] },
+  'categories.add': { required: ['name'], strings: ['kind', 'icon', 'color'], write: true },
+  'categories.edit': { required: ['id'], strings: ['name', 'icon', 'color'], bools: ['archive', 'unarchive'], change: true, write: true },
+  'entries.list': { strings: ['from', 'to', 'kind', 'category', 'account', 'friend', 'search', 'tz', ...paginated] },
+  'entries.add': {
+    required: ['amount'], write: true, dryRun: true,
+    strings: ['kind', 'title', 'note', 'date', 'account', 'to-account', 'category', 'friend', 'currency', 'fx-rate', 'split-equal'],
+    multi: ['split'], bools: ['create-category', 'dry-run'],
   },
-  'transactions.edit': { required: ['id'], optional: expenseFields, change: true, write: true, clearNote: true },
-  'transactions.move': { required: ['id', 'friend-id', 'payer'], write: true },
-  'transactions.delete': { required: ['id'], write: true },
-  'transactions.notes': { required: ['id'] },
-  'balances.list': {},
-  'settlements.list': { options: paginated },
-  'settlements.add': { required: ['friend-id', 'amount', 'date'], optional: ['note'], write: true },
-  'categories.list': {},
-  'categories.add': { required: ['name'], write: true },
-  'categories.delete': { required: ['id'], write: true },
+  'entries.edit': {
+    required: ['id'], write: true, dryRun: true, change: true, clearNote: true,
+    strings: ['amount', 'title', 'note', 'date', 'account', 'to-account', 'category', 'friend', 'currency', 'fx-rate', 'split-equal'],
+    multi: ['split'], bools: ['no-split', 'create-category', 'dry-run'],
+  },
+  'entries.delete': { required: ['id'], write: true },
+  'subscriptions.list': { bools: ['all'] },
+  'subscriptions.add': {
+    required: ['title', 'amount', 'cadence', 'next-date'], strings: ['category', 'account', 'currency', 'fx-rate'], write: true,
+  },
+  'subscriptions.edit': {
+    required: ['id'], strings: ['title', 'amount', 'cadence', 'next-date', 'category', 'account', 'currency', 'fx-rate'],
+    change: true, write: true,
+  },
+  'subscriptions.pause': { required: ['id'], bools: ['resume'], write: true },
+  'stats.get': { strings: ['month', 'from', 'to', 'tz'] },
+  'balances.get': {},
   'profile.show': {},
-  'profile.edit': { optional: ['name', 'avatar'], change: true, write: true },
-  'data.export': { options: ['format'], write: true, approval: true },
+  'profile.edit': { strings: ['name', 'avatar'], change: true, write: true },
+  'data.export': { strings: ['format'], write: true, approval: true },
   'data.clear': { write: true, approval: true },
   'connection.info': {},
 };
+// `stats` and `balances` take no sub-command.
+const bare = { stats: 'stats.get', balances: 'balances.get', whoami: 'connection.info' };
 
-const help = `Usage: node cli/squareone.mjs <resource> <command> [options]
+const help = `Usage: node cli/squareone.mjs <resource> <command> [options]   (all output is JSON)
 
-  connect --url APP_URL --name NAME       Connect through a browser approval link
-  whoami                                 Show the approved account and scopes
-  friends list|add|edit|delete            Use --id, --name, --avatar as applicable
-  transactions list|add|edit|move|delete|notes
-    add  --friend-id UUID --payer me|friend --title TITLE --type CATEGORY --amount AMOUNT --date YYYY-MM-DD [--note TEXT]
-    edit --id UUID [--title TITLE] [--type CATEGORY] [--amount AMOUNT] [--date YYYY-MM-DD] [--note TEXT | --clear-note]
-    move --id UUID --friend-id UUID --payer me|friend
-    delete|notes --id UUID
-  balances list
-  settlements list|add
-    add --friend-id UUID --amount AMOUNT --date YYYY-MM-DD [--note TEXT]
-  categories list|add|delete              Use --name for add, --id for delete
-  profile show|edit                       Edit --name, --avatar, or both
-  data export [--format json|csv]          Confirm in the browser, then repeat the command
-  data clear                              Confirm in the browser, then repeat the command
+  connect --url APP_URL --name NAME   Connect through a browser approval link (do this once)
+  whoami                              Show the account and permissions
 
-Every write takes --request-id UUID. Reuse it with the same fields for retries
-and after approving an action. Friends, expenses, and settlements support --limit
-and --offset. Set SQUAREONE_CONFIG_DIR to isolate multiple agent connections.
+LOG MONEY (kinds: expense | income | transfer | settlement; default expense)
+  entries add --amount N [--title T] [--category C] [--account A] [--date YYYY-MM-DD] [--note TEXT]
+              [--split FRIEND:AMOUNT ...] [--split-equal FRIEND,FRIEND] [--dry-run]
+              [--kind income|transfer|settlement] [--to-account B] [--friend F]
+              [--currency USD --fx-rate 7.8] [--create-category]
+  entries edit --id UUID [same fields] [--clear-note] [--no-split]
+  entries delete --id UUID
+  entries list [--from D] [--to D] [--kind K] [--category C] [--account A] [--friend F] [--search TEXT]
+               [--limit 20] [--offset N]       newest first; dates are inclusive, Hong Kong time
+
+  Names or UUIDs work for --account, --category, --friend (case-insensitive, unique partial match ok).
+  Date defaults to now. Account defaults to your only account; otherwise name it ("--account none" = no account).
+  Amounts are plain numbers with up to 2 decimals (no $ or commas). The amount is the FULL total.
+  --split Alex:500 --split Ben:300      exact friend shares; my share = total - shares
+  --split-equal Alex,Ben                total divided equally among me + Alex + Ben
+  Always --dry-run first if a name or split is ambiguous: prints the resolved entry, writes nothing.
+
+REPORTS
+  stats --month 2026-11 | --from D --to D   My spending/income (my share only) + by category, in HKD
+  balances                                  Account balances, net worth, what friends owe me
+  accounts list [--all]    categories list [--kind expense|income] [--all]    subscriptions list [--all]
+  friends list              Friends with balances (positive = owes me)
+
+MANAGE
+  accounts add --name N [--currency HKD] | edit --id A [--name N] [--currency C] | archive --id A [--unarchive]
+  accounts delete --id A                    Needs browser approval; only for accounts with no entries
+  categories add --name N [--kind expense|income] [--icon E] [--color #hex] | edit --id C [--name] [--icon] [--color] [--archive|--unarchive]
+  subscriptions add --title T --amount N --cadence weekly|monthly|yearly --next-date D [--category C] [--account A]
+  subscriptions edit --id S [fields] | pause --id S [--resume]
+  friends add --name N | edit --id F [--name N] | delete --id F (needs browser approval)
+  profile show|edit [--name N] [--avatar URL]
+  data export [--format json|csv]           Needs browser approval, then repeat the same command
+  data clear                                Needs browser approval, then repeat the same command
+
+EXAMPLES (plain English -> command)
+  "Dinner $1200 on Bank, Alex 500 Ben 300"
+    entries add --amount 1200 --title Dinner --category Food --account Bank --split Alex:500 --split Ben:300
+  "Lunch 180, split with Alex"
+    entries add --amount 180 --title Lunch --category Food --split-equal Alex
+  "Salary 30000 into Bank"
+    entries add --kind income --amount 30000 --title Salary --category Salary --account Bank
+  "Moved 2000 from Bank to Octopus"
+    entries add --kind transfer --amount 2000 --account Bank --to-account Octopus
+  "Alex paid me back 500 to Bank"
+    entries add --kind settlement --amount 500 --friend Alex --account Bank
+  "How much did I spend in November?"       stats --month 2026-11
+  "What does Alex owe me?"                  friends list
+
+Writes take --request-id UUID (one is generated and echoed back if you omit it). Retry a failed write with the
+SAME request-id and fields; it never double-posts. Approval commands print approval_url: ask the owner to
+open it, then repeat the identical command. Set SQUAREONE_CONFIG_DIR to isolate multiple agent connections.
 For manual tokens, inject SQUAREONE_AGENT_TOKEN and set SQUAREONE_URL to Supabase.
 `;
 
@@ -101,15 +155,17 @@ async function request(url, operation, payload, credential) {
   return data;
 }
 
-function parse(flags, strings, booleans = []) {
+function parse(flags, strings, booleans = [], multi = []) {
   const { values, tokens } = parseArgs({
     args: flags, tokens: true,
     options: Object.fromEntries([
       ...strings.map((name) => [name, { type: 'string' }]),
       ...booleans.map((name) => [name, { type: 'boolean' }]),
+      ...multi.map((name) => [name, { type: 'string', multiple: true }]),
     ]),
   });
-  if (new Set(tokens.map((token) => token.name)).size !== tokens.length) throw new Error('Use each option only once.');
+  const once = tokens.filter((token) => token.kind === 'option' && !multi.includes(token.name)).map((token) => token.name);
+  if (new Set(once).size !== once.length) throw new Error('Use each option only once.');
   return values;
 }
 
@@ -188,9 +244,11 @@ async function connect(flags) {
 }
 
 function historyCsv(items) {
-  const rows = [['Date', 'Title', 'Type', 'Amount', 'Payer', 'Friend', 'Note', 'Settlement'], ...items.map((item) => [
-    item.date, item.title, item.type, Number(item.amount).toFixed(2), item.payer, item.friend, item.note,
-    item.is_settlement ? 'Yes' : 'No',
+  const rows = [['Date', 'Kind', 'Title', 'Amount', 'Currency', 'FX rate', 'Account', 'To account', 'Category', 'Friend',
+    'My share', 'Friend shares', 'Note'], ...items.map((item) => [
+    item.date, item.kind, item.title, Number(item.amount).toFixed(2), item.currency, item.fx_rate, item.account?.name,
+    item.to_account?.name, item.category?.name, item.friend?.name, item.my_share,
+    item.shares.map((share) => `${share.friend} ${share.amount}`).join('; '), item.note,
   ])];
   return rows.map((row) => row.map((value) => {
     const text = String(value ?? '');
@@ -198,6 +256,8 @@ function historyCsv(items) {
     return `"${safeText.replaceAll('"', '""')}"`;
   }).join(',')).join('\n') + '\n';
 }
+
+let activeRequestId;
 
 async function main(args, env) {
   if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
@@ -208,24 +268,47 @@ async function main(args, env) {
     process.stdout.write(`${JSON.stringify(await connect(args.slice(1)))}\n`);
     return;
   }
-  const [resource, action, ...flags] = args;
-  const operation = resource === 'whoami' && !action ? 'connection.info' : `${resource}.${action}`;
+  const [resource, ...rest] = args;
+  const operation = bare[resource] ?? `${resource}.${rest[0]}`;
+  const flags = bare[resource] ? rest : rest.slice(1);
   if (!Object.hasOwn(commands, operation)) throw new Error('Unknown command. Run with --help.');
   const command = commands[operation];
-  const required = [...(command.required ?? []), ...(command.write ? ['request-id'] : [])];
-  const values = parse(flags, [...required, ...(command.optional ?? []), ...(command.options ?? [])],
-    command.clearNote ? ['clear-note'] : []);
-  for (const option of required) {
+  const strings = [...(command.required ?? []), ...(command.strings ?? [])];
+  const booleans = [...(command.bools ?? []), ...(command.clearNote ? ['clear-note'] : [])];
+  const values = parse(flags, [...strings, ...(command.write ? ['request-id'] : [])], booleans, command.multi);
+  for (const option of command.required ?? []) {
     if (!values[option]?.trim()) throw new Error(`Missing --${option}.`);
   }
   if (values['clear-note'] && values.note !== undefined) throw new Error('Choose --note or --clear-note.');
-  if (command.change && !command.optional.some((field) => values[field] !== undefined) && !values['clear-note']) {
-    throw new Error('Provide at least one field to edit.');
+  if (command.change && ![...strings, ...(command.multi ?? []), ...booleans].some((field) =>
+    !['id', 'dry-run', 'create-category'].includes(field) && values[field] !== undefined)) {
+    throw new Error('Provide at least one field to change.');
   }
   if (values.format && !['json', 'csv'].includes(values.format)) throw new Error('Use --format json or csv.');
-  const payload = Object.fromEntries(Object.entries(values).filter(([name]) => !['clear-note', 'format'].includes(name))
-    .map(([name, value]) => [name.replaceAll('-', '_'), value]));
+  const dryRun = Boolean(values['dry-run']);
+  // Writes get a request ID: yours, or a generated one that is echoed back so a retry can reuse it.
+  const requestId = command.write && !dryRun ? values['request-id']?.trim() || randomUUID() : undefined;
+  const flagToField = { 'dry-run': 'dry_run' };
+  const payload = Object.fromEntries(Object.entries(values)
+    .filter(([name]) => !['clear-note', 'format', 'request-id', 'split', 'split-equal', 'unarchive', 'archive', 'resume'].includes(name))
+    .map(([name, value]) => [flagToField[name] ?? name.replaceAll('-', '_'), value]));
+  if (requestId) payload.request_id = requestId;
+  activeRequestId = requestId;
   if (values['clear-note']) payload.note = null;
+  if (values.split) {
+    payload.splits = values.split.map((pair) => {
+      const cut = pair.lastIndexOf(':');
+      if (cut < 1) throw new Error('Use --split FRIEND:AMOUNT, e.g. --split Alex:500.');
+      return { friend: pair.slice(0, cut).trim(), amount: pair.slice(cut + 1).trim() };
+    });
+  }
+  if (values['split-equal'] !== undefined) {
+    payload.split_equal = values['split-equal'].split(',').map((name) => name.trim()).filter(Boolean);
+  }
+  if (values.archive || values.unarchive) payload.archived = Boolean(values.archive);
+  if (operation === 'accounts.archive') payload.archived = !values.unarchive;
+  if (operation === 'subscriptions.pause') payload.active = Boolean(values.resume);
+  if (operation === 'data.export') delete payload.format;
 
   let output;
   let app;
@@ -255,6 +338,7 @@ async function main(args, env) {
     const { user_code: code, ...details } = output;
     output = { ...details, approval_url: `${app}/#/connect-agent?action=${encodeURIComponent(code)}` };
   }
+  if (requestId && output && typeof output === 'object') output = { ...output, request_id: requestId };
   if (operation === 'data.export' && values.format === 'csv' && Array.isArray(output.items)) {
     process.stdout.write(historyCsv(output.items));
     return;
@@ -263,6 +347,6 @@ async function main(args, env) {
 }
 
 main(process.argv.slice(2), process.env).catch((error) => {
-  process.stderr.write(`${JSON.stringify({ error: error.message })}\n`);
+  process.stderr.write(`${JSON.stringify({ error: error.message, ...(activeRequestId && { request_id: activeRequestId }) })}\n`);
   process.exitCode = 1;
 });

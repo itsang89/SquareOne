@@ -1,35 +1,38 @@
-import React, { useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ArrowDownLeft, Search, Settings, Users } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, Search, Settings, Users } from 'lucide-react';
 import { NeoCard } from '../components/NeoCard';
-import { Avatar } from '../components/Avatar';
-import { EntryRow } from '../components/EntryRow';
+import { DayGroups } from '../components/DayGroups';
 import { MonthSummary } from '../components/Home/MonthSummary';
 import { AnimatedNumber } from '../components/AnimatedNumber';
 import { DataLoadErrorBanner } from '../components/DataLoadErrorBanner';
-import { TransactionSkeleton, FriendSkeleton } from '../components/LoadingSkeleton';
+import { TransactionSkeleton } from '../components/LoadingSkeleton';
 import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { useSearch } from '../context/SearchContext';
-import { totalOwed } from '../utils/calculations';
+import { rangeTotals, totalOwed, weekRange } from '../utils/calculations';
 import { formatCurrency } from '../utils/formatters';
 
 const iconBtn =
   'w-11 h-11 bg-white dark:bg-zinc-900 border-2 border-black shadow-neo-sm active:shadow-none active:translate-y-0.5 grid place-items-center text-black dark:text-zinc-100';
 
 export const Home: React.FC = () => {
-  const navigate = useNavigate();
   const { friends, entries, accounts, categories, loading, error, refetch } = useAppContext();
   const { user } = useAuth();
   const { openSearch } = useSearch();
 
   const owed = useMemo(() => totalOwed(entries), [entries]);
-  const owing = useMemo(
-    () => friends.filter((f) => f.balance > 0.005).sort((a, b) => b.balance - a.balance),
-    [friends]
-  );
   const lookups = useMemo(() => ({ accounts, categories, friends }), [accounts, categories, friends]);
-  const recent = entries.slice(0, 10);
+  const [week, setWeek] = useState(0); // 0 = this week, -1 = last week…
+  const range = useMemo(() => weekRange(week), [week]);
+  const weekEntries = useMemo(() => {
+    const from = range.from.getTime(), to = range.to.getTime();
+    return entries.filter((e) => { const t = new Date(e.occurredAt).getTime(); return t >= from && t < to; });
+  }, [entries, range]);
+  const totals = useMemo(() => rangeTotals(weekEntries), [weekEntries]);
+  const short = (d: Date) => d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  const weekLabel = week === 0 ? 'This week' : week === -1 ? 'Last week' : `${-week} weeks ago`;
+  const weekDates = `${short(range.from)} – ${short(new Date(range.to.getTime() - 864e5))}`;
 
   return (
     <div className="min-h-screen pb-28 bg-neo-bg dark:bg-zinc-950 transition-colors duration-300">
@@ -55,46 +58,34 @@ export const Home: React.FC = () => {
             <p className="text-xs font-bold uppercase tracking-widest text-black/70">Friends owe you</p>
             <p className="text-3xl font-black tracking-tighter"><AnimatedNumber value={owed} decimals={2} prefix="HK$" /></p>
           </Link>
-          {loading ? (
-            <div className="flex gap-4 overflow-x-auto py-4">{[1, 2, 3].map((i) => <FriendSkeleton key={i} />)}</div>
-          ) : owing.length > 0 && (
-            <div className="flex overflow-x-auto no-scrollbar gap-3 pt-4 snap-x">
-              {owing.map((f) => (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => navigate(`/friends/${f.id}`)}
-                  className="snap-start shrink-0 w-28 bg-white dark:bg-zinc-900 border-2 border-black p-3 shadow-neo-sm flex flex-col items-center gap-1"
-                >
-                  <div className="relative">
-                    <Avatar src={f.avatar} alt={f.name} size="md" />
-                    <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white bg-neo-greenDark grid place-items-center">
-                      <ArrowDownLeft size={12} className="text-white" />
-                    </span>
-                  </div>
-                  <p className="text-sm font-bold truncate w-full dark:text-zinc-100">{f.name.split(' ')[0]}</p>
-                  <p className="text-xs font-bold text-neo-greenDark">{formatCurrency(f.balance)}</p>
-                </button>
-              ))}
-            </div>
-          )}
         </section>
 
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-black uppercase border-l-4 border-black dark:border-zinc-100 pl-2 dark:text-zinc-100">Recent</h3>
+        <section className="space-y-3">
+          <div className="flex items-center justify-between bg-white dark:bg-zinc-900 border-2 border-black shadow-neo-sm">
+            <button type="button" aria-label="Previous week" onClick={() => setWeek((w) => w - 1)} className="p-3 dark:text-zinc-100"><ChevronLeft size={22} /></button>
+            <div className="text-center" aria-live="polite">
+              <p className="font-black uppercase text-sm leading-tight dark:text-zinc-100">{weekLabel}</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-zinc-400">{weekDates}</p>
+            </div>
+            <button type="button" aria-label="Next week" disabled={week === 0} onClick={() => setWeek((w) => w + 1)} className="p-3 disabled:opacity-20 dark:text-zinc-100"><ChevronRight size={22} /></button>
+          </div>
+
+          <div className="flex items-baseline justify-between px-1 text-sm font-bold tabular-nums">
+            <span className="dark:text-zinc-100">
+              Spent {formatCurrency(totals.expense)}
+              {totals.income > 0 && <span className="text-neo-greenDark ml-3">Income {formatCurrency(totals.income)}</span>}
+            </span>
             <Link to="/ledger" className="text-xs font-bold uppercase underline decoration-2 dark:text-zinc-100">Ledger</Link>
           </div>
+
           {loading ? (
-            [1, 2, 3, 4, 5].map((i) => <TransactionSkeleton key={i} />)
-          ) : recent.length > 0 ? (
-            <div className="border-2 border-black shadow-neo-sm divide-y-2 divide-black/10">
-              {recent.map((e) => <EntryRow key={e.id} entry={e} lookups={lookups} />)}
-            </div>
+            [1, 2, 3, 4].map((i) => <TransactionSkeleton key={i} />)
+          ) : weekEntries.length > 0 ? (
+            <div className="space-y-5"><DayGroups entries={weekEntries} lookups={lookups} /></div>
           ) : (
             <NeoCard className="text-center py-8">
-              <p className="text-lg font-black uppercase dark:text-zinc-100">Nothing here yet</p>
-              <p className="text-sm text-gray-600 dark:text-zinc-400 mt-1">Tap + to log your first expense.</p>
+              <p className="font-bold dark:text-zinc-100">No entries {week === 0 ? 'this week yet' : 'this week'}</p>
+              <p className="text-sm text-gray-600 dark:text-zinc-400 mt-1">{week === 0 ? 'Tap + to log an expense.' : 'Use the arrows to check another week.'}</p>
             </NeoCard>
           )}
         </section>

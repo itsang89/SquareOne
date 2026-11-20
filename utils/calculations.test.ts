@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   accountBalances, categoryEntries, dailySeries, friendBalance, friendBalancesMap, getLastActivity, monthlySeries, monthRange,
-  myExpense, netWorth, netWorthSeries, rangeTotals, totalOwed, totalOwing, totalsByCategory, yearRange,
+  myExpense, netWorth, netWorthSeries, rangeTotals, totalOwed, totalOwing, totalsByCategory, weekRange, yearRange,
 } from './calculations';
 import type { Account, Entry } from '../types';
 
@@ -155,5 +155,19 @@ describe('getLastActivity', () => {
     expect(getLastActivity('alex', [dinner], now)).toBe('1 week ago');
     const s = entry({ kind: 'settlement', amount: 1, friendId: 'alex', occurredAt: at(2026, 1, 20, 8) });
     expect(getLastActivity('alex', [dinner, s], now)).toBe('Today');
+  });
+});
+
+describe('weekRange', () => {
+  const day = (d: Date) => [d.getFullYear(), d.getMonth() + 1, d.getDate()];
+  it('starts on Monday and spans 7 days, for any weekday', () => {
+    const sat = new Date(2026, 10, 21, 15); // Sat 21 Nov 2026
+    expect(day(weekRange(0, sat).from)).toEqual([2026, 11, 16]);
+    expect(day(weekRange(0, sat).to)).toEqual([2026, 11, 23]);
+    expect(day(weekRange(0, new Date(2026, 10, 22)).from)).toEqual([2026, 11, 16]); // Sunday belongs to the same week
+    expect(day(weekRange(0, new Date(2026, 10, 16)).from)).toEqual([2026, 11, 16]); // Monday
+  });
+  it('steps back whole weeks across month boundaries', () => {
+    expect(day(weekRange(-3, new Date(2026, 10, 21)).from)).toEqual([2026, 10, 26]);
   });
 });

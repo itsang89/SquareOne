@@ -1,16 +1,16 @@
 import React, { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from 'lucide-react';
-import { EntryRow } from '../components/EntryRow';
+import { DayGroups } from '../components/DayGroups';
 import { DataLoadErrorBanner } from '../components/DataLoadErrorBanner';
 import { TransactionSkeleton } from '../components/LoadingSkeleton';
 import { SELECT_CLASS } from '../components/Chip';
 import { useAppContext } from '../context/AppContext';
-import { localDay, localMonth, myExpense, incomeAmount, rangeTotals, monthRange } from '../utils/calculations';
-import { dayLabel, KIND_LABEL } from '../utils/entryUi';
+import { localMonth, rangeTotals, monthRange } from '../utils/calculations';
+import { KIND_LABEL } from '../utils/entryUi';
 import { matchesEntryQuery, normalizeSearchQuery } from '../utils/search';
 import { formatCurrency } from '../utils/formatters';
-import type { Entry, EntryKind } from '../types';
+import type { EntryKind } from '../types';
 
 const PAGE = 150;
 const thisMonth = () => localMonth(new Date().toISOString());
@@ -65,16 +65,6 @@ export const Ledger: React.FC = () => {
     const [y, m] = month.split('-').map(Number);
     return rangeTotals(filtered, monthRange(y, m - 1));
   }, [filtered, month]);
-
-  const days = useMemo(() => {
-    const groups: { day: string; items: Entry[] }[] = [];
-    for (const e of filtered.slice(0, limit)) {
-      const day = localDay(e.occurredAt);
-      const last = groups[groups.length - 1];
-      if (last?.day === day) last.items.push(e); else groups.push({ day, items: [e] });
-    }
-    return groups;
-  }, [filtered, limit]);
 
   const clearFilters = () => {
     const next = new URLSearchParams(params);
@@ -180,7 +170,7 @@ export const Ledger: React.FC = () => {
       <main className="p-5 space-y-5">
         {loading ? (
           [1, 2, 3, 4].map((i) => <TransactionSkeleton key={i} />)
-        ) : days.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="text-center py-16 space-y-3">
             <p className="font-bold dark:text-zinc-100">{q || filterCount ? 'No entries match' : month === 'all' ? 'No entries yet' : `No entries in ${monthText}`}</p>
             {(q || filterCount > 0) && (
@@ -188,24 +178,7 @@ export const Ledger: React.FC = () => {
             )}
           </div>
         ) : (
-          days.map(({ day, items }) => {
-            const spent = items.reduce((s, e) => s + myExpense(e), 0);
-            const earned = items.reduce((s, e) => s + incomeAmount(e), 0);
-            return (
-              <section key={day} aria-label={dayLabel(day)}>
-                <div className="flex items-baseline justify-between mb-1 px-1">
-                  <h2 className="text-xs font-black uppercase tracking-widest dark:text-zinc-100">{dayLabel(day)}</h2>
-                  <span className="text-xs font-black">
-                    {spent > 0 && <span className="dark:text-zinc-100">-{formatCurrency(spent)}</span>}
-                    {earned > 0 && <span className="text-neo-greenDark ml-2">+{formatCurrency(earned)}</span>}
-                  </span>
-                </div>
-                <div className="border-2 border-black shadow-neo-sm divide-y-2 divide-black/10">
-                  {items.map((e) => <EntryRow key={e.id} entry={e} lookups={lookups} />)}
-                </div>
-              </section>
-            );
-          })
+          <DayGroups entries={filtered.slice(0, limit)} lookups={lookups} />
         )}
         {filtered.length > limit && (
           <button type="button" onClick={() => setLimit((l) => l + PAGE)} className="w-full py-3 border-2 border-black bg-white dark:bg-zinc-900 font-black uppercase text-sm shadow-neo-sm dark:text-zinc-100">

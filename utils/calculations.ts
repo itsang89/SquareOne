@@ -29,6 +29,11 @@ export const monthRange = (year: number, month: number): DateRange => ({
   to: new Date(year, month + 1, 1),
 });
 export const yearRange = (year: number): DateRange => ({ from: new Date(year, 0, 1), to: new Date(year + 1, 0, 1) });
+/** Monday-start local week; `offset` 0 = this week, -1 = last week. */
+export const weekRange = (offset = 0, now = new Date()): DateRange => {
+  const from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7) + offset * 7);
+  return { from, to: new Date(from.getFullYear(), from.getMonth(), from.getDate() + 7) };
+};
 
 const inRange = (e: Entry, r?: DateRange): boolean => {
   if (!r) return true;

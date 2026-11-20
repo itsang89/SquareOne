@@ -18,6 +18,7 @@ const FriendDetail = lazy(() => import('./screens/FriendDetail').then(m => ({ de
 const AddTransaction = lazy(() => import('./screens/AddTransaction').then(m => ({ default: m.AddTransaction })));
 const SettleUp = lazy(() => import('./screens/SettleUp').then(m => ({ default: m.SettleUp })));
 const History = lazy(() => import('./screens/History').then(m => ({ default: m.History })));
+const Charts = lazy(() => import('./screens/Charts').then(m => ({ default: m.Charts })));
 const Profile = lazy(() => import('./screens/Profile').then(m => ({ default: m.Profile })));
 const AgentAccess = lazy(() => import('./screens/AgentAccess').then(m => ({ default: m.AgentAccess })));
 const ConnectAgent = lazy(() => import('./screens/ConnectAgent').then(m => ({ default: m.ConnectAgent })));
@@ -94,6 +95,7 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             }
           />
+          <Route path="/charts" element={<ProtectedRoute><Charts /></ProtectedRoute>} />
           <Route
             path="/profile"
             element={

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  accountBalances, dailySeries, friendBalance, friendBalancesMap, getLastActivity, monthlySeries, monthRange,
+  accountBalances, categoryEntries, dailySeries, friendBalance, friendBalancesMap, getLastActivity, monthlySeries, monthRange,
   myExpense, netWorth, netWorthSeries, rangeTotals, totalOwed, totalOwing, totalsByCategory, yearRange,
 } from './calculations';
 import type { Account, Entry } from '../types';
@@ -122,6 +122,20 @@ describe('stats', () => {
     expect(m).toHaveLength(12);
     expect(m[0]).toEqual({ key: '2026-01', income: 800, expense: 150 });
     expect(m[1].expense).toBe(70);
+  });
+});
+
+describe('categoryEntries', () => {
+  it('filters by kind, category and range, newest first, skipping zero-cost entries', () => {
+    const a = entry({ kind: 'expense', amount: 10, categoryId: 'food', occurredAt: at(2026, 3, 1) });
+    const b = entry({ kind: 'expense', amount: 20, categoryId: 'food', occurredAt: at(2026, 3, 9) });
+    const free = entry({ kind: 'expense', amount: 20, categoryId: 'food', occurredAt: at(2026, 3, 5), shares: [{ friendId: 'x', amount: 20 }] });
+    const other = entry({ kind: 'expense', amount: 5, categoryId: 'fun', occurredAt: at(2026, 3, 2) });
+    const old = entry({ kind: 'expense', amount: 5, categoryId: 'food', occurredAt: at(2026, 2, 2) });
+    const none = entry({ kind: 'expense', amount: 7, occurredAt: at(2026, 3, 3) });
+    const all = [a, b, free, other, old, none];
+    expect(categoryEntries(all, 'expense', 'food', monthRange(2026, 2)).map((e) => e.id)).toEqual([b.id, a.id]);
+    expect(categoryEntries(all, 'expense', null, monthRange(2026, 2)).map((e) => e.id)).toEqual([none.id]);
   });
 });
 

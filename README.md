@@ -12,7 +12,6 @@ SquareOne is a modern, neo-brutalist style expense tracking application designed
 - **Visual Analytics**: Interactive charts to visualize spending patterns.
 - **Neo-brutalist UI**: A unique "Neo" design system with high contrast, bold borders, and a modern aesthetic.
 - **Animations**: Spring-physics animations via Framer Motion with full `prefers-reduced-motion` support.
-- **Guest Mode**: Full CRUD experience without an account — data stored locally in `localStorage`.
 
 ## 🛠️ Tech Stack
 
@@ -64,7 +63,7 @@ SquareOne is a modern, neo-brutalist style expense tracking application designed
 - `screens/`: Page-level components (Home, Friends, History, etc.).
 - `context/`: Global state management (Auth and App data).
 - `hooks/`: Custom React hooks for shared logic and animations.
-- `utils/`: Utility functions for calculations, formatting, guest storage, and Supabase client.
+- `utils/`: Utility functions for calculations, formatting, and Supabase client.
 - `types/`: TypeScript interfaces and type definitions.
 - `docs/`: Architecture and database schema documentation.
 

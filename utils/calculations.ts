@@ -1,180 +1,262 @@
-import { Transaction, ExpenseChartData } from '../types';
-import { TRANSACTION_COLORS } from '../constants';
+import type { Account, Category, CategoryKind, Entry } from '../types';
 
 /**
- * Shared helper to calculate all friend balances in one pass
+ * Pure functions over the entries model. Conventions:
+ * - Entries are always paid by me. An expense's `amount` is the full total.
+ * - Friend balance = sum of their shares − their settlements. Positive = they owe me.
+ * - "My expense" = (amount − sum(shares)) × fxRate, in HKD. Income = amount × fxRate.
+ * - Account balances are in the account's own currency (raw `amount`, no fx).
+ * - Day/month bucketing uses the device's local time.
  */
-export function calculateFriendBalancesMap(transactions: Transaction[]): Map<string, number> {
-  const friendBalances = new Map<string, number>();
-  
-  if (!transactions || !Array.isArray(transactions)) return friendBalances;
 
-  transactions.forEach(tx => {
-    if (tx.isSettlement) {
-      if (tx.payerId !== 'me' && tx.friendId === 'me') {
-        const current = friendBalances.get(tx.payerId) || 0;
-        friendBalances.set(tx.payerId, current - tx.amount);
-      } else if (tx.payerId === 'me' && tx.friendId !== 'me') {
-        const current = friendBalances.get(tx.friendId) || 0;
-        friendBalances.set(tx.friendId, current + tx.amount);
-      }
-      return;
-    }
-    
-    if (tx.payerId === 'me' && tx.friendId !== 'me') {
-      const current = friendBalances.get(tx.friendId) || 0;
-      friendBalances.set(tx.friendId, current + tx.amount);
-    } else if (tx.payerId !== 'me' && tx.friendId === 'me') {
-      const current = friendBalances.get(tx.payerId) || 0;
-      friendBalances.set(tx.payerId, current - tx.amount);
-    }
-  });
-  
-  return friendBalances;
+export const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
+
+const pad = (n: number) => String(n).padStart(2, '0');
+export const localDay = (iso: string): string => {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+export const localMonth = (iso: string): string => localDay(iso).slice(0, 7);
+
+/** Half-open time range [from, to). */
+export interface DateRange {
+  from: Date;
+  to: Date;
+}
+/** `month` is 0-based (JS convention). */
+export const monthRange = (year: number, month: number): DateRange => ({
+  from: new Date(year, month, 1),
+  to: new Date(year, month + 1, 1),
+});
+export const yearRange = (year: number): DateRange => ({ from: new Date(year, 0, 1), to: new Date(year + 1, 0, 1) });
+
+const inRange = (e: Entry, r?: DateRange): boolean => {
+  if (!r) return true;
+  const t = new Date(e.occurredAt).getTime();
+  return t >= r.from.getTime() && t < r.to.getTime();
+};
+
+// ---------------------------------------------------------------------------
+// Per-entry
+// ---------------------------------------------------------------------------
+
+export const sharesTotal = (e: Entry): number => round2(e.shares.reduce((s, x) => s + x.amount, 0));
+
+/** My own cost of an expense, in the entry's currency. 0 for non-expenses. */
+export const myShare = (e: Entry): number => (e.kind === 'expense' ? round2(e.amount - sharesTotal(e)) : 0);
+
+/** My own cost of an expense in HKD (what stats show). 0 for non-expenses. */
+export const myExpense = (e: Entry): number => round2(myShare(e) * e.fxRate);
+
+/** Income in HKD. 0 for non-income. */
+export const incomeAmount = (e: Entry): number => (e.kind === 'income' ? round2(e.amount * e.fxRate) : 0);
+
+/** Account movements an entry causes: [accountId, signed delta in account currency]. */
+export function accountDeltas(e: Entry): [string, number][] {
+  const out: [string, number][] = [];
+  switch (e.kind) {
+    case 'expense':
+      if (e.accountId) out.push([e.accountId, -e.amount]);
+      break;
+    case 'income':
+    case 'settlement':
+      if (e.accountId) out.push([e.accountId, e.amount]);
+      break;
+    case 'transfer':
+      if (e.accountId) out.push([e.accountId, -e.amount]);
+      if (e.toAccountId) out.push([e.toAccountId, e.amount]);
+      break;
+  }
+  return out;
 }
 
-/**
- * Calculate the net balance for a specific friend
- */
-export function calculateFriendBalance(friendId: string, transactions: Transaction[]): number {
-  if (!friendId || !transactions) return 0;
-  const balances = calculateFriendBalancesMap(transactions);
-  return balances.get(friendId) || 0;
+/** Friend balance movements an entry causes: [friendId, signed delta]. */
+export function friendDeltas(e: Entry): [string, number][] {
+  if (e.kind === 'expense') return e.shares.map((s) => [s.friendId, s.amount]);
+  if (e.kind === 'settlement' && e.friendId) return [[e.friendId, -e.amount]];
+  return [];
 }
 
-/**
- * Calculate total amount owed to the user
- */
-export function calculateTotalOwed(transactions: Transaction[]): number {
-  const balances = calculateFriendBalancesMap(transactions);
-  return Array.from(balances.values())
-    .filter(balance => balance > 0)
-    .reduce((sum, balance) => sum + balance, 0);
+// ---------------------------------------------------------------------------
+// Friends
+// ---------------------------------------------------------------------------
+
+export function friendBalancesMap(entries: Entry[]): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const e of entries) for (const [id, d] of friendDeltas(e)) m.set(id, (m.get(id) ?? 0) + d);
+  for (const [id, v] of m) m.set(id, round2(v));
+  return m;
 }
 
-/**
- * Calculate total amount the user owes
- */
-export function calculateTotalOwing(transactions: Transaction[]): number {
-  const balances = calculateFriendBalancesMap(transactions);
-  return Math.abs(Array.from(balances.values())
-    .filter(balance => balance < 0)
-    .reduce((sum, balance) => sum + balance, 0));
+export const friendBalance = (friendId: string, entries: Entry[]): number =>
+  friendBalancesMap(entries).get(friendId) ?? 0;
+
+/** Sum of balances friends owe me (positive balances only). */
+export function totalOwed(entries: Entry[]): number {
+  let t = 0;
+  for (const v of friendBalancesMap(entries).values()) if (v > 0) t += v;
+  return round2(t);
 }
 
-/**
- * Calculate net balance
- */
-export function calculateNetBalance(transactions: Transaction[]): number {
-  return calculateTotalOwed(transactions) - calculateTotalOwing(transactions);
+/** Sum of overpayments: friends whose balance is negative (they paid more than they owed). */
+export function totalOwing(entries: Entry[]): number {
+  let t = 0;
+  for (const v of friendBalancesMap(entries).values()) if (v < 0) t -= v;
+  return round2(t);
 }
 
-/**
- * Calculate debt origins for chart
- */
-export function calculateDebtOrigins(transactions: Transaction[]): ExpenseChartData[] {
-  if (!transactions || transactions.length === 0) return [];
-
-  const typeTotals = new Map<string, number>();
-  const activeTransactions = transactions.filter(tx => !tx.isSettlement);
-  
-  activeTransactions.forEach(tx => {
-    const current = typeTotals.get(tx.type) || 0;
-    typeTotals.set(tx.type, current + tx.amount);
-  });
-  
-  const total = Array.from(typeTotals.values()).reduce((sum, val) => sum + val, 0);
-  if (total === 0) return [];
-  
-  return Array.from(typeTotals.entries())
-    .map(([type, amount]) => ({
-      name: type,
-      value: Math.round((amount / total) * 100),
-      color: TRANSACTION_COLORS[type] || TRANSACTION_COLORS['General'],
-    }))
-    .filter(item => item.value > 0)
-    .sort((a, b) => b.value - a.value);
-}
-
-/**
- * Get the last activity date string
- */
-export function getLastActivity(friendId: string, transactions: Transaction[]): string {
-  if (!friendId || !transactions) return 'Never';
-
-  const friendTransactions = transactions.filter(tx => 
-    tx.friendId === friendId || tx.payerId === friendId
-  );
-  
-  if (friendTransactions.length === 0) return 'Never';
-  
-  const mostRecent = Math.max(...friendTransactions.map(tx => new Date(tx.date).getTime()));
-  const date = new Date(mostRecent);
-  const now = new Date();
-  const diffTime = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  
-  if (diffDays === 0) return 'Today';
+export function getLastActivity(friendId: string, entries: Entry[], now = new Date()): string {
+  const times = entries
+    .filter((e) => e.friendId === friendId || e.shares.some((s) => s.friendId === friendId))
+    .map((e) => new Date(e.occurredAt).getTime());
+  if (times.length === 0) return 'Never';
+  const date = new Date(Math.max(...times));
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / 86_400_000);
+  if (diffDays <= 0) return 'Today';
   if (diffDays === 1) return 'Yesterday';
   if (diffDays < 7) return `${diffDays} days ago`;
   if (diffDays < 30) {
     const weeks = Math.floor(diffDays / 7);
     return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
   }
-  
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-export function calculateMonthlyTotals(
-  transactions: Transaction[],
-  months = 6
-): { month: string; total: number }[] {
-  const now = new Date();
-  return Array.from({ length: months }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - (months - 1 - i), 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const total = transactions
-      .filter(tx => !tx.isSettlement && tx.payerId === 'me' && tx.date.slice(0, 7) === key)
-      .reduce((s, tx) => s + tx.amount, 0);
-    return {
-      month: d.toLocaleDateString(undefined, { month: 'short' }),
-      total: Math.round(total * 100) / 100,
-    };
-  });
+// ---------------------------------------------------------------------------
+// Accounts and net worth
+// ---------------------------------------------------------------------------
+
+/** Balance per account id (every account in `accounts` is present, even with no entries). */
+export function accountBalances(accounts: Account[], entries: Entry[]): Map<string, number> {
+  const m = new Map<string, number>(accounts.map((a) => [a.id, 0]));
+  for (const e of entries) for (const [id, d] of accountDeltas(e)) m.set(id, (m.get(id) ?? 0) + d);
+  for (const [id, v] of m) m.set(id, round2(v));
+  return m;
 }
 
+/** HKD rate for a currency. HKD (or unknown, rough accuracy) = 1. */
+const rate = (fx: Record<string, number> | undefined, currency: string) => fx?.[currency] ?? 1;
 
-export function shouldGrayTransaction(tx: Transaction, friendId: string, transactions: Transaction[]): boolean {
-  if (!friendId || !transactions) return false;
-
-  const friendTransactions = transactions
-    .filter(t => t.friendId === friendId || t.payerId === friendId)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-  const currentBalance = calculateFriendBalance(friendId, transactions);
-  if (Math.abs(currentBalance) < 0.01) return true;
-
-  let lastZeroBalanceIndex = -1;
-  let runningBalance = 0;
-  
-  for (let i = 0; i < friendTransactions.length; i++) {
-    const t = friendTransactions[i];
-    
-    if (t.isSettlement) {
-      if (t.payerId === friendId && t.friendId === 'me') runningBalance -= t.amount;
-      else if (t.payerId === 'me' && t.friendId === friendId) runningBalance += t.amount;
-    } else {
-      if (t.payerId === 'me' && t.friendId === friendId) runningBalance += t.amount;
-      else if (t.payerId === friendId && t.friendId === 'me') runningBalance -= t.amount;
-    }
-    
-    if (Math.abs(runningBalance) < 0.01) lastZeroBalanceIndex = i;
-  }
-  
-  if (lastZeroBalanceIndex >= 0) {
-    const txIndex = friendTransactions.findIndex(t => t.id === tx.id);
-    if (txIndex >= 0 && txIndex <= lastZeroBalanceIndex) return true;
-  }
-  
-  return false;
+/**
+ * Net worth in HKD = non-archived account balances + what friends owe me.
+ * `fx` maps currency → HKD for non-HKD accounts (missing = 1).
+ */
+export function netWorth(accounts: Account[], entries: Entry[], fx?: Record<string, number>): number {
+  const bal = accountBalances(accounts, entries);
+  let t = totalOwed(entries);
+  for (const a of accounts) if (!a.archived) t += (bal.get(a.id) ?? 0) * rate(fx, a.currency);
+  return round2(t);
 }
+
+/** Net worth at each point in time (entries with occurredAt <= point). `points` need not be sorted. */
+export function netWorthSeries(
+  accounts: Account[],
+  entries: Entry[],
+  points: Date[],
+  fx?: Record<string, number>
+): { at: Date; value: number }[] {
+  const live = new Map(accounts.filter((a) => !a.archived).map((a) => [a.id, rate(fx, a.currency)]));
+  const sorted = [...entries].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
+  const friends = new Map<string, number>();
+  let cash = 0;
+  let owed = 0;
+  let i = 0;
+  return [...points]
+    .map((p, idx) => ({ p, idx }))
+    .sort((a, b) => a.p.getTime() - b.p.getTime())
+    .map(({ p, idx }) => {
+      while (i < sorted.length && new Date(sorted[i].occurredAt).getTime() <= p.getTime()) {
+        const e = sorted[i++];
+        for (const [id, d] of accountDeltas(e)) cash += d * (live.get(id) ?? 0);
+        for (const [id, d] of friendDeltas(e)) {
+          const before = friends.get(id) ?? 0;
+          const after = before + d;
+          friends.set(id, after);
+          owed += Math.max(after, 0) - Math.max(before, 0);
+        }
+      }
+      return { idx, at: p, value: round2(cash + owed) };
+    })
+    .sort((a, b) => a.idx - b.idx)
+    .map(({ at, value }) => ({ at, value }));
+}
+
+// ---------------------------------------------------------------------------
+// Stats (HKD)
+// ---------------------------------------------------------------------------
+
+export function rangeTotals(entries: Entry[], range?: DateRange): { expense: number; income: number; net: number } {
+  let expense = 0;
+  let income = 0;
+  for (const e of entries) {
+    if (!inRange(e, range)) continue;
+    expense += myExpense(e);
+    income += incomeAmount(e);
+  }
+  return { expense: round2(expense), income: round2(income), net: round2(income - expense) };
+}
+
+export interface CategoryTotal {
+  categoryId: string | null; // null = uncategorised
+  total: number;
+  percent: number; // 0..100, one decimal
+}
+
+/** Totals per category for one kind, largest first. Entries with a zero amount are skipped. */
+export function totalsByCategory(entries: Entry[], kind: CategoryKind, range?: DateRange): CategoryTotal[] {
+  const m = new Map<string | null, number>();
+  for (const e of entries) {
+    if (e.kind !== kind || !inRange(e, range)) continue;
+    const v = kind === 'expense' ? myExpense(e) : incomeAmount(e);
+    if (v > 0) m.set(e.categoryId ?? null, (m.get(e.categoryId ?? null) ?? 0) + v);
+  }
+  const sum = [...m.values()].reduce((s, v) => s + v, 0);
+  return [...m.entries()]
+    .map(([categoryId, total]) => ({
+      categoryId,
+      total: round2(total),
+      percent: sum > 0 ? Math.round((total / sum) * 1000) / 10 : 0,
+    }))
+    .sort((a, b) => b.total - a.total);
+}
+
+export interface SeriesPoint {
+  key: string; // 'YYYY-MM-DD' (daily) or 'YYYY-MM' (monthly)
+  income: number;
+  expense: number;
+}
+
+/** Income vs my expense for every day of a month (`month` is 0-based). */
+export function dailySeries(entries: Entry[], year: number, month: number): SeriesPoint[] {
+  const days = new Date(year, month + 1, 0).getDate();
+  const pts = Array.from({ length: days }, (_, i) => ({
+    key: `${year}-${pad(month + 1)}-${pad(i + 1)}`,
+    income: 0,
+    expense: 0,
+  }));
+  const byKey = new Map(pts.map((p) => [p.key, p]));
+  for (const e of entries) {
+    const p = byKey.get(localDay(e.occurredAt));
+    if (!p) continue;
+    p.income += incomeAmount(e);
+    p.expense += myExpense(e);
+  }
+  return pts.map((p) => ({ ...p, income: round2(p.income), expense: round2(p.expense) }));
+}
+
+/** Income vs my expense for each of the 12 months of a year. */
+export function monthlySeries(entries: Entry[], year: number): SeriesPoint[] {
+  const pts = Array.from({ length: 12 }, (_, i) => ({ key: `${year}-${pad(i + 1)}`, income: 0, expense: 0 }));
+  const byKey = new Map(pts.map((p) => [p.key, p]));
+  for (const e of entries) {
+    const p = byKey.get(localMonth(e.occurredAt));
+    if (!p) continue;
+    p.income += incomeAmount(e);
+    p.expense += myExpense(e);
+  }
+  return pts.map((p) => ({ ...p, income: round2(p.income), expense: round2(p.expense) }));
+}
+
+/** Category lookup helper for UIs. */
+export const categoryName = (categories: Category[], id?: string | null): string =>
+  categories.find((c) => c.id === id)?.name ?? 'Uncategorised';

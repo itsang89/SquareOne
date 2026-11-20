@@ -128,12 +128,10 @@ export const Profile: React.FC = () => {
 
     setIsUpdating(true);
     try {
-      const { error: txError } = await supabase
-        .from('transactions')
-        .delete()
-        .eq('user_id', user.id);
-
-      if (txError) throw txError;
+      for (const table of ['entries', 'transactions']) {
+        const { error: delError } = await supabase.from(table).delete().eq('user_id', user.id);
+        if (delError) throw delError;
+      }
 
       const { error: friendsError } = await supabase
         .from('friends')
@@ -157,14 +155,6 @@ export const Profile: React.FC = () => {
     await signOut();
     navigate('/login');
   };
-
-  const handleExitGuestMode = () => {
-    signOut().finally(() => {
-      navigate('/login');
-    });
-  };
-
-  const isGuest = user?.id === 'guest';
 
   return (
     <div className="min-h-screen pb-24 bg-neo-bg dark:bg-zinc-950 font-display transition-colors duration-300">
@@ -292,25 +282,9 @@ export const Profile: React.FC = () => {
                         </div>
                         <div className="mt-4 flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2">
-                            <div
-                              className={`w-2 h-2 rounded-full ${
-                                isGuest ? 'bg-neo-yellow' : 'bg-neo-green'
-                              }`}
-                              aria-hidden
-                            />
-                            <span className="text-xs font-black uppercase tracking-widest dark:text-zinc-300">
-                              {isGuest ? 'Local only' : 'Synced'}
-                            </span>
+                            <div className="w-2 h-2 rounded-full bg-neo-green" aria-hidden />
+                            <span className="text-xs font-black uppercase tracking-widest dark:text-zinc-300">Synced</span>
                           </div>
-                          {isGuest && (
-                            <button
-                              type="button"
-                              onClick={handleExitGuestMode}
-                              className="text-xs font-black uppercase tracking-widest underline decoration-2 underline-offset-4 hover:text-neo-blue"
-                            >
-                              Sign in to sync
-                            </button>
-                          )}
                         </div>
                     </motion.div>
                   )}
@@ -378,7 +352,7 @@ export const Profile: React.FC = () => {
                 </NeoCard>
             </section>
 
-            {!isGuest && (
+            {(
               <Link
                 to="/profile/agent-access"
                 className="w-full bg-white dark:bg-zinc-900 border-2 border-black p-4 shadow-neo-sm flex items-center justify-between gap-3 hover:bg-purple-50 dark:hover:bg-zinc-800"

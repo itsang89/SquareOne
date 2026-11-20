@@ -9,7 +9,7 @@ import { NeoButton } from '../components/NeoButton';
 import { NeoCard } from '../components/NeoCard';
 import { useAppContext } from '../context/AppContext';
 import { Transaction } from '../types';
-import { shouldGrayTransaction } from '../utils/calculations';
+import { shouldGrayTransaction } from '../utils/transactions';
 import { useToast } from '../components/ToastContext';
 import { TransactionSkeleton } from '../components/LoadingSkeleton';
 import { formatCurrency } from '../utils/formatters';

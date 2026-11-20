@@ -4,7 +4,7 @@ This document describes the high-level architecture of SquareOne, explaining how
 
 ## System Architecture
 
-SquareOne is a client-side React application that leverages Supabase as a Backend-as-a-Service (BaaS). Guest users bypass Supabase entirely and work against localStorage.
+SquareOne is a client-side React application that leverages Supabase as a Backend-as-a-Service (BaaS).
 
 ```mermaid
 graph TD

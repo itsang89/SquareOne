@@ -18,7 +18,6 @@ export const Login: React.FC<{ approvalPath?: string }> = ({ approvalPath }) => 
     signUp, 
     signInWithGoogle, 
     signInWithApple, 
-    signInAsGuest,
     user, 
     isProcessing 
   } = useAuth();
@@ -81,11 +80,6 @@ export const Login: React.FC<{ approvalPath?: string }> = ({ approvalPath }) => 
     if (error) {
       showError('Apple sign in failed', error.message);
     }
-  };
-
-  const handleGuestLogin = () => {
-    signInAsGuest();
-    navigate('/dashboard');
   };
 
   return (
@@ -269,9 +263,6 @@ export const Login: React.FC<{ approvalPath?: string }> = ({ approvalPath }) => 
             </NeoCard>
 
             <div className="text-center">
-                {!approvalPath && <button onClick={handleGuestLogin} className="inline-flex items-center gap-2 text-gray-500 dark:text-zinc-500 font-bold uppercase text-xs hover:text-black dark:hover:text-zinc-100 hover:underline decoration-2 underline-offset-4 transition-all">
-                    Try as Guest
-                </button>}
                 <p className="mt-6 text-[10px] text-gray-400 dark:text-zinc-500 font-medium max-w-[200px] mx-auto leading-relaxed">
                     By entering, you agree to our Terms & Privacy Policy.
                 </p>

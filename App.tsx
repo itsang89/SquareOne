@@ -106,7 +106,7 @@ const AppContent: React.FC = () => {
             path="/profile/agent-access"
             element={
               <ProtectedRoute>
-                {user?.id === 'guest' ? <Navigate to="/profile" replace /> : <AgentAccess key={user?.id} />}
+                <AgentAccess key={user?.id} />
               </ProtectedRoute>
             }
           />

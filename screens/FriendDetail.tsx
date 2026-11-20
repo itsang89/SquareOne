@@ -5,7 +5,7 @@ import { NeoButton } from '../components/NeoButton';
 import { NeoModal } from '../components/NeoModal';
 import { Avatar } from '../components/Avatar';
 import { useAppContext } from '../context/AppContext';
-import { calculateFriendBalance, shouldGrayTransaction } from '../utils/calculations';
+import { shouldGrayTransaction } from '../utils/transactions';
 import { Transaction } from '../types';
 import { DetailHeader } from '../components/FriendDetail/DetailHeader';
 import { TransactionList } from '../components/FriendDetail/TransactionList';
@@ -55,10 +55,7 @@ export const FriendDetail: React.FC = () => {
     );
   }, [allTransactions, friend]);
 
-  const calculatedBalance = useMemo(() => {
-    if (!friend) return 0;
-    return calculateFriendBalance(friend.id, allTransactions);
-  }, [friend, allTransactions]);
+  const calculatedBalance = friend?.balance ?? 0;
 
   const friendStats = useMemo(() => ({
     count: friendTransactions.length,

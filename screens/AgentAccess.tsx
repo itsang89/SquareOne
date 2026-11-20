@@ -48,7 +48,7 @@ export function AgentAccess() {
   const [refresh, setRefresh] = useState(0);
 
   useEffect(() => {
-    if (!userId || userId === 'guest') return;
+    if (!userId) return;
     const controller = new AbortController();
     void Promise.all([
       supabase.from('agent_tokens').select('id,label,scopes,expires_at,refresh_expires_at,revoked_at')

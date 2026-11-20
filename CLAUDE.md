@@ -27,7 +27,7 @@ VITE_SUPABASE_ANON_KEY=...
 
 ## Architecture
 
-SquareOne is a **client-side React 19 / Vite SPA** backed by **Supabase** (Auth, PostgreSQL, Realtime). Guest users bypass Supabase entirely.
+SquareOne is a **client-side React 19 / Vite SPA** backed by **Supabase** (Auth, PostgreSQL, Realtime). It is a personal money tracker (plan: `docs/plans/2026-11-20-money-tracker.md`). There is no guest mode.
 
 ### Routing
 
@@ -41,46 +41,29 @@ Four React Context providers hold all global state:
 
 **`AuthContext`** (`context/AuthContext.tsx`)
 - Holds `user: User | null` and `session`.
-- `user.id === 'guest'` is the sentinel for guest mode — no Supabase calls anywhere.
 - Profile load uses `Promise.race` with a 5 s timeout and a `profileRequestIdRef` counter to discard stale responses from superseded requests.
-- `migrateGuestData(uid)` runs before clearing guest data — see Guest Mode below.
 - Auth redirect URLs always use the hash form via `authRedirectTo`.
 
 **`AppContext`** (`context/AppContext.tsx`)
-- Holds `friends`, `transactions`, `customTypes`, `loading`, `error`, `isProcessing`.
-- On mount, branches on `user.id === 'guest'`: guest reads/writes `localStorage` via `utils/guestStorage.ts`; authenticated reads/writes Supabase.
-- For authenticated sessions, subscribes to three Supabase Realtime channels (`friends-changes`, `transactions-changes`, `custom-types-changes`). All three feed a single 400 ms debounced refresh (`scheduleRealtimeRefresh`) that calls `loadData()`.
-- `loadedUserIdRef` prevents showing the loading skeleton on background refreshes after first load.
-- On partial query failure, `error` is set but the successful snapshot is preserved (never overwritten with `[]`). `transactionsRef` keeps the last good transactions for balance calculations when only the transactions query fails.
-- All CRUD methods return `{ success: boolean; error?: Error }`.
+- Holds `friends` (with computed `balance`), `accounts`, `categories`, `entries` (each with `shares`), `subscriptions`, `loading`, `error`, `isProcessing`.
+- Loads all five tables (paged past PostgREST's 1000-row cap) and subscribes to six Realtime channels; all feed one 400 ms debounced `loadData()`.
+- `loadedUserIdRef` prevents the loading skeleton on background refreshes. On partial query failure `error` is set but good snapshots are kept.
+- Entry writes go through the `save_entry(p_entry, p_shares)` RPC (atomic entry + shares). All CRUD methods return `{ success: boolean; error?: Error }` (adds return `id` too).
+- Legacy friend-ledger API for the pre-redesign screens: `transactions` (view derived from entries), `addTransaction`/`updateTransaction`/`deleteTransaction`, `customTypes` (= expense categories). Mapping lives in `utils/transactions.ts`.
 
 **`SearchContext`** (`context/SearchContext.tsx`) — single `open` flag + `openSearch()`/`closeSearch()` for the global command palette (`components/GlobalSearch.tsx`).
 
 **`ToastContext`** (`context/ToastContext.tsx`) — `useToast()` hook with `success()`/`error()`/`show()`, auto-dismissing after 5 s.
 
-### Data / DB Field Mapping
+### Data Model
 
-The frontend `Transaction` type uses camelCase (`payerId`, `friendId`, `isSettlement`), but the Supabase columns are snake_case (`payer_id`, `friend_id`, `is_settlement`). The mapping happens in `loadData()` inside `AppContext`. The `payer_id` column stores the user's UUID or a friend's UUID — never the string `'me'`; that sentinel is re-introduced on read.
+Tables (all `user_id` + owner-only RLS): `accounts`, `categories`, `entries`, `entry_shares`, `subscriptions`, plus `friends`. Every entry is paid by me; kinds are `expense | income | transfer | settlement`. An expense stores the full `amount`; friends' exact shares live in `entry_shares` (they owe me); my own cost = amount − shares. A settlement with no account is an offset. DB checks enforce per-kind shape; a deferred trigger enforces `sum(shares) ≤ amount`. `currency` + `fx_rate` (to HKD) per entry.
 
-### Guest Mode
-
-- Sentinel: `user.id === 'guest'` (set by `signInAsGuest()` in `AuthContext`).
-- Persisted to `localStorage` under key `squareone_guest_data` as `{ friends: GuestPersistedFriend[], transactions: Transaction[] }`.
-- `utils/guestStorage.ts` owns all read/write helpers.
-- Custom types for guests use a separate key (`squareone_custom_types`) via `utils/customTypesStorage.ts`.
-- **Guest → account migration**: `migrateGuestData(uid)` in `AuthContext` runs on every successful sign-in/sign-up and on `onAuthStateChange`. It upserts friends and transactions to Supabase under the new `user.id` (using `ignoreDuplicates`), then calls `clearGuestLocalData()`. Wrapped in try/catch — a migration failure logs a warning and leaves local data in place for retry; login is never blocked.
+Legacy `transactions`/`custom_types` are kept until cutover; `public.migrate_legacy_transactions()` (idempotent, entry id = legacy id) copies them into the new model preserving every friend balance.
 
 ### Balance Calculations
 
-Friend balances are computed **entirely on the client** from raw transaction history — there are no balance columns in the DB. `utils/calculations.ts` is the single source of truth:
-- `calculateFriendBalancesMap(transactions)` — one pass over all transactions, returns a `Map<friendId, balance>`.
-- `calculateFriendBalance(friendId, transactions)` — single-friend convenience.
-- `calculateTotalOwed` / `calculateTotalOwing` / `calculateNetBalance` — aggregate across all friends.
-- `getLastActivity(friendId, transactions)` — human-readable "Today / Yesterday / N days ago / N weeks ago".
-- `calculateMonthlyTotals(transactions, months = 6)` — last-N-months series for the home dashboard chart.
-- `shouldGrayTransaction(tx, friendId, transactions)` — used by `History` to dim rows that have been settled since.
-- Positive balance = friend owes you; negative = you owe them.
-- Settlement transactions (`isSettlement: true`) reverse the balance direction.
+`utils/calculations.ts` is the single source of truth — pure functions over `Entry[]`: `friendBalancesMap`, `friendBalance`, `totalOwed`/`totalOwing`, `accountBalances`, `netWorth`, `netWorthSeries`, `myExpense`, `rangeTotals`, `totalsByCategory`, `dailySeries`, `monthlySeries`, `getLastActivity`. Positive friend balance = friend owes you. Stats use `(amount − shares) × fx_rate`. Day/month bucketing is local time.
 
 ### Design System
 

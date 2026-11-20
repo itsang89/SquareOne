@@ -2,7 +2,6 @@
 
 SquareOne uses Supabase (PostgreSQL) for data storage. The schema is designed to be simple and efficient for tracking personal debts between friends.
 
-> Guest mode does not use this schema — it mirrors the same data shape in `localStorage` via `utils/guestStorage.ts`.
 
 ## Tables
 
@@ -85,3 +84,7 @@ USING (auth.uid() = user_id);
 ## Real-time
 
 Real-time subscriptions are used by `AppContext` to keep the frontend in sync across tabs and devices without manual polling. Ensure all three tables (`friends`, `transactions`, `custom_types`) are added to the Supabase real-time publication.
+
+## Money tracker tables (2026-11)
+
+`accounts`, `categories`, `entries`, `entry_shares`, `subscriptions` — see `supabase/migrations/20261121100000_money_tracker.sql` and `docs/plans/2026-11-20-money-tracker.md`. All rows carry `user_id` with owner-only RLS; composite `(id, user_id)` foreign keys prevent cross-user references. `save_entry(p_entry, p_shares)` writes an entry and its shares atomically. `migrate_legacy_transactions()` copies old `transactions` into entries (idempotent).

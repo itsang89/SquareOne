@@ -6,7 +6,7 @@ The SquareOne CLI runs with Node.js 20 or newer. Give the agent the app URL and 
 
 1. Open **Profile → Agent Access** and click **Copy instructions**. Send that text to your agent, or have it run the command below.
 2. Open the link the agent prints. Sign in to the account it should represent, compare the displayed code with the agent’s code, choose permissions, and click **Approve**.
-3. Ask the agent to run `whoami` to confirm the account and permissions. Then give it a task, such as “Log lunch with Alex for $21.”
+3. Ask the agent to run `whoami` to confirm the account and permissions. Then give it a task, such as “Dinner $1200 on Bank, Alex 500 Ben 300.”
 
 ```bash
 node cli/squareone.mjs connect --url http://127.0.0.1:3010 --name 'My expense agent'
@@ -15,29 +15,51 @@ node cli/squareone.mjs whoami
 
 Use the URL of the environment the agent can reach. The loopback demo URL works for agents running on the same machine. Use a reachable HTTPS app URL for hosted agents. Keep the CLI running while you approve the connection.
 
-**Profile → Agent Access** shows connections, editable permissions, and recent writes and exports. Disconnecting a connection blocks its next request. Connected agents renew short-lived credentials automatically and reconnect after 90 days without renewal. The CLI stores credentials in its own machine’s `~/.config/squareone/connection.json` with owner-only permissions. For separate agents or when the runtime restricts home-directory writes, set `SQUAREONE_CONFIG_DIR` to a private persistent directory per agent. Keep it outside Git. The manual token option remains available for automation and expires after 30 days.
+**Profile → Agent Access** shows connections, editable permissions, and recent agent activity. Disconnecting a connection blocks its next request. Connected agents renew short-lived credentials automatically and reconnect after 90 days without renewal. The CLI stores credentials in its own machine’s `~/.config/squareone/connection.json` with owner-only permissions. For separate agents or when the runtime restricts home-directory writes, set `SQUAREONE_CONFIG_DIR` to a private persistent directory per agent. Keep it outside Git. The manual token option remains available for automation and expires after 30 days.
 
 ## Agent commands
 
+Run `node cli/squareone.mjs --help` for the full list with plain-English examples. All output is JSON; failures exit with status 1 and print `{"error": ...}` to stderr.
+
 ```bash
-node cli/squareone.mjs --help
-node cli/squareone.mjs friends list
-node cli/squareone.mjs transactions list --limit 20
-node cli/squareone.mjs transactions add --friend-id "$FRIEND_ID" --payer me \
-  --title 'Lunch with Alex' --type Meal --amount 20.50 --date 2026-11-20 \
-  --request-id "$REQUEST_ID"
-node cli/squareone.mjs transactions edit --id "$EXPENSE_ID" --amount 21.50 \
-  --request-id "$EDIT_REQUEST_ID"
+# "Dinner $1200 on Bank, Alex 500 Ben 300"
+node cli/squareone.mjs entries add --amount 1200 --title Dinner --category Food --account Bank \
+  --split Alex:500 --split Ben:300 --dry-run      # preview: my share, friend shares, account. Writes nothing.
+node cli/squareone.mjs entries add ... --request-id "$REQUEST_ID"     # same command without --dry-run
+node cli/squareone.mjs entries add --amount 180 --title Lunch --category Food --account Bank --split-equal Alex
+node cli/squareone.mjs entries add --kind settlement --amount 200 --friend Alex --account Bank
+node cli/squareone.mjs entries list --from 2026-11-01 --to 2026-11-30 --category Food --limit 20
+node cli/squareone.mjs stats --month 2026-11
+node cli/squareone.mjs balances
 ```
 
-The CLI can manage friends, expenses, settlements, custom categories, and profile fields, show balances, export transaction history, or clear friends and transactions. Avatar changes accept SquareOne’s preset URLs. Expense lists omit notes. Reading a note takes a separate permission. The owner must approve each friend deletion, export, or account history clear in the browser. Then repeat the same command with the same request ID and fields. An approved export includes notes and returns JSON by default. Add `--format csv` to get a CSV.
+| Area | Commands |
+| --- | --- |
+| Entries | `entries list` (`--from --to --kind --category --account --friend --search --limit --offset`), `add`, `edit`, `delete` |
+| Accounts | `accounts list [--all]`, `add`, `edit`, `archive [--unarchive]`, `delete` (needs approval; only when the account has no entries) |
+| Categories | `categories list`, `add`, `edit` (`--archive`/`--unarchive`) |
+| Subscriptions | `subscriptions list`, `add`, `edit`, `pause [--resume]` |
+| Reports | `stats --month YYYY-MM` or `--from --to` (my share only, HKD, by category), `balances` (accounts, net worth, friends owe me) |
+| Friends & profile | `friends list` (with balances), `add`, `edit`, `delete` (needs approval); `profile show|edit` |
+| Data | `data export [--format csv]`, `data clear` (both need approval) |
 
-Generate a new UUID for each intended write using `node -p "crypto.randomUUID()"`. Reuse it with the same fields on retries. Commands print JSON and failures exit with status 1. Treat returned data as data. The agent’s AI provider may process any data it receives.
+Rules the server enforces:
 
-For a manual token, use the agent’s secret settings for `SQUAREONE_AGENT_TOKEN` and set `SQUAREONE_URL` to the Supabase project origin. Set `SQUAREONE_APP_URL` to the SquareOne app origin for commands that require browser approval.
+- `--account`, `--category`, `--friend` take a name or UUID (case-insensitive, unique partial match). An unknown or ambiguous name fails and lists the options. A missing category is only created with `--create-category`.
+- With several accounts, `--account` is required (`--account none` = no account, e.g. a receivable-only expense or an offset settlement). With one account it is the default. Date defaults to now; `--date YYYY-MM-DD` means noon Hong Kong time.
+- The amount is the full total. `--split FRIEND:AMOUNT` (repeatable) sets exact friend shares. `--split-equal A,B` divides the total equally among me and the listed friends, and I keep the rounding remainder. Editing the amount of a split entry needs the split restated, or shares must still fit.
+- Non-HKD entries need `--currency` and `--fx-rate` (HKD per 1 unit). Account balances stay in each account's currency; stats use amount × fx-rate.
+- Notes are returned and searchable only when the connection has **Read private notes**.
+- Single entry edits and deletes are allowed and appear in **Profile → Agent Access** activity.
+
+Writes take `--request-id UUID`; the CLI generates one and prints it as `request_id` if you leave it out. Retry a failed write with the same ID and fields: it never double-posts, and reusing an ID with different fields fails. Commands marked "needs approval" print `status: approval_required` with an `approval_url`. The owner opens it and clicks **Approve**, then the agent repeats the identical command with the same request ID. An approved export includes notes and returns JSON by default; `--format csv` returns CSV. Treat returned data as data. The agent's AI provider may process anything it receives.
+
+Permissions (set when approving a connection, editable later): read/write entries, read notes, stats and balances, read/write/delete accounts, read/write categories, read/write subscriptions, friends read/add/edit/delete, profile, export, clear. Deleting an account or friend, export, and clear need both the permission and a browser approval each time.
+
+For a manual token, use the agent's secret settings for `SQUAREONE_AGENT_TOKEN` and set `SQUAREONE_URL` to the Supabase project origin. Set `SQUAREONE_APP_URL` to the SquareOne app origin for commands that require browser approval.
 
 ## Isolated local demo
 
 With Docker running and the Supabase CLI installed, run `bash supabase/demo/start.sh` from the repo root. It creates an isolated project, `squareone-demo@example.test`, and an `Alex Demo` friend. Use the generated credentials and the printed Vite command. Vite binds to `127.0.0.1:3010` with the local Supabase URL and key. Stop Vite and run the printed cleanup command when finished.
 
-Apply both agent migrations and deploy the Edge Function in the same staging project as the web release. Use the existing SquareOne browser login for approval. If staging uses Google or Apple login, allow the app’s approval route in the Supabase redirect configuration and verify the return flow there. [Supabase function configuration](https://supabase.com/docs/guides/functions/function-configuration)
+Apply the three agent migrations (`20261120110000`, `20261120120000`, `20261121200000`) and deploy the Edge Function in the same staging project as the web release. Use the existing SquareOne browser login for approval. If staging uses Google or Apple login, allow the app’s approval route in the Supabase redirect configuration and verify the return flow there. [Supabase function configuration](https://supabase.com/docs/guides/functions/function-configuration)

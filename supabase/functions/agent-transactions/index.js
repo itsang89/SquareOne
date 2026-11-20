@@ -1,8 +1,9 @@
 const tokenPattern = /^Bearer (sq[odr]_[a-f0-9]{64})$/;
-const transactionCommands = new Set(['friends.list', 'transactions.list', 'transactions.add', 'transactions.edit']);
+// Friend/profile basics stay in run_agent_management; everything else (money model) is run_agent_money.
+const managementCommands = new Set(['connection.info', 'friends.add', 'friends.edit', 'profile.show', 'profile.edit']);
 const connectionCommands = new Set(['connect.start', 'connect.poll', 'connect.refresh']);
 const expectedErrors = new Set(['PT400', 'PT401', 'PT403', 'PT404', 'PT409', 'PT429']);
-const maxBodyBytes = 8192;
+const maxBodyBytes = 16384;
 
 function json(body, status = 200, headers = {}) {
   return Response.json(body, { status, headers: { 'Cache-Control': 'no-store', ...headers } });
@@ -60,12 +61,12 @@ export async function handleRequest(request) {
     if (key === legacyKey) headers.Authorization = `Bearer ${key}`;
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token ?? ''));
     const tokenHash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
-    const legacy = transactionCommands.has(operation);
-    const rpc = legacy ? 'run_agent_command' : connectionCommands.has(operation) ? 'run_agent_connection' : 'run_agent_management';
+    const rpc = connectionCommands.has(operation) ? 'run_agent_connection' :
+      managementCommands.has(operation) ? 'run_agent_management' : 'run_agent_money';
     const response = await fetch(`${serverUrl}/rest/v1/rpc/${rpc}`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ [legacy ? 'p_token_hash' : 'p_hash']: tokenHash, p_operation: operation, p_payload: payload }),
+      body: JSON.stringify({ p_hash: tokenHash, p_operation: operation, p_payload: payload }),
       redirect: 'error',
       signal: AbortSignal.timeout(10000),
     });

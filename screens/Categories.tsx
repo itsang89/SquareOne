@@ -7,7 +7,9 @@ import { NeoModal } from '../components/NeoModal';
 import { Chip, FieldLabel } from '../components/Chip';
 import { useAppContext } from '../context/AppContext';
 import { useToast } from '../components/ToastContext';
-import { categoriesByUse, CATEGORY_COLORS, CATEGORY_EMOJI, NO_COLOR } from '../utils/entryUi';
+import { categoriesByUse } from '../utils/entryUi';
+import { CategoryTile } from '../components/CategoryTile';
+import { ICONS, TILE_COLORS as CATEGORY_COLORS } from '../utils/categoryStyle';
 import type { Category, CategoryKind } from '../types';
 
 export const Categories: React.FC = () => {
@@ -50,7 +52,7 @@ export const Categories: React.FC = () => {
 
       <main className="p-5 space-y-4">
         <div className="grid grid-cols-2 gap-2">
-          <Chip active={kind === 'expense'} onClick={() => setKind('expense')} color="bg-neo-pink" className="justify-center">Expense</Chip>
+          <Chip active={kind === 'expense'} onClick={() => setKind('expense')} color="bg-neo-yellow" className="justify-center">Expense</Chip>
           <Chip active={kind === 'income'} onClick={() => setKind('income')} color="bg-neo-green" className="justify-center">Income</Chip>
         </div>
 
@@ -58,7 +60,7 @@ export const Categories: React.FC = () => {
           {list.map((c) => (
             <li key={c.id}>
               <button type="button" onClick={() => open(c)} className={`w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 dark:hover:bg-zinc-800 ${c.archived ? 'opacity-50' : ''}`}>
-                <span className="w-10 h-10 border-2 border-black grid place-items-center text-lg" style={{ backgroundColor: c.color ?? NO_COLOR }}>{c.icon || '🏷️'}</span>
+                <CategoryTile category={c} />
                 <span className="flex-1 font-bold dark:text-zinc-100">{c.name}</span>
                 {c.archived && <span className="text-[10px] font-black uppercase text-gray-400">archived</span>}
               </button>
@@ -76,7 +78,7 @@ export const Categories: React.FC = () => {
 
       <NeoModal isOpen={editing !== null} onClose={() => setEditing(null)} title={editing === 'new' ? `New ${kind} category` : 'Edit category'}>
         <NeoInput label="Name" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
-        <FieldLabel>Icon (emoji)</FieldLabel>
+        <FieldLabel>Icon (name or emoji)</FieldLabel>
         <input
           value={icon}
           onChange={(e) => setIcon(e.target.value)}
@@ -85,8 +87,8 @@ export const Categories: React.FC = () => {
           className="w-full border-2 border-black p-3 font-bold text-xl bg-white dark:bg-zinc-900 mb-2"
         />
         <div className="flex flex-wrap gap-1 mb-4">
-          {CATEGORY_EMOJI.map((e) => (
-            <button key={e} type="button" onClick={() => setIcon(e)} className={`w-9 h-9 border-2 text-lg ${icon === e ? 'border-black bg-neo-yellow' : 'border-black/20'}`}>{e}</button>
+          {Object.entries(ICONS).map(([k, I]) => (
+            <button key={k} type="button" aria-label={k} onClick={() => setIcon(k)} className={`w-9 h-9 border-2 grid place-items-center ${icon === k ? 'border-black bg-neo-yellow' : 'border-black/20'}`}><I size={18} strokeWidth={2.5} /></button>
           ))}
         </div>
         <FieldLabel>Color</FieldLabel>

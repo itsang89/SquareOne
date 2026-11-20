@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
 import type { Category } from '../../types';
-import { NO_COLOR } from '../../utils/entryUi';
+import { CategoryTile } from '../CategoryTile';
 
 interface Props {
   categories: Category[]; // already most-used first
@@ -42,11 +42,10 @@ export const CategoryGrid: React.FC<Props> = ({ categories, selectedId, onSelect
             onClick={() => onSelect(c.id)}
             aria-pressed={c.id === selectedId}
             className={`flex flex-col items-center justify-center gap-1 py-2 px-1 border-2 border-black min-h-[68px] ${
-              c.id === selectedId ? 'shadow-neo-sm -translate-y-0.5' : 'bg-white dark:bg-zinc-900 opacity-80'
+              c.id === selectedId ? 'shadow-neo-sm -translate-y-0.5 bg-neo-yellow' : 'bg-white dark:bg-zinc-900'
             }`}
-            style={c.id === selectedId ? { backgroundColor: c.color ?? NO_COLOR } : undefined}
           >
-            <span className="text-2xl leading-none">{c.icon || '🏷️'}</span>
+            <CategoryTile category={c} size="sm" />
             <span className={`text-[10px] font-bold uppercase leading-tight text-center truncate w-full ${c.id === selectedId ? 'text-black' : 'dark:text-zinc-100'}`}>{c.name}</span>
           </button>
         ))}

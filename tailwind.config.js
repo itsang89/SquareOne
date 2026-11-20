@@ -13,24 +13,29 @@ export default {
         sans: ['"Space Grotesk"', 'sans-serif'],
       },
       colors: {
+        // Palette roles (see utils/categoryStyle.ts for category tile colors):
+        //  primary accent = yellow · income = green · transfer/info = blue
+        //  owed (friends) = orange · alert/negative only = red · ink = black
         neo: {
-          yellow: '#FFDE59',
-          green: '#C3F53C',
-          greenDark: '#26C485',
-          red: '#FF4D4D',
-          blue: '#5CE1E6',
-          purple: '#C3B1E1',
-          pink: '#FF99C8',
-          orange: '#FF914D',
-          bg: '#F4F4F5',
+          yellow: '#FFD23F',
+          green: '#62E3A4',
+          greenDark: '#0E8F4E',
+          red: '#F0443B',
+          blue: '#82B8FF',
+          purple: '#C9B8FF',
+          pink: '#FFB3D1',
+          orange: '#FF9F45',
+          ink: '#111111',
+          bg: '#F6F1E7',
           surface: '#FFFFFF',
         },
       },
       boxShadow: {
-        neo: '4px 4px 0px 0px rgba(0,0,0,1)',
-        'neo-sm': '2px 2px 0px 0px rgba(0,0,0,1)',
-        'neo-lg': '6px 6px 0px 0px rgba(0,0,0,1)',
-        'neo-pressed': '0px 0px 0px 0px rgba(0,0,0,1)',
+        // --neo-shadow flips to a light color in dark mode (styles/globals.css)
+        neo: '4px 4px 0px 0px var(--neo-shadow)',
+        'neo-sm': '2px 2px 0px 0px var(--neo-shadow)',
+        'neo-lg': '6px 6px 0px 0px var(--neo-shadow)',
+        'neo-pressed': '0px 0px 0px 0px var(--neo-shadow)',
       },
     },
   },

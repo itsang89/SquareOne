@@ -16,3 +16,22 @@
 body {
   overscroll-behavior-y: none;
 }
+
+:root {
+  --neo-shadow: #000;
+  --neo-border: #000;
+}
+
+/* Dark mode: black borders/shadows vanish on dark surfaces, so flip them to light zinc. */
+.dark {
+  --neo-shadow: #52525b;
+  --neo-border: #a1a1aa;
+}
+.dark .border-black { border-color: var(--neo-border); }
+.dark .divide-black\/10 > :not([hidden]) ~ :not([hidden]) { border-color: rgb(255 255 255 / 0.1); }
+.dark .bg-neo-bg { background-color: #0c0c0e; }
+
+body {
+  font-variant-numeric: tabular-nums;
+}
+.dark .text-neo-greenDark { color: #62E3A4; }

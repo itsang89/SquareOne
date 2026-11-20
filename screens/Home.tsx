@@ -35,8 +35,8 @@ export const Home: React.FC = () => {
     <div className="min-h-screen pb-28 bg-neo-bg dark:bg-zinc-950 transition-colors duration-300">
       <header className="sticky top-0 z-20 bg-neo-bg/95 dark:bg-zinc-950/95 backdrop-blur-sm border-b-2 border-black px-5 py-3 flex items-center justify-between">
         <div className="min-w-0">
-          <h2 className="text-xl font-bold uppercase leading-none truncate dark:text-zinc-100">Hello, {user?.name || 'User'}</h2>
-          <p className="text-xs font-bold text-gray-500 dark:text-zinc-500 uppercase tracking-widest mt-1">Dashboard</p>
+          <h2 className="text-xl font-black uppercase leading-none dark:text-zinc-100">SquareOne</h2>
+          <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-widest mt-1 truncate">Hi, {user?.name || 'there'}</p>
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={openSearch} className={iconBtn} aria-label="Search"><Search size={20} strokeWidth={2.5} /></button>
@@ -50,7 +50,7 @@ export const Home: React.FC = () => {
       <div className="p-5 space-y-6">
         <Link
           to="/add"
-          className="flex items-center justify-center gap-3 w-full py-5 bg-neo-green border-2 border-black shadow-neo font-black uppercase text-xl text-black active:shadow-neo-pressed active:translate-x-1 active:translate-y-1 transition-all"
+          className="flex items-center justify-center gap-3 w-full py-4 bg-neo-yellow border-2 border-black shadow-neo font-black uppercase text-xl text-black active:shadow-neo-pressed active:translate-x-1 active:translate-y-1 transition-all"
         >
           <Plus size={28} strokeWidth={3} /> Add entry
         </Link>
@@ -58,7 +58,7 @@ export const Home: React.FC = () => {
         <MonthSummary />
 
         <section>
-          <Link to="/friends" className="block bg-neo-yellow border-2 border-black shadow-neo p-4 text-black">
+          <Link to="/friends" className="block bg-neo-orange border-2 border-black shadow-neo p-4 text-black">
             <p className="text-xs font-bold uppercase tracking-widest text-black/70">Friends owe you</p>
             <p className="text-3xl font-black tracking-tighter"><AnimatedNumber value={owed} decimals={2} prefix="HK$" /></p>
           </Link>

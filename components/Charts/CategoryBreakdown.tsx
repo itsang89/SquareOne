@@ -7,7 +7,9 @@ import { categoryEntries, categoryName, incomeAmount, myExpense, type DateRange 
 import { formatDate } from '../../utils/formatters';
 import type { Category, CategoryKind, Entry } from '../../types';
 import type { CategoryTotal } from '../../utils/calculations';
-import { hkd, INCOME_PALETTE, PALETTE, UNCAT_COLOR } from './format';
+import { CategoryTile } from '../CategoryTile';
+import { categoryStyle } from '../../utils/categoryStyle';
+import { hkd, UNCAT_COLOR } from './format';
 
 interface Props {
   kind: CategoryKind;
@@ -21,8 +23,8 @@ export const CategoryBreakdown: React.FC<Props> = ({ kind, rows, entries, catego
   const reduced = useReducedMotion();
   const [open, setOpen] = useState<string | null | undefined>(undefined); // undefined = none open
   const total = rows.reduce((s, r) => s + r.total, 0);
-  const pal = kind === 'income' ? INCOME_PALETTE : PALETTE;
-  const color = (r: CategoryTotal, i: number) => (r.categoryId ? pal[i % pal.length] : UNCAT_COLOR);
+  const catOf = (r: CategoryTotal) => categories.find((c) => c.id === r.categoryId);
+  const color = (r: CategoryTotal) => { const c = catOf(r); return c ? categoryStyle(c).color : UNCAT_COLOR; };
 
   if (rows.length === 0) {
     return (
@@ -45,7 +47,7 @@ export const CategoryBreakdown: React.FC<Props> = ({ kind, rows, entries, catego
               dataKey="total"
               startAngle={90}
               endAngle={-270}
-              innerRadius="62%"
+              innerRadius="66%"
               outerRadius="95%"
               stroke="#000"
               strokeWidth={2}
@@ -53,7 +55,7 @@ export const CategoryBreakdown: React.FC<Props> = ({ kind, rows, entries, catego
               onClick={(d) => setOpen((d as unknown as CategoryTotal).categoryId)}
             >
               {rows.map((r, i) => (
-                <Cell key={r.categoryId ?? 'none'} fill={color(r, i)} />
+                <Cell key={r.categoryId ?? 'none'} fill={color(r)} />
               ))}
             </Pie>
           </PieChart>
@@ -62,7 +64,7 @@ export const CategoryBreakdown: React.FC<Props> = ({ kind, rows, entries, catego
           <span className="text-xs font-bold uppercase text-gray-500 dark:text-zinc-400">
             {kind === 'expense' ? 'Spent' : 'Earned'}
           </span>
-          <span className="text-2xl font-black">{hkd(total)}</span>
+          <span className="text-xl font-black">{hkd(total)}</span>
         </div>
       </NeoCard>
 
@@ -77,7 +79,7 @@ export const CategoryBreakdown: React.FC<Props> = ({ kind, rows, entries, catego
                 onClick={() => setOpen(isOpen ? undefined : r.categoryId)}
                 aria-expanded={isOpen}
               >
-                <span className="w-4 h-4 border-2 border-black shrink-0" style={{ background: color(r, i) }} />
+                <CategoryTile category={catOf(r)} size="sm" />
                 <span className="flex-1 font-bold truncate">{categoryName(categories, r.categoryId)}</span>
                 <span className="text-xs font-bold text-gray-500 dark:text-zinc-400">{r.percent}%</span>
                 <span className="font-black tabular-nums">{hkd(r.total)}</span>

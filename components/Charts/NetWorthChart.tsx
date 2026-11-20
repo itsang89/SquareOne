@@ -52,7 +52,7 @@ export const NetWorthChart: React.FC<Props> = ({ points, hasData, table }) => {
             <XAxis dataKey="label" tick={{ fill: 'currentColor', fontSize: 10 }} tickLine={false} interval="preserveStartEnd" />
             <YAxis tickFormatter={compact} tick={{ fill: 'currentColor', fontSize: 10 }} tickLine={false} width={44} domain={['auto', 'auto']} />
             <Tooltip formatter={(v) => hkd(Number(v))} contentStyle={{ border: '2px solid #000', borderRadius: 0, color: '#000' }} />
-            <Area type="monotone" dataKey="value" name="Net worth" stroke="#000" strokeWidth={2} fill="#5CE1E6" isAnimationActive={!reduced} />
+            <Area type="monotone" dataKey="value" name="Net worth" stroke="#000" strokeWidth={2} fill="#82B8FF" isAnimationActive={!reduced} />
           </AreaChart>
         </ResponsiveContainer>
       </NeoCard>

@@ -63,8 +63,8 @@ export const Subscriptions: React.FC = () => {
       </header>
 
       <main className="p-5 space-y-4">
-        <div className="bg-neo-purple border-2 border-black shadow-neo p-4 text-black">
-          <p className="text-xs font-bold uppercase tracking-widest text-black/70">Per month</p>
+        <div className="bg-white dark:bg-zinc-900 dark:text-zinc-100 border-2 border-black shadow-neo p-4">
+          <p className="text-xs font-bold uppercase tracking-widest opacity-70">Per month</p>
           <p className="text-3xl font-black tracking-tighter">{formatCurrency(monthly)}</p>
         </div>
 

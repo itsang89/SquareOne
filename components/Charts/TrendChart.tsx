@@ -40,7 +40,7 @@ export const TrendChart: React.FC<Props> = ({ series, daily, days }) => {
     <div className="space-y-4">
       <NeoCard className="grid grid-cols-2 gap-3">
         {stat('Income', income, 'text-neo-greenDark')}
-        {stat('Spent', expense, 'text-neo-red')}
+        {stat('Spent', expense, 'text-neo-ink dark:text-zinc-100')}
         {stat('Net', income - expense)}
         {stat('Avg / day', expense / Math.max(days, 1))}
       </NeoCard>

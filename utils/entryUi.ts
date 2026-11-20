@@ -61,8 +61,8 @@ export interface Lookups {
 }
 
 export interface EntryView {
-  icon: string;
-  color: string;
+  cat?: Category;
+  kind: EntryKind;
   title: string;
   sub: string;
   amount: number;
@@ -76,13 +76,12 @@ export function entryView(e: Entry, { categories, accounts, friends }: Lookups, 
   const cat = categories.find((c) => c.id === e.categoryId);
   const acc = (id?: string) => accounts.find((a) => a.id === id)?.name;
   const fname = (id?: string) => friends.find((f) => f.id === id)?.name ?? 'Friend';
-  const base = { currency: e.currency };
+  const base = { currency: e.currency, cat, kind: e.kind };
 
   if (forFriend) {
     const delta = friendDeltas(e).find(([id]) => id === forFriend)?.[1] ?? 0;
     return {
-      ...base, icon: e.kind === 'settlement' ? '✅' : cat?.icon ?? '🧾', color: cat?.color ?? NO_COLOR,
-      title: e.title || cat?.name || KIND_LABEL[e.kind],
+      ...base, title: e.title || cat?.name || KIND_LABEL[e.kind],
       sub: e.kind === 'settlement' ? (acc(e.accountId) ?? 'Offset') : `of ${e.amount.toFixed(2)}${acc(e.accountId) ? ` · ${acc(e.accountId)}` : ''}`,
       amount: Math.abs(delta), sign: delta >= 0 ? '+' : '-', tone: delta >= 0 ? 'out' : 'in',
     };
@@ -90,20 +89,20 @@ export function entryView(e: Entry, { categories, accounts, friends }: Lookups, 
 
   switch (e.kind) {
     case 'income':
-      return { ...base, icon: cat?.icon ?? '💰', color: cat?.color ?? NO_COLOR, title: e.title || cat?.name || 'Income',
+      return { ...base, title: e.title || cat?.name || 'Income',
         sub: [cat?.name, acc(e.accountId)].filter(Boolean).join(' · '), amount: e.amount, sign: '+', tone: 'in' };
     case 'transfer':
-      return { ...base, icon: '🔁', color: NO_COLOR, title: e.title || 'Transfer',
+      return { ...base, title: e.title || 'Transfer',
         sub: `${acc(e.accountId) ?? '?'} → ${acc(e.toAccountId) ?? '?'}`, amount: e.amount, sign: '', tone: 'muted' };
     case 'settlement':
-      return { ...base, icon: '✅', color: '#C3F53C', title: e.title || `${fname(e.friendId)} repaid`,
+      return { ...base, title: e.title || `${fname(e.friendId)} repaid`,
         sub: `${fname(e.friendId)} · ${acc(e.accountId) ?? 'offset, no money moved'}`, amount: e.amount, sign: e.accountId ? '+' : '', tone: e.accountId ? 'in' : 'muted' };
     default: {
       const split = e.shares.length > 0;
       const mine = round2(e.amount - sharesTotal(e));
       const names = e.shares.map((s) => fname(s.friendId).split(' ')[0]).join(', ');
       return {
-        ...base, icon: cat?.icon ?? '🧾', color: cat?.color ?? NO_COLOR, title: e.title || cat?.name || 'Expense',
+        ...base, title: e.title || cat?.name || 'Expense',
         sub: [cat?.name, acc(e.accountId), split && `split w/ ${names}`].filter(Boolean).join(' · '),
         // Receivable-only entries cost me nothing: show what's owed instead.
         amount: mine > 0 || !split ? mine : sharesTotal(e), sign: mine > 0 || !split ? '-' : '', tone: mine > 0 || !split ? 'out' : 'muted',

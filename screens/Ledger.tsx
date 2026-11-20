@@ -138,7 +138,7 @@ export const Ledger: React.FC = () => {
         )}
 
         <p className="text-xs font-black uppercase tracking-wide dark:text-zinc-100">
-          <span className="text-neo-red">Spent {formatCurrency(totals.expense)}</span>
+          <span className="dark:text-zinc-100">Spent {formatCurrency(totals.expense)}</span>
           <span className="mx-2 text-gray-400">·</span>
           <span className="text-neo-greenDark">In {formatCurrency(totals.income)}</span>
           <span className="ml-2 text-gray-400">{filtered.length} entries</span>
@@ -161,7 +161,7 @@ export const Ledger: React.FC = () => {
                 <div className="flex items-baseline justify-between mb-1 px-1">
                   <h2 className="text-xs font-black uppercase tracking-widest dark:text-zinc-100">{dayLabel(day)}</h2>
                   <span className="text-xs font-black">
-                    {spent > 0 && <span className="text-neo-red">-{formatCurrency(spent)}</span>}
+                    {spent > 0 && <span className="dark:text-zinc-100">-{formatCurrency(spent)}</span>}
                     {earned > 0 && <span className="text-neo-greenDark ml-2">+{formatCurrency(earned)}</span>}
                   </span>
                 </div>

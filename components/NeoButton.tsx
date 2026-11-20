@@ -25,7 +25,7 @@ export const NeoButton: React.FC<NeoButtonProps> = ({
   const baseStyle = "border-2 border-black font-bold uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2";
   
   const variants = {
-    primary: "bg-neo-green hover:bg-[#aeea00] shadow-neo text-black",
+    primary: "bg-neo-yellow hover:bg-[#f5c518] shadow-neo text-black",
     secondary: "bg-neo-yellow hover:bg-yellow-400 shadow-neo text-black",
     accent: "bg-neo-purple hover:bg-purple-300 shadow-neo text-black",
     neutral: "bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 shadow-neo text-black dark:text-zinc-100",

@@ -6,9 +6,9 @@ export const hkd = (n: number, signed = false): string =>
 export const compact = (n: number): string =>
   new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
 
-// neo colors from tailwind.config.js, cycled by rank
-export const PALETTE = ['#FF4D4D', '#FFDE59', '#5CE1E6', '#26C485', '#C3B1E1', '#FF914D', '#FF99C8', '#C3F53C'];
+// Same family as the category tiles (utils/categoryStyle.ts), cycled by rank. Red is reserved for alerts.
+export const PALETTE = ['#FFD23F', '#82B8FF', '#FF9F7A', '#62E3A4', '#C9B8FF', '#FFB3D1', '#7FDDE0', '#C8EB6A'];
 export const UNCAT_COLOR = '#9CA3AF';
-export const INCOME_COLOR = '#26C485';
-export const EXPENSE_COLOR = '#FF4D4D';
-export const INCOME_PALETTE = ['#26C485', '#5CE1E6', '#C3F53C', '#C3B1E1', '#FFDE59', '#FF99C8', '#FF914D', '#FF4D4D'];
+export const INCOME_COLOR = '#62E3A4';
+export const EXPENSE_COLOR = '#FFD23F';
+export const INCOME_PALETTE = ['#62E3A4', '#7FDDE0', '#C8EB6A', '#82B8FF', '#FFD23F', '#C9B8FF', '#FFB3D1', '#FF9F7A'];

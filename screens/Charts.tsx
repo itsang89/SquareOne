@@ -82,7 +82,7 @@ export const Charts: React.FC = () => {
             role="tab"
             aria-selected={tab === k}
             onClick={() => setTab(k)}
-            className={`shrink-0 px-3 py-2 border-2 border-black font-bold text-sm ${tab === k ? 'bg-neo-blue text-black shadow-neo-sm' : 'bg-white dark:bg-zinc-900'}`}
+            className={`shrink-0 px-3 py-2 border-2 border-black font-bold text-sm ${tab === k ? 'bg-neo-yellow text-black shadow-neo-sm' : 'bg-white dark:bg-zinc-900'}`}
           >
             {label}
           </button>

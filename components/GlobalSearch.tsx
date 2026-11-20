@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { CategoryTile } from './CategoryTile';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Search, X } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -174,7 +175,7 @@ export const GlobalSearch: React.FC = () => {
                                 onClick={() => goEntry(e)}
                                 className="w-full flex items-center gap-3 p-2 border-2 border-black bg-white dark:bg-zinc-950 shadow-neo-sm hover:bg-neo-purple/20 text-left transition-colors"
                               >
-                                <span className="w-8 h-8 shrink-0 border-2 border-black grid place-items-center" style={{ backgroundColor: v.color }}>{v.icon}</span>
+                                <CategoryTile category={v.cat} kind={v.kind} size="sm" />
                                 <div className="flex-1 min-w-0">
                                   <div className="flex justify-between gap-2">
                                     <span className="font-bold truncate dark:text-zinc-100">{v.title}</span>

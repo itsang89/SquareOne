@@ -20,7 +20,7 @@ import { formatCurrency } from '../utils/formatters';
 import type { Entry, EntryKind } from '../types';
 
 const KINDS: { kind: EntryKind; color: string }[] = [
-  { kind: 'expense', color: 'bg-neo-pink' },
+  { kind: 'expense', color: 'bg-neo-yellow' },
   { kind: 'income', color: 'bg-neo-green' },
   { kind: 'transfer', color: 'bg-neo-blue' },
   { kind: 'settlement', color: 'bg-neo-yellow' },
@@ -158,7 +158,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
   const accountChips = ({ value, onPick, none }: { value?: string; onPick: (id: string | null) => void; none?: string }) => (
     <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
       {liveAccounts.map((a) => (
-        <Chip key={a.id} active={a.id === value} onClick={() => onPick(a.id)} color="bg-neo-blue">{a.name}</Chip>
+        <Chip key={a.id} active={a.id === value} onClick={() => onPick(a.id)} color="bg-neo-yellow">{a.name}</Chip>
       ))}
       {none && <Chip active={value === undefined} onClick={() => onPick(null)} color="bg-neo-orange">{none}</Chip>}
       {liveAccounts.length === 0 && <p className="text-xs font-bold uppercase text-gray-500">No accounts yet. Add one in Wallet.</p>}

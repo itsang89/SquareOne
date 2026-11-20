@@ -16,7 +16,7 @@ const NavItem: React.FC<NavItemProps> = ({ to, icon: Icon, label, isActive }) =>
     aria-label={label}
     aria-current={isActive ? 'page' : undefined}
   >
-    <div className={`p-1.5 rounded-md border-2 transition-all ${isActive ? 'bg-neo-blue border-black shadow-neo-sm' : 'border-transparent group-hover:bg-gray-100 dark:group-hover:bg-zinc-800'}`}>
+    <div className={`p-1.5 rounded-md border-2 transition-all ${isActive ? 'bg-neo-yellow border-black shadow-neo-sm' : 'border-transparent group-hover:bg-gray-100 dark:group-hover:bg-zinc-800'}`}>
       <Icon 
         size={24} 
         className={isActive ? 'text-black' : 'text-gray-500 dark:text-zinc-400'} 
@@ -53,7 +53,7 @@ export const BottomNav: React.FC = () => {
             <Link
               to="/add"
               state={preselectedFriendId ? { splitFriendId: preselectedFriendId } : undefined}
-              className="flex items-center justify-center w-16 h-16 bg-neo-green border-2 border-black shadow-neo hover:scale-105 active:shadow-neo-pressed active:translate-y-[4px] active:translate-x-[4px] transition-all"
+              className="flex items-center justify-center w-16 h-16 bg-neo-yellow border-2 border-black shadow-neo hover:scale-105 active:shadow-neo-pressed active:translate-y-[4px] active:translate-x-[4px] transition-all"
               aria-label="Add entry"
             >
                 <Plus size={32} className="text-black" strokeWidth={3} />

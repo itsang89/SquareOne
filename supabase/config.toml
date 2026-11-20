@@ -1,0 +1,5 @@
+project_id = "squareone-agent-demo"
+
+[functions.agent-transactions]
+verify_jwt = false
+entrypoint = "./functions/agent-transactions/index.js"

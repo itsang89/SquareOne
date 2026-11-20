@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, Moon, Sun, Monitor, Download, Trash2, HelpCircle, ArrowRight, Edit3, LogOut } from 'lucide-react';
+import { Settings, Moon, Sun, Monitor, Download, Trash2, HelpCircle, ArrowRight, Edit3, LogOut, KeyRound } from 'lucide-react';
 import { NeoButton } from '../components/NeoButton';
 import { NeoInput } from '../components/NeoInput';
 import { NeoModal } from '../components/NeoModal';
@@ -10,7 +10,7 @@ import { HowToUseModal } from '../components/HowToUseModal';
 import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { PRESET_AVATARS } from '../constants';
 import { useToast } from '../components/ToastContext';
 import { springs, fadeIn, staggerContainer, staggerItem, bounceIn, moonRotate, sunRotateScale, monitorPulse } from '../utils/animations';
@@ -377,6 +377,21 @@ export const Profile: React.FC = () => {
                     </div>
                 </NeoCard>
             </section>
+
+            {!isGuest && (
+              <Link
+                to="/profile/agent-access"
+                className="w-full bg-white dark:bg-zinc-900 border-2 border-black p-4 shadow-neo-sm flex items-center justify-between gap-3 hover:bg-purple-50 dark:hover:bg-zinc-800"
+              >
+                <span className="flex items-center gap-3 font-bold uppercase text-sm dark:text-zinc-100">
+                  <span className="w-8 h-8 bg-neo-purple border-2 border-black grid place-items-center text-black">
+                    <KeyRound size={16} aria-hidden="true" />
+                  </span>
+                  Agent Access
+                </span>
+                <ArrowRight size={16} aria-hidden="true" className="dark:text-zinc-100" />
+              </Link>
+            )}
 
             <section>
                  <h3 className="text-xs font-black uppercase tracking-widest mb-3 flex items-center gap-2 dark:text-zinc-400">

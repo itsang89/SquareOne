@@ -11,7 +11,7 @@ import { isValidEmail } from '../utils/validation';
 import { springs, staggerContainer, staggerItem } from '../utils/animations';
 import { useAnimations } from '../hooks/useAnimations';
 
-export const Login: React.FC = () => {
+export const Login: React.FC<{ approvalPath?: string }> = ({ approvalPath }) => {
   const navigate = useNavigate();
   const { 
     signInWithPassword, 
@@ -35,10 +35,10 @@ export const Login: React.FC = () => {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user) {
+    if (user && !approvalPath) {
       navigate('/dashboard');
     }
-  }, [user, navigate]);
+  }, [user, navigate, approvalPath]);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,7 +69,7 @@ export const Login: React.FC = () => {
 
   const handleGoogleLogin = async () => {
     localStorage.setItem('squareone_remember_me', rememberMe.toString());
-    const { error } = await signInWithGoogle();
+    const { error } = await signInWithGoogle(approvalPath);
     if (error) {
       showError('Google sign in failed', error.message);
     }
@@ -77,7 +77,7 @@ export const Login: React.FC = () => {
 
   const handleAppleLogin = async () => {
     localStorage.setItem('squareone_remember_me', rememberMe.toString());
-    const { error } = await signInWithApple();
+    const { error } = await signInWithApple(approvalPath);
     if (error) {
       showError('Apple sign in failed', error.message);
     }
@@ -269,9 +269,9 @@ export const Login: React.FC = () => {
             </NeoCard>
 
             <div className="text-center">
-                <button onClick={handleGuestLogin} className="inline-flex items-center gap-2 text-gray-500 dark:text-zinc-500 font-bold uppercase text-xs hover:text-black dark:hover:text-zinc-100 hover:underline decoration-2 underline-offset-4 transition-all">
+                {!approvalPath && <button onClick={handleGuestLogin} className="inline-flex items-center gap-2 text-gray-500 dark:text-zinc-500 font-bold uppercase text-xs hover:text-black dark:hover:text-zinc-100 hover:underline decoration-2 underline-offset-4 transition-all">
                     Try as Guest
-                </button>
+                </button>}
                 <p className="mt-6 text-[10px] text-gray-400 dark:text-zinc-500 font-medium max-w-[200px] mx-auto leading-relaxed">
                     By entering, you agree to our Terms & Privacy Policy.
                 </p>

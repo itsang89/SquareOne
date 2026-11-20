@@ -15,6 +15,21 @@ export default tseslint.config(
   // TypeScript rules
   ...tseslint.configs.recommended,
 
+  {
+    files: ['cli/**/*.mjs', 'supabase/functions/**/*.js'],
+    languageOptions: { globals: { AbortSignal: 'readonly', fetch: 'readonly' } },
+  },
+  {
+    files: ['cli/**/*.mjs'],
+    languageOptions: { globals: { URL: 'readonly' } },
+  },
+  {
+    files: ['supabase/functions/**/*.js'],
+    languageOptions: {
+      globals: { Deno: 'readonly', Response: 'readonly', TextDecoder: 'readonly', TextEncoder: 'readonly', crypto: 'readonly' },
+    },
+  },
+
   // React rules applied to all TS/TSX source files
   {
     files: ['**/*.{ts,tsx}'],

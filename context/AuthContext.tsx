@@ -16,8 +16,8 @@ interface AuthContextType {
   isProcessing: boolean;
   signInWithPassword: (email: string, password: string) => Promise<{ error: AuthError | Error | null }>;
   signUp: (email: string, password: string, name?: string) => Promise<{ error: AuthError | Error | null }>;
-  signInWithGoogle: () => Promise<{ error: AuthError | Error | null }>;
-  signInWithApple: () => Promise<{ error: AuthError | Error | null }>;
+  signInWithGoogle: (returnPath?: string) => Promise<{ error: AuthError | Error | null }>;
+  signInWithApple: (returnPath?: string) => Promise<{ error: AuthError | Error | null }>;
   signInAsGuest: () => void;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -246,13 +246,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (returnPath = '/dashboard') => {
     setIsProcessing(true);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: authRedirectTo('/dashboard'),
+          redirectTo: authRedirectTo(returnPath),
         },
       });
       return { error };
@@ -261,13 +261,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signInWithApple = async () => {
+  const signInWithApple = async (returnPath = '/dashboard') => {
     setIsProcessing(true);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
-          redirectTo: authRedirectTo('/dashboard'),
+          redirectTo: authRedirectTo(returnPath),
         },
       });
       return { error };

@@ -72,3 +72,4 @@ SquareOne is a modern, neo-brutalist style expense tracking application designed
 
 - [Architecture Overview](./docs/architecture.md)
 - [Database Schema](./docs/database.md)
+- [Agent access, CLI, and isolated local demo](./docs/agent.md)

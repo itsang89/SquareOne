@@ -27,6 +27,8 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 
 ### 1. Group expenses (split one bill across multiple friends)
 
+**Status:** Done. Add Entry supports equal and exact splits across multiple friends.
+
 | Field | Detail |
 |--------|--------|
 | **What** | Every transaction is strictly one-to-one (one payer, one friend). Splitting a restaurant bill or Airbnb across three or more friends requires logging separate transactions manually. |
@@ -126,6 +128,8 @@ Ranked by **user-facing impact → implementation effort → regression risk** (
 ---
 
 ### 8. Global search results show transaction direction
+
+**Status:** Done. Search results show the signed amount.
 
 | Field | Detail |
 |--------|--------|

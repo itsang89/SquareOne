@@ -1,33 +1,17 @@
 # SquareOne
-> Neo-brutalist expense tracking app built with React and Supabase.
 
-## Core Files
-- `App.tsx`: Main application entry point and routing (HashRouter).
-- `context/AppContext.tsx`: Primary state management for friends, transactions, and custom types. Loads/saves accounts, categories, entries (with shares), subscriptions and friends via Supabase.
-- `context/AuthContext.tsx`: Authentication state management using Supabase Auth (email, Google, Apple).
-- `utils/supabase.ts`: Supabase client initialization.
-- `utils/calculations.ts`: Client-side friend balance and net balance calculations.
-- `utils/formatters.ts`: Currency and date formatting helpers.
-- `components/NeoComponents.tsx`: Core UI design system (neo-brutalist / Neo style).
+> Isaac's personal money tracker for expenses, income, accounts, transfers, subscriptions, and friend loans and splits.
 
-## Key Concepts
-- **Neo-brutalism (Neo)**: The visual style — bold black borders, high contrast, modern aesthetic.
-- **Real-time Sync**: Authenticated data kept in sync via Supabase PostgreSQL changes listener.
-- **Friend Balances**: Calculated on the client from raw transaction history (`utils/calculations.ts`).
-- **HashRouter**: All routes use `/#/` prefix. Supabase Auth redirect URLs must include the hash (e.g. `window.location.origin + '/#/dashboard'`).
-
-## Tech Stack
-- React 19 (Vite)
-- TypeScript
-- Supabase (Auth, DB, Real-time)
-- React Router 7 (HashRouter)
-- Framer Motion (animations, spring physics, reduced-motion support)
-- Tailwind CSS (CDN — no build step)
-- Lucide React (icons)
-- Recharts (data visualization)
-- react-number-format (amount input formatting)
-- canvas-confetti (settlement success celebration)
+- `App.tsx` defines the React Router hash routes. The signed-in landing route is `/#/dashboard`.
+- `context/AuthContext.tsx` manages Supabase sessions and profiles.
+- `context/AppContext.tsx` loads friends, accounts, categories, entries with shares, and subscriptions. Supabase Realtime events trigger a reload.
+- `utils/calculations.ts` computes account and friend balances and spending reports from entries.
+- `tailwind.config.js` configures Tailwind CSS for the Vite build.
+- `cli/squareone.mjs` sends commands to the `agent-transactions` Edge Function.
 
 ## Docs
-- `docs/architecture.md`: System architecture, routing, state management, animation layer.
-- `docs/database.md`: Full schema, RLS policies, real-time setup.
+
+- [README](README.md) covers the stack, local development, and deployment.
+- [Architecture](docs/architecture.md) covers routing and state.
+- [Database](docs/database.md) covers the schema, RPCs, and scheduled posting.
+- [Agent access](docs/agent.md) covers the CLI, permissions, and isolated demo.

@@ -1,9 +1,11 @@
 # Cutover: legacy friend ledger → money tracker
 
+Completed 2026-11-21. Kept as the record of how the legacy ledger was migrated.
+
 Order matters. The old app and the old agent API write `transactions` / `custom_types`; the new app and the CLI write `entries`.
 
 1. **Back up** (run the backup workflow, `docs/backups.md`).
-2. **Audit production first** (read-only SQL). Each query must return 0:
+2. **Audit production first** (read-only SQL). The first three queries must return 0. The primary-key check must return 1.
    ```sql
    -- legacy rows pointing at another user's friend (migration aborts on these; repair or delete explicitly)
    select count(*) from transactions t join friends f on f.id = t.friend_id and f.user_id <> t.user_id;
@@ -16,7 +18,7 @@ Order matters. The old app and the old agent API write `transactions` / `custom_
    ```
    Record each friend's balance from the old app. They are compared again in step 4.
 3. **Stop the old app.** Tell yourself (and any phone with the old app) not to post. Writes are also blocked by the database in the next step, so a stray post fails loudly instead of being lost.
-4. **Apply the migrations** (`supabase db push`). `20261121500000_review_fixes.sql`:
+4. **Apply the migrations** (see [Deploy](../README.md#deploy) for the production `psql` procedure). `20261121500000_review_fixes.sql`:
    - adds the owner-matching FK on `transactions`;
    - **revokes insert/update/delete on `transactions` and `custom_types`** from `anon`, `authenticated` and `service_role`: the legacy tables become a read-only snapshot;
    - copies every legacy row that has no entry yet (`migrate_legacy_transactions()`, insert-only; it never touches an existing entry or re-creates a removed share);

@@ -13,7 +13,7 @@ node cli/squareone.mjs connect --url http://127.0.0.1:3010 --name 'My expense ag
 node cli/squareone.mjs whoami
 ```
 
-Use the URL of the environment the agent can reach. The loopback demo URL works for agents running on the same machine. Use a reachable HTTPS app URL for hosted agents. Keep the CLI running while you approve the connection.
+Use the URL of the environment the agent can reach. The loopback demo URL works for agents running on the same machine. For production, pass `--url https://square-one-chi.vercel.app` to `connect`. Keep the CLI running while you approve the connection.
 
 **Profile → Agent Access** shows connections, editable permissions, and recent agent activity. Disconnecting a connection blocks its next request. Connected agents renew short-lived credentials automatically (a renewal whose response was lost can be retried with the previous refresh token for 2 minutes) and reconnect after 90 days without renewal. The CLI stores credentials in its own machine’s `~/.config/squareone/connection.json` with owner-only permissions. For separate agents or when the runtime restricts home-directory writes, set `SQUAREONE_CONFIG_DIR` to a private persistent directory per agent. Keep it outside Git. The manual token option remains available for automation and expires after 30 days.
 
@@ -62,6 +62,6 @@ For a manual token, use the agent's secret settings for `SQUAREONE_AGENT_TOKEN` 
 
 ## Isolated local demo
 
-With Docker running and the Supabase CLI installed, run `bash supabase/demo/start.sh` from the repo root. It creates an isolated project, `squareone-demo@example.test`, and an `Alex Demo` friend. Use the generated credentials and the printed Vite command. Vite binds to `127.0.0.1:3010` with the local Supabase URL and key. Stop Vite and run the printed cleanup command when finished.
+With Docker running and the Supabase CLI installed, run `bash supabase/demo/start.sh` from the repo root. It creates an isolated project, a demo user, and an `Alex Demo` friend. Use the generated credentials and the printed Vite command. Vite binds to `127.0.0.1:3010` with the local Supabase URL and key. Stop Vite and run the printed cleanup command when finished.
 
-Apply the five agent migrations (`20261120110000`, `20261120120000`, `20261121200000`, `20261121400000`, `20261121500000`) and deploy the Edge Function in the same staging project as the web release. Use the existing SquareOne browser login for approval. If staging uses Google or Apple login, allow the app’s approval route in the Supabase redirect configuration and verify the return flow there. [Supabase function configuration](https://supabase.com/docs/guides/functions/function-configuration)
+See [Deploy](../README.md#deploy) for database migrations and Edge Function deployment.

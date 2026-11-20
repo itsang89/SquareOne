@@ -1,90 +1,32 @@
-# Database Schema
+# Database
 
-SquareOne uses Supabase (PostgreSQL) for data storage. The schema is designed to be simple and efficient for tracking personal debts between friends.
+[Supabase migrations](../supabase/migrations/) define the PostgreSQL schema. See [deployment instructions](../README.md#deploy) for migration commands and privilege checks.
 
+## Ledger tables
 
-## Tables
+| Table | Purpose |
+| --- | --- |
+| `accounts` | Wallet accounts with a currency, archive status, and sort order. |
+| `categories` | Expense and income labels, with optional icon and color. |
+| `entries` | Expenses, income, transfers, and settlements. Each entry has a currency and an exchange rate to HKD. |
+| `entry_shares` | Amounts friends owe on an expense. The owner's expense is the total less these shares. |
+| `subscriptions` | Recurring expenses with a cadence, next due date, and active flag. |
+| `friends` | Contacts. Balances are derived from the ledger. |
 
-### 1. `friends`
-Stores the list of friends added by a user.
+Owner-only RLS uses `user_id`. Composite foreign keys enforce ownership across ledger references. Anonymous roles have no public table grants. Entry constraints enforce the shape of each kind. Triggers enforce share totals and account currency rules. Transfers require matching currencies. A settlement without an account offsets a friend balance.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | `uuid` | Primary key (auto-generated) |
-| `user_id` | `uuid` | Foreign key to `auth.users` (owner) |
-| `name` | `text` | Display name of the friend |
-| `avatar` | `text` | Avatar identifier or emoji |
-| `created_at` | `timestamptz` | When the friend was added |
+Realtime requires the six live tables in the `supabase_realtime` publication. The money tracker migration adds the five ledger tables and the demo base schema adds `friends`. See [Architecture](architecture.md#state-and-data-flow) for the client subscriptions.
 
-**RLS:** Users can only access rows where `user_id = auth.uid()`.
+`transactions` and `custom_types` are a read-only legacy snapshot. See [Cutover](cutover.md) for the backfill and reconciliation.
 
-**Real-time:** Enabled via the `supabase_realtime` publication.
+## RPCs
 
----
+- `save_entry(p_entry, p_shares)` writes an entry and replaces its shares atomically.
+- `import_ensure_targets(p_accounts, p_categories)` finds or creates import targets using case-insensitive names. It serializes target resolution per owner and returns IDs.
+- `clear_my_data()` deletes the signed-in owner's entries and their shares, subscriptions, friends, and legacy transactions.
+- Browser agent RPCs inspect and decide approval requests (`agent_browser_request`, `decide_agent_request`) and manage tokens (`create_agent_token`, `update_agent_scopes`, `revoke_agent_token`).
+- The Edge Function dispatches to the service-role RPCs `run_agent_connection`, `run_agent_management`, and `run_agent_money`. See [Agent access](agent.md) for scopes and approvals.
 
-### 2. `transactions`
-Stores all expenses and settlement records.
+## Subscription posting
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | `uuid` | Primary key (auto-generated) |
-| `user_id` | `uuid` | Foreign key to `auth.users` (owner) |
-| `title` | `text` | Description of the expense |
-| `amount` | `numeric` | Total amount of the transaction |
-| `date` | `timestamptz` | Date of the transaction |
-| `type` | `text` | Category tag (e.g. `'Meal'`, `'Transport'`, `'Settlement'`) |
-| `payer_id` | `text` | Who paid — `'me'` (the current user) or the friend's UUID |
-| `friend_id` | `uuid` | The friend involved in the transaction |
-| `note` | `text` | Optional additional details |
-| `is_settlement` | `boolean` | `true` if this is a Settle Up transaction |
-
-> `payer_id` is `text` rather than `uuid` because it also holds the literal string `'me'` to represent the logged-in user paying.
-
-**RLS:** Users can only access rows where `user_id = auth.uid()`.
-
-**Real-time:** Enabled via the `supabase_realtime` publication.
-
----
-
-### 3. `custom_types`
-User-defined transaction category labels. Synced per account so they appear on every device after login.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | `uuid` | Primary key (auto-generated) |
-| `user_id` | `uuid` | Foreign key to `auth.users` (owner) |
-| `name` | `text` | Display label (unique per user) |
-| `created_at` | `timestamptz` | When the type was created |
-
-**Constraints:** `UNIQUE(user_id, name)` prevents duplicate labels per user.
-
-**RLS:** Users can only access rows where `user_id = auth.uid()`.
-
-**Real-time:** Add `custom_types` to the `supabase_realtime` publication (Dashboard → Database → Publications). SQL migration lives in [`supabase/migrations/`](../supabase/migrations/).
-
----
-
-## Relationships
-
-- Each `friend` belongs to a `user`.
-- Each `transaction` belongs to a `user` and references one `friend` via `friend_id`.
-- Each `custom_type` belongs to a `user`.
-
-## Row Level Security (RLS)
-
-RLS is enabled on all tables. The same policy pattern applies to `friends`, `transactions`, and `custom_types`:
-
-```sql
-CREATE POLICY "Users can only access their own data"
-ON public.friends  -- repeat for transactions, custom_types
-FOR ALL
-USING (auth.uid() = user_id);
-```
-
-## Real-time
-
-Real-time subscriptions are used by `AppContext` to keep the frontend in sync across tabs and devices without manual polling. Ensure all three tables (`friends`, `transactions`, `custom_types`) are added to the Supabase real-time publication.
-
-## Money tracker tables (2026-11)
-
-`accounts`, `categories`, `entries`, `entry_shares`, `subscriptions` — see `supabase/migrations/20261121100000_money_tracker.sql` and `docs/plans/2026-11-20-money-tracker.md`. All rows carry `user_id` with owner-only RLS; composite `(id, user_id)` foreign keys prevent cross-user references. `save_entry(p_entry, p_shares)` writes an entry and its shares atomically. `migrate_legacy_transactions()` copies old `transactions` into entries (idempotent).
+The pg_cron job `post-due-subscriptions` runs `post_due_subscriptions()` daily at 00:00 UTC (08:00 Hong Kong time). It posts each missed due date for active subscriptions and advances `next_date`. The request ID is deterministic for each subscription and due date. Each subscription runs in a separate subtransaction. Failures are logged and retried on the next run.

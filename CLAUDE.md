@@ -31,7 +31,7 @@ SquareOne is a **client-side React 19 / Vite SPA** backed by **Supabase** (Auth,
 
 ### Routing
 
-Uses **React Router 7 `HashRouter`** — all routes are `/#/path` (e.g. `/#/dashboard`). This is a hard constraint for Supabase Auth: all OAuth and email confirmation `redirectTo` values must include the hash (`window.location.origin + '/#/dashboard'`). The helper `authRedirectTo(path)` in `context/AuthContext.tsx` handles this.
+React Router 7 uses `HashRouter`. The signed-in landing route is `/#/dashboard`. The helper `authRedirectTo(path)` in `context/AuthContext.tsx` builds OAuth and email confirmation URLs. See [the route list](docs/architecture.md#screens-and-routes).
 
 All screen-level routes are **code-split** via `React.lazy` in `App.tsx`; Vite `manualChunks` groups vendor libraries into separate bundles.
 
@@ -46,30 +46,29 @@ Four React Context providers hold all global state:
 
 **`AppContext`** (`context/AppContext.tsx`)
 - Holds `friends` (with computed `balance`), `accounts`, `categories`, `entries` (each with `shares`), `subscriptions`, `loading`, `error`, `isProcessing`.
-- Loads all five tables (paged past PostgREST's 1000-row cap) and subscribes to six Realtime channels; all feed one 400 ms debounced `loadData()`.
+- Pages through five tables, with shares nested under entries. Six Realtime channels feed one 400 ms debounced `loadData()`.
 - `loadedUserIdRef` prevents the loading skeleton on background refreshes. On partial query failure `error` is set but good snapshots are kept.
-- Entry writes go through the `save_entry(p_entry, p_shares)` RPC (atomic entry + shares). All CRUD methods return `{ success: boolean; error?: Error }` (adds return `id` too).
-- Legacy friend-ledger API for the pre-redesign screens: `transactions` (view derived from entries), `addTransaction`/`updateTransaction`/`deleteTransaction`, `customTypes` (= expense categories). Mapping lives in `utils/transactions.ts`.
+- Entry writes go through the `save_entry(p_entry, p_shares)` RPC (atomic entry + shares). CRUD methods return `{ success: boolean; error?: Error }`. Saving an entry or adding an account, category, or subscription can also return an ID.
 
 **`SearchContext`** (`context/SearchContext.tsx`) — single `open` flag + `openSearch()`/`closeSearch()` for the global command palette (`components/GlobalSearch.tsx`).
 
-**`ToastContext`** (`context/ToastContext.tsx`) — `useToast()` hook with `success()`/`error()`/`show()`, auto-dismissing after 5 s.
+**`ToastContext`** (`components/ToastContext.tsx`) — `useToast()` hook with `success()`/`error()`/`show()`, auto-dismissing after 5 s.
 
 ### Data Model
 
-Tables (all `user_id` + owner-only RLS): `accounts`, `categories`, `entries`, `entry_shares`, `subscriptions`, plus `friends`. Every entry is paid by me; kinds are `expense | income | transfer | settlement`. An expense stores the full `amount`; friends' exact shares live in `entry_shares` (they owe me); my own cost = amount − shares. A settlement with no account is an offset. DB checks enforce per-kind shape; a deferred trigger enforces `sum(shares) ≤ amount`. `currency` + `fx_rate` (to HKD) per entry.
+Tables (all `user_id` + owner-only RLS): `accounts`, `categories`, `entries`, `entry_shares`, `subscriptions`, plus `friends`. Entry kinds are `expense | income | transfer | settlement`. An expense stores the full `amount`; friends' exact shares live in `entry_shares` (they owe me); my own cost = amount − shares. A settlement with no account is an offset. DB checks enforce per-kind shape; a deferred trigger enforces `sum(shares) ≤ amount`. `currency` + `fx_rate` (to HKD) per entry.
 
-Legacy `transactions`/`custom_types` are kept until cutover; `public.migrate_legacy_transactions()` (idempotent, entry id = legacy id) copies them into the new model preserving every friend balance.
+Legacy `transactions` and `custom_types` are a read-only snapshot. See [the cutover record](docs/cutover.md).
 
 ### Balance Calculations
 
-`utils/calculations.ts` is the single source of truth — pure functions over `Entry[]`: `friendBalancesMap`, `friendBalance`, `totalOwed`/`totalOwing`, `accountBalances`, `netWorth`, `netWorthSeries`, `myExpense`, `rangeTotals`, `totalsByCategory`, `dailySeries`, `monthlySeries`, `getLastActivity`. Positive friend balance = friend owes you. Stats use `(amount − shares) × fx_rate`. Day/month bucketing is local time.
+`utils/calculations.ts` is the single source of truth — pure functions over `Entry[]`: `friendBalancesMap`, `friendBalance`, `totalOwed`/`totalOwing`, `accountBalances`, `netWorth`, `netWorthSeries`, `myExpense`, `rangeTotals`, `totalsByCategory`, `dailySeries`, `monthlySeries`, `getLastActivity`. Positive friend balance = friend owes you. Spending totals use `(amount − shares) × fx_rate`. Day/month bucketing is local time.
 
 ### Design System
 
 The app uses a **Neo-brutalist** design system:
-- Component primitives each live in their own file (`components/NeoButton.tsx`, `components/NeoInput.tsx`, `components/NeoModal.tsx`); `components/NeoComponents.tsx` re-exports `NeoButton` and adds `NeoCard`, `BackButton`, plus a few composed wrappers — import the specific file when possible.
-- Feature components live in their own folders (`components/AddTransaction/`, `components/FriendDetail/`, etc.) — keep `screens/` focused on layout/composition.
+- Component primitives each live in their own file (`components/NeoButton.tsx`, `components/NeoInput.tsx`, `components/NeoModal.tsx`). Import primitives directly.
+- Feature components live in their own folders (`components/AddEntry/`, `components/FriendDetail/`, etc.) — keep `screens/` focused on layout/composition.
 - Tailwind custom colors are under the `neo` key (`neo-yellow`, `neo-green`, `neo-red`, `neo-blue`, `neo-purple`, `neo-pink`, `neo-orange`, `neo-bg`, `neo-surface`) — defined in `tailwind.config.js`.
 - Box shadows: `shadow-neo`, `shadow-neo-sm`, `shadow-neo-lg`, `shadow-neo-pressed`.
 - Font: Space Grotesk.
@@ -77,34 +76,34 @@ The app uses a **Neo-brutalist** design system:
 
 ### Animation
 
-All motion via **Framer Motion**:
+Shared motion uses Framer Motion.
+
 - Shared spring configs and variants (fade, slide, bounce, shake, stagger) in `utils/animations.ts`.
 - `hooks/useAnimations.ts` wraps `useReducedMotion()` and converts all variants to instant when `prefers-reduced-motion` is set.
-- Only GPU-accelerated properties (`transform`, `opacity`) are animated.
 - `components/AnimatedNumber.tsx` / `hooks/useNumberCounter.ts` for counting number displays.
-- `utils/confetti.ts` for settlement success celebrations.
 
 ### Amount Input
 
-The amount field in `AddTransaction` accepts **arithmetic expressions** (e.g. `12+8`). `utils/calculator.ts` evaluates them safely (whitelist sanitization, no `eval`). `utils/validation.ts` calls `isCompleteNumericExpression` to reject trailing operators before submission.
+The amount field in `AddEntry` accepts **arithmetic expressions** (e.g. `12+8`). `utils/calculator.ts` sanitizes expressions before evaluating them. `utils/validation.ts` calls `isCompleteNumericExpression` to reject trailing operators before submission.
 
 ### Known Inert UI
 
-None. The Nudge teaser on `FriendDetail` was removed until it does something (`improvement.md` #2), and the old Camera button is gone.
+None documented.
 
-(The earlier Bell icon on `Home` and its `unsettledCount` miscount have since been removed.)
+### Deploy
+
+Vercel deploys the frontend from `main`. Use Vercel Instant Rollback for frontend rollbacks. For production updates on hosted Supabase, apply SQL in filename order with one `psql` transaction per file and run `supabase/tests/privileges.sql` after each migration. Production has no `supabase_migrations` history table. Align history before using `supabase db push`. Deploy `agent-transactions` with the Supabase CLI. `supabase/config.toml` sets `verify_jwt = false`. GitHub Actions runs nightly encrypted backups. See [Deploy](README.md#deploy) for commands and backup settings.
 
 ## Deeper Reference
 
-- `docs/architecture.md` — system diagrams, routing, state management, animation layer.
-- `docs/database.md` — full Postgres schema, RLS policies, real-time setup.
+- `docs/architecture.md` — routing, state, and data flow.
+- `docs/database.md` — ledger tables, RPCs, and subscription posting.
 
 ## Key Conventions
 
 - All CRUD context methods are `async` and return `{ success: boolean; error?: Error }` — never throw from the UI layer.
 - New Supabase queries must always filter by `user_id` (RLS enforces this server-side too, but do it client-side for clarity).
 - Supabase Auth redirect URLs must always use `authRedirectTo(path)` — never construct them ad-hoc.
-- `TransactionType` is `string` (open union) — built-in labels live in `constants.ts`; user-defined ones come from `customTypes` in `AppContext`.
 - Tests go in `utils/*.test.ts` only (Vitest is configured to include only that path).
 - `@/` is aliased to the repo root (`vite.config.ts`).
 - Supabase auth session storage is custom (`utils/supabase.ts`): tokens go to `localStorage` by default, or `sessionStorage` when `localStorage['squareone_remember_me'] === 'false'`. Toggling that key flips persistence without code changes.

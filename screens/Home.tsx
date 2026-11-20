@@ -4,7 +4,7 @@ import { ArrowDownLeft, Plus, Search, Settings, Users } from 'lucide-react';
 import { NeoCard } from '../components/NeoCard';
 import { Avatar } from '../components/Avatar';
 import { EntryRow } from '../components/EntryRow';
-import { HomeStats } from '../components/HomeStats';
+import { MonthSummary } from '../components/Home/MonthSummary';
 import { AnimatedNumber } from '../components/AnimatedNumber';
 import { DataLoadErrorBanner } from '../components/DataLoadErrorBanner';
 import { TransactionSkeleton, FriendSkeleton } from '../components/LoadingSkeleton';
@@ -55,7 +55,7 @@ export const Home: React.FC = () => {
           <Plus size={28} strokeWidth={3} /> Add entry
         </Link>
 
-        <HomeStats />
+        <MonthSummary />
 
         <section>
           <Link to="/friends" className="block bg-neo-yellow border-2 border-black shadow-neo p-4 text-black">

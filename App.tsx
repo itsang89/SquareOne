@@ -23,6 +23,7 @@ const Categories = lazy(() => import('./screens/Categories').then(m => ({ defaul
 const Subscriptions = lazy(() => import('./screens/Subscriptions').then(m => ({ default: m.Subscriptions })));
 const Profile = lazy(() => import('./screens/Profile').then(m => ({ default: m.Profile })));
 const AgentAccess = lazy(() => import('./screens/AgentAccess').then(m => ({ default: m.AgentAccess })));
+const ImportMoneyPlus = lazy(() => import('./screens/ImportMoneyPlus').then(m => ({ default: m.ImportMoneyPlus })));
 const ConnectAgent = lazy(() => import('./screens/ConnectAgent').then(m => ({ default: m.ConnectAgent })));
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -113,6 +114,7 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             }
           />
+          <Route path="/charts" element={<ProtectedRoute><Charts /></ProtectedRoute>} />
           <Route
             path="/profile"
             element={
@@ -134,6 +136,14 @@ const AppContent: React.FC = () => {
             element={
               <ProtectedRoute>
                 <Subscriptions />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile/import"
+            element={
+              <ProtectedRoute>
+                <ImportMoneyPlus />
               </ProtectedRoute>
             }
           />

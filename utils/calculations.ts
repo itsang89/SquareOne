@@ -220,6 +220,14 @@ export function totalsByCategory(entries: Entry[], kind: CategoryKind, range?: D
     .sort((a, b) => b.total - a.total);
 }
 
+/** Entries of one kind in one category (null = uncategorised) within a range, newest first. */
+export function categoryEntries(entries: Entry[], kind: CategoryKind, categoryId: string | null, range?: DateRange): Entry[] {
+  const amt = kind === 'expense' ? myExpense : incomeAmount;
+  return entries
+    .filter((e) => e.kind === kind && (e.categoryId ?? null) === categoryId && inRange(e, range) && amt(e) > 0)
+    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+}
+
 export interface SeriesPoint {
   key: string; // 'YYYY-MM-DD' (daily) or 'YYYY-MM' (monthly)
   income: number;

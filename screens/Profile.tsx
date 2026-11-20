@@ -367,6 +367,21 @@ export const Profile: React.FC = () => {
               </Link>
             )}
 
+            {(
+              <Link
+                to="/profile/import"
+                className="w-full bg-white dark:bg-zinc-900 border-2 border-black p-4 shadow-neo-sm flex items-center justify-between gap-3 hover:bg-purple-50 dark:hover:bg-zinc-800"
+              >
+                <span className="flex items-center gap-3 font-bold uppercase text-sm dark:text-zinc-100">
+                  <span className="w-8 h-8 bg-neo-purple border-2 border-black grid place-items-center text-black">
+                    <Download size={16} aria-hidden="true" />
+                  </span>
+                  Import from Money+
+                </span>
+                <ArrowRight size={16} aria-hidden="true" className="dark:text-zinc-100" />
+              </Link>
+            )}
+
             <section>
                  <h3 className="text-xs font-black uppercase tracking-widest mb-3 flex items-center gap-2 dark:text-zinc-400">
                     <Download size={16} /> Data Management

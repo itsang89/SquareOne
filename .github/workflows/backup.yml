@@ -1,0 +1,43 @@
+# Nightly encrypted pg_dump of the Supabase DB. The repo is public, so the dump MUST be encrypted: never upload it plain.
+# Setup and restore: docs/backups.md
+name: backup
+
+on:
+  schedule:
+    - cron: '0 19 * * *' # 03:00 HKT
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      - name: Check secrets
+        run: |
+          [ -n "$SUPABASE_DB_URL" ] && [ -n "$BACKUP_PASSPHRASE" ] || { echo "::error::Set SUPABASE_DB_URL and BACKUP_PASSPHRASE repo secrets (docs/backups.md)"; exit 1; }
+      - name: Install pg_dump 17 (must be >= server version)
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17
+      - name: Dump and encrypt
+        run: |
+          set -euo pipefail
+          umask 077
+          # public (app data) + auth (users; entries.user_id references them). No owners/grants so it restores anywhere.
+          pg_dump "$SUPABASE_DB_URL" --format=custom --no-owner --no-privileges --schema=public --schema=auth \
+            | openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -pass env:BACKUP_PASSPHRASE \
+            > "squareone-$(date -u +%Y-%m-%d).dump.enc"
+          test "$(stat -c %s squareone-*.dump.enc)" -gt 1024
+      - uses: actions/upload-artifact@v4
+        with:
+          name: squareone-db-backup
+          path: squareone-*.dump.enc
+          retention-days: 30
+          if-no-files-found: error

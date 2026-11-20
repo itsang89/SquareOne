@@ -114,7 +114,6 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             }
           />
-          <Route path="/charts" element={<ProtectedRoute><Charts /></ProtectedRoute>} />
           <Route
             path="/profile"
             element={

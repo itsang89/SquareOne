@@ -23,7 +23,10 @@ export function AnimatedNumber({
   const displayValue = useNumberCounter(value, { duration });
 
   // Format the number
-  const formattedValue = displayValue.toFixed(decimals);
+  const formattedValue = displayValue.toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
 
   return (
     <span className={className}>

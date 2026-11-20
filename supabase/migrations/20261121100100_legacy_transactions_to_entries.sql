@@ -37,4 +37,5 @@ end;
 $$;
 revoke execute on function public.migrate_legacy_transactions() from public, anon, authenticated;
 
-select public.migrate_legacy_transactions();
+-- Not run here: 20261121500000_review_fixes.sql freezes the legacy tables, replaces this function with a
+-- preflighted, insert-only version, then runs it and reconciles (see docs/cutover.md).

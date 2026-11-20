@@ -95,7 +95,7 @@ export function entryView(e: Entry, { categories, accounts, friends }: Lookups, 
   switch (e.kind) {
     case 'income':
       return { ...base, title: e.title || cat?.name || 'Income',
-        sub: [cat?.name, acc(e.accountId)].filter(Boolean).join(' · '), amount: e.amount, sign: '+', tone: 'in' };
+        sub: [e.title && e.title !== cat?.name && cat?.name, acc(e.accountId)].filter(Boolean).join(' · '), amount: e.amount, sign: '+', tone: 'in' };
     case 'transfer':
       return { ...base, title: e.title || 'Transfer',
         sub: `${acc(e.accountId) ?? '?'} → ${acc(e.toAccountId) ?? '?'}`, amount: e.amount, sign: '', tone: 'muted' };
@@ -108,7 +108,8 @@ export function entryView(e: Entry, { categories, accounts, friends }: Lookups, 
       const names = e.shares.map((s) => fname(s.friendId).split(' ')[0]).join(', ');
       return {
         ...base, title: e.title || cat?.name || 'Expense',
-        sub: [cat?.name, acc(e.accountId), split && `split w/ ${names}`].filter(Boolean).join(' · '),
+        // Category only when the title isn't already the category name.
+        sub: [e.title && e.title !== cat?.name && cat?.name, acc(e.accountId), split && `split w/ ${names}`].filter(Boolean).join(' · '),
         // Receivable-only entries cost me nothing: show what's owed instead.
         amount: mine > 0 || !split ? mine : sharesTotal(e), sign: mine > 0 || !split ? '-' : '', tone: mine > 0 || !split ? 'out' : 'muted',
       };

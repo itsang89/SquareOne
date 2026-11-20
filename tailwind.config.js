@@ -19,7 +19,8 @@ export default {
         neo: {
           yellow: '#FFD23F',
           green: '#62E3A4',
-          greenDark: '#0E8F4E',
+          greenDark: '#16643D', // income text (AA on white/cream); dark mode flips it in globals.css
+          danger: '#A62327', // error/destructive text; bg-neo-red stays the bright fill
           red: '#F0443B',
           blue: '#82B8FF',
           purple: '#C9B8FF',

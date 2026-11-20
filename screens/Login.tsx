@@ -231,7 +231,7 @@ export const Login: React.FC<{ approvalPath?: string }> = ({ approvalPath }) => 
                                 setPassword('');
                                 setEmailError('');
                             }}
-                            className="text-xs font-bold uppercase text-gray-500 dark:text-zinc-500 hover:text-black dark:hover:text-zinc-100 hover:underline decoration-2 underline-offset-4 transition-all"
+                            className="text-xs font-bold uppercase text-gray-600 dark:text-zinc-400 hover:text-black dark:hover:text-zinc-100 hover:underline decoration-2 underline-offset-4 transition-all"
                         >
                             {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
                         </button>
@@ -263,7 +263,7 @@ export const Login: React.FC<{ approvalPath?: string }> = ({ approvalPath }) => 
             </NeoCard>
 
             <div className="text-center">
-                <p className="mt-6 text-[10px] text-gray-400 dark:text-zinc-500 font-medium max-w-[200px] mx-auto leading-relaxed">
+                <p className="mt-6 text-[10px] text-gray-600 dark:text-zinc-400 font-medium max-w-[200px] mx-auto leading-relaxed">
                     By entering, you agree to our Terms & Privacy Policy.
                 </p>
             </div>

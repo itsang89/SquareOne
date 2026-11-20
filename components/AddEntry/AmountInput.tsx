@@ -1,12 +1,14 @@
 import React, { useEffect, useRef } from 'react';
-import { Delete, Divide, X, Minus, Plus, Equal } from 'lucide-react';
+import { Delete, Divide, X, Minus, Plus } from 'lucide-react';
 import { evaluateExpression } from '../../utils/calculator';
+import { formatCurrency } from '../../utils/formatters';
 
 interface AmountInputProps {
   amount: string;
   onAmountChange: (newAmount: string) => void;
   showNumpad: boolean;
   onToggleNumpad: () => void;
+  currency: string;
 }
 
 export const AmountInput: React.FC<AmountInputProps> = ({
@@ -14,6 +16,7 @@ export const AmountInput: React.FC<AmountInputProps> = ({
   onAmountChange,
   showNumpad,
   onToggleNumpad,
+  currency,
 }) => {
   const handleNumpad = (val: string) => {
     if (val === 'back') {
@@ -84,77 +87,49 @@ export const AmountInput: React.FC<AmountInputProps> = ({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  const symbol = formatCurrency(0, currency).replace(/[\d.,\s-]/g, '');
+  const isExpr = /[0-9.][+*/-][0-9.]/.test(amount);
+  const shown = amount.replace(/\*/g, '×').replace(/\//g, '÷');
+  const keys: { k: string; label: React.ReactNode; op?: boolean; aria?: string }[] = [
+    { k: '7', label: '7' }, { k: '8', label: '8' }, { k: '9', label: '9' }, { k: '/', label: <Divide size={22} />, op: true, aria: 'Divide' },
+    { k: '4', label: '4' }, { k: '5', label: '5' }, { k: '6', label: '6' }, { k: '*', label: <X size={22} />, op: true, aria: 'Multiply' },
+    { k: '1', label: '1' }, { k: '2', label: '2' }, { k: '3', label: '3' }, { k: '-', label: <Minus size={22} />, op: true, aria: 'Minus' },
+    { k: '.', label: '.' }, { k: '0', label: '0' }, { k: 'back', label: <Delete size={22} />, op: true, aria: 'Backspace' }, { k: '+', label: <Plus size={22} />, op: true, aria: 'Plus' },
+  ];
+
   return (
-    <div className="space-y-6">
-      <div 
+    <div className="space-y-3">
+      <button
+        type="button"
         onClick={onToggleNumpad}
-        className="flex flex-col items-center justify-center py-12 bg-white dark:bg-zinc-900 border-2 border-black shadow-neo-sm relative overflow-hidden min-h-[180px] cursor-pointer hover:bg-neo-yellow/20 dark:hover:bg-zinc-800 transition-colors active:shadow-neo-pressed active:translate-y-[2px]"
+        aria-label={showNumpad ? 'Hide keypad' : 'Show keypad'}
+        className="w-full flex flex-col items-center justify-center py-5 bg-white dark:bg-zinc-900 border-2 border-black shadow-neo-sm"
       >
-        <div className="absolute top-0 left-0 w-full h-2 bg-black opacity-5 dark:opacity-20"></div>
-        <span className="text-xs font-bold uppercase text-gray-500 dark:text-zinc-500 mb-2 tracking-widest">Amount</span>
-        <div className="relative w-full text-center">
-          <h1 className="text-6xl font-black tracking-tighter text-black dark:text-zinc-100 break-all px-4">
-            <span className="text-4xl align-top opacity-40 font-medium mr-1">$</span>
-            {amount}
-          </h1>
-        </div>
-      </div>
+        <span className="text-xs font-bold uppercase tracking-widest text-gray-600 dark:text-zinc-400">Amount</span>
+        <span className="mt-1 flex items-baseline justify-center gap-1.5 px-4 break-all text-black dark:text-zinc-100">
+          <span className="text-2xl font-bold text-gray-600 dark:text-zinc-400">{symbol}</span>
+          <span className="text-5xl font-black tracking-tight tabular-nums">{shown}</span>
+        </span>
+        {isExpr && (
+          <span className="mt-1 text-sm font-bold text-gray-600 dark:text-zinc-400 tabular-nums">= {formatCurrency(parseFloat(evaluateExpression(amount)) || 0, currency)}</span>
+        )}
+      </button>
 
       {showNumpad && (
-        <div className="bg-white dark:bg-zinc-900 border-2 border-black p-4 shadow-neo animate-in slide-in-from-bottom-4 duration-200">
-          <div className="grid grid-cols-4 gap-3 max-w-sm mx-auto">
-            {/* Row 1 */}
-            {[7, 8, 9].map((num) => (
-              <button key={num} onClick={() => handleNumpad(num.toString())} className="h-14 bg-white dark:bg-zinc-800 border-2 border-gray-200 dark:border-black hover:border-black dark:hover:border-zinc-400 text-2xl font-bold hover:bg-gray-50 dark:hover:bg-zinc-700 active:bg-black dark:active:bg-zinc-100 active:text-white dark:active:text-black transition-all text-black dark:text-zinc-100">
-                {num}
-              </button>
-            ))}
-            <button onClick={() => handleNumpad('/')} className="h-14 bg-gray-100 dark:bg-zinc-800 border-2 border-gray-200 dark:border-black hover:border-black dark:hover:border-zinc-400 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-zinc-700 active:bg-black dark:active:bg-zinc-100 active:text-white dark:active:text-black transition-all text-black dark:text-zinc-100">
-              <Divide size={24} />
-            </button>
-
-            {/* Row 2 */}
-            {[4, 5, 6].map((num) => (
-              <button key={num} onClick={() => handleNumpad(num.toString())} className="h-14 bg-white dark:bg-zinc-800 border-2 border-gray-200 dark:border-black hover:border-black dark:hover:border-zinc-400 text-2xl font-bold hover:bg-gray-50 dark:hover:bg-zinc-700 active:bg-black dark:active:bg-zinc-100 active:text-white dark:active:text-black transition-all text-black dark:text-zinc-100">
-                {num}
-              </button>
-            ))}
-            <button onClick={() => handleNumpad('*')} className="h-14 bg-gray-100 dark:bg-zinc-800 border-2 border-gray-200 dark:border-black hover:border-black dark:hover:border-zinc-400 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-zinc-700 active:bg-black dark:active:bg-zinc-100 active:text-white dark:active:text-black transition-all text-black dark:text-zinc-100">
-              <X size={24} />
-            </button>
-
-            {/* Row 3 */}
-            {[1, 2, 3].map((num) => (
-              <button key={num} onClick={() => handleNumpad(num.toString())} className="h-14 bg-white dark:bg-zinc-800 border-2 border-gray-200 dark:border-black hover:border-black dark:hover:border-zinc-400 text-2xl font-bold hover:bg-gray-50 dark:hover:bg-zinc-700 active:bg-black dark:active:bg-zinc-100 active:text-white dark:active:text-black transition-all text-black dark:text-zinc-100">
-                {num}
-              </button>
-            ))}
-            <button onClick={() => handleNumpad('-')} className="h-14 bg-gray-100 dark:bg-zinc-800 border-2 border-gray-200 dark:border-black hover:border-black dark:hover:border-zinc-400 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-zinc-700 active:bg-black dark:active:bg-zinc-100 active:text-white dark:active:text-black transition-all text-black dark:text-zinc-100">
-              <Minus size={24} />
-            </button>
-
-            {/* Row 4 */}
-            <button onClick={() => handleNumpad('.')} className="h-14 bg-white dark:bg-zinc-800 border-2 border-gray-200 dark:border-black hover:border-black dark:hover:border-zinc-400 text-2xl font-bold hover:bg-gray-50 dark:hover:bg-zinc-700 active:bg-black dark:active:bg-zinc-100 active:text-white dark:active:text-black transition-all text-black dark:text-zinc-100">
-              .
-            </button>
-            <button onClick={() => handleNumpad('0')} className="h-14 bg-white dark:bg-zinc-800 border-2 border-gray-200 dark:border-black hover:border-black dark:hover:border-zinc-400 text-2xl font-bold hover:bg-gray-50 dark:hover:bg-zinc-700 active:bg-black dark:active:bg-zinc-100 active:text-white dark:active:text-black transition-all text-black dark:text-zinc-100">
-              0
-            </button>
-            <button onClick={() => handleNumpad('back')} className="h-14 bg-gray-100 dark:bg-zinc-800 border-2 border-gray-200 dark:border-black hover:border-black dark:hover:border-zinc-400 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-zinc-700 active:bg-black dark:active:bg-zinc-100 active:text-white dark:active:text-black transition-all text-black dark:text-zinc-100">
-              <Delete size={24} />
-            </button>
-            <button onClick={() => handleNumpad('+')} className="h-14 bg-gray-100 dark:bg-zinc-800 border-2 border-gray-200 dark:border-black hover:border-black dark:hover:border-zinc-400 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-zinc-700 active:bg-black dark:active:bg-zinc-100 active:text-white dark:active:text-black transition-all text-black dark:text-zinc-100">
-              <Plus size={24} />
-            </button>
-
-            {/* Row 5 */}
-            <button 
-              onClick={() => handleNumpad('=')}
-              className="col-span-4 h-14 bg-neo-yellow dark:bg-neo-yellow/80 border-2 border-gray-200 dark:border-black hover:border-black dark:hover:border-zinc-400 flex items-center justify-center hover:bg-[#f5c518] active:bg-black dark:active:bg-zinc-100 active:text-white dark:active:text-black transition-all text-black dark:text-zinc-100 font-bold dark:text-black"
+        <div className="grid grid-cols-4 gap-2">
+          {keys.map(({ k, label, op, aria }) => (
+            <button
+              key={k}
+              type="button"
+              aria-label={aria}
+              onClick={() => handleNumpad(k)}
+              className={`h-12 border-2 border-black grid place-items-center text-2xl font-bold text-black dark:text-zinc-100 active:translate-y-0.5 active:shadow-none shadow-neo-sm transition-transform ${
+                op ? 'bg-neo-bg dark:bg-zinc-800' : 'bg-white dark:bg-zinc-900'
+              }`}
             >
-              <Equal size={24} className="mr-2" /> Calculate
+              {label}
             </button>
-          </div>
+          ))}
         </div>
       )}
     </div>

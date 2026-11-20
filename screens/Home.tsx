@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowDownLeft, Plus, Search, Settings, Users } from 'lucide-react';
+import { ArrowDownLeft, Search, Settings, Users } from 'lucide-react';
 import { NeoCard } from '../components/NeoCard';
 import { Avatar } from '../components/Avatar';
 import { EntryRow } from '../components/EntryRow';
@@ -36,7 +36,7 @@ export const Home: React.FC = () => {
       <header className="sticky top-0 z-20 bg-neo-bg/95 dark:bg-zinc-950/95 backdrop-blur-sm border-b-2 border-black px-5 py-3 flex items-center justify-between">
         <div className="min-w-0">
           <h2 className="text-xl font-black uppercase leading-none dark:text-zinc-100">SquareOne</h2>
-          <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-widest mt-1 truncate">Hi, {user?.name || 'there'}</p>
+          <p className="text-xs font-bold text-gray-600 dark:text-zinc-400 uppercase tracking-widest mt-1 truncate">Hi, {user?.name || 'there'}</p>
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={openSearch} className={iconBtn} aria-label="Search"><Search size={20} strokeWidth={2.5} /></button>
@@ -48,13 +48,6 @@ export const Home: React.FC = () => {
       <DataLoadErrorBanner error={error} loading={loading} onRetry={refetch} />
 
       <div className="p-5 space-y-6">
-        <Link
-          to="/add"
-          className="flex items-center justify-center gap-3 w-full py-4 bg-neo-yellow border-2 border-black shadow-neo font-black uppercase text-xl text-black active:shadow-neo-pressed active:translate-x-1 active:translate-y-1 transition-all"
-        >
-          <Plus size={28} strokeWidth={3} /> Add entry
-        </Link>
-
         <MonthSummary />
 
         <section>
@@ -101,7 +94,7 @@ export const Home: React.FC = () => {
           ) : (
             <NeoCard className="text-center py-8">
               <p className="text-lg font-black uppercase dark:text-zinc-100">Nothing here yet</p>
-              <p className="text-xs font-bold uppercase text-gray-500 mt-1">Tap Add entry to log your first expense.</p>
+              <p className="text-sm text-gray-600 dark:text-zinc-400 mt-1">Tap + to log your first expense.</p>
             </NeoCard>
           )}
         </section>

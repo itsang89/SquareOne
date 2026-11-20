@@ -22,7 +22,7 @@ export const DetailHeader: React.FC<DetailHeaderProps> = ({
       <div className="relative">
         <button 
           onClick={onToggleOptions}
-          className="w-10 h-10 bg-white dark:bg-zinc-900 border-2 border-black shadow-neo-sm flex items-center justify-center hover:bg-neo-yellow dark:text-zinc-100 dark:hover:text-black active:shadow-none"
+          className="w-11 h-11 bg-white dark:bg-zinc-900 border-2 border-black shadow-neo-sm flex items-center justify-center hover:bg-neo-yellow dark:text-zinc-100 dark:hover:text-black active:shadow-none"
         >
           <MoreVertical size={20} />
         </button>

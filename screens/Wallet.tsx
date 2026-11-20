@@ -52,14 +52,14 @@ export const Wallet: React.FC = () => {
     <li key={a.id} className={`flex items-stretch bg-white dark:bg-zinc-900 border-2 border-black shadow-neo-sm ${a.archived ? 'opacity-60' : ''}`}>
       <Link to={`/ledger?account=${a.id}&month=all`} className="flex-1 min-w-0 flex items-center justify-between gap-3 p-4">
         <span className="min-w-0">
-          <span className="block font-black uppercase truncate dark:text-zinc-100">{a.name}</span>
-          <span className="block text-[10px] font-bold uppercase text-gray-400">{a.currency}{a.archived ? ' · archived' : ''}</span>
+          <span className="block font-bold text-lg leading-tight truncate dark:text-zinc-100">{a.name}</span>
+          <span className="block text-xs font-medium text-gray-600">{a.currency}{a.archived ? ' · archived' : ''}</span>
         </span>
-        <span className={`font-black text-lg ${(balances.get(a.id) ?? 0) < 0 ? 'text-neo-red' : 'dark:text-zinc-100'}`}>
+        <span className={`font-black text-lg tabular-nums shrink-0 ${(balances.get(a.id) ?? 0) < 0 ? 'text-neo-danger' : 'dark:text-zinc-100'}`}>
           {formatCurrency(balances.get(a.id) ?? 0, a.currency)}
         </span>
       </Link>
-      <button type="button" onClick={() => open(a)} aria-label={`Edit ${a.name}`} className="px-3 border-l-2 border-black dark:text-zinc-100 hover:bg-neo-yellow/40">
+      <button type="button" onClick={() => open(a)} aria-label={`Edit ${a.name}`} className="w-12 grid place-items-center border-l-2 border-black dark:text-zinc-100 hover:bg-neo-yellow/40">
         <Pencil size={16} />
       </button>
     </li>
@@ -90,7 +90,7 @@ export const Wallet: React.FC = () => {
         <ul className="space-y-3">
           {live.map(row)}
           {!loading && live.length === 0 && (
-            <li className="text-center py-8 font-black uppercase text-gray-400">No accounts yet. Tap + to add Bank, Cash…</li>
+            <li className="text-center py-8 font-black uppercase text-gray-600">No accounts yet. Tap + to add Bank, Cash…</li>
           )}
         </ul>
 

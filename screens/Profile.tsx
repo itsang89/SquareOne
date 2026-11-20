@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, Moon, Sun, Monitor, Download, Trash2, HelpCircle, ArrowRight, Edit3, LogOut, KeyRound, Tags, Repeat } from 'lucide-react';
+import { Settings, Moon, Sun, Monitor, Download, Trash2, HelpCircle, ChevronRight, Edit3, LogOut, KeyRound, Tags, Repeat } from 'lucide-react';
 import { NeoButton } from '../components/NeoButton';
 import { NeoInput } from '../components/NeoInput';
 import { NeoModal } from '../components/NeoModal';
@@ -147,10 +147,8 @@ export const Profile: React.FC = () => {
 
   return (
     <div className="min-h-screen pb-24 bg-neo-bg dark:bg-zinc-950 font-display transition-colors duration-300">
-        <header className="sticky top-0 z-20 bg-neo-bg/95 dark:bg-zinc-950/95 backdrop-blur-sm p-6 flex items-center justify-between border-b-2 border-transparent dark:border-black">
-             <div className="bg-neo-yellow text-black px-4 py-2 border-2 border-black shadow-neo-sm transform -rotate-1">
-                <h1 className="text-xl font-black uppercase tracking-wide">Settings</h1>
-            </div>
+        <header className="sticky top-0 z-20 bg-neo-bg/95 dark:bg-zinc-950/95 backdrop-blur-sm border-b-2 border-black px-5 py-4">
+            <h1 className="text-3xl font-black uppercase leading-none dark:text-zinc-100">Settings</h1>
         </header>
 
         <main className="p-6 flex flex-col gap-8">
@@ -243,12 +241,12 @@ export const Profile: React.FC = () => {
                         <div className="flex items-center gap-4">
                             <Avatar src={user?.avatar || ''} alt="Profile" size="lg" className="border-[3px] shadow-sm" />
                             <div className="flex-1 min-w-0">
-                                <h2 className="text-2xl font-black uppercase leading-none truncate dark:text-zinc-100">{user?.name || 'User'}</h2>
-                                <p className="text-sm font-bold text-gray-500 dark:text-zinc-400 mt-1 uppercase tracking-wider">{user?.email || ''}</p>
+                                <h2 className="text-xl font-black leading-tight truncate dark:text-zinc-100">{user?.name || 'User'}</h2>
+                                <p className="text-sm font-medium text-gray-600 dark:text-zinc-400 mt-0.5 truncate">{user?.email || ''}</p>
                             </div>
                             <motion.button 
                                 onClick={() => setShowEditProfile(true)}
-                                className="w-10 h-10 bg-neo-orange text-black flex items-center justify-center border-2 border-black shadow-neo-sm"
+                                className="w-11 h-11 bg-neo-orange text-black flex items-center justify-center border-2 border-black shadow-neo-sm"
                                 aria-label="Edit profile"
                                 whileHover={{ 
                                   scale: 1.05,
@@ -265,15 +263,9 @@ export const Profile: React.FC = () => {
                                 <Edit3 size={18} />
                             </motion.button>
                         </div>
-                        <div className="mt-4 pt-4 border-t-2 border-black flex justify-between text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-zinc-500">
+                        <div className="mt-4 pt-4 border-t-2 border-black flex justify-between text-[10px] font-bold uppercase tracking-widest text-gray-600 dark:text-zinc-400">
                             <span>Joined</span>
                             <span>{joinedDate || 'Recently'}</span>
-                        </div>
-                        <div className="mt-4 flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-neo-green" aria-hidden />
-                            <span className="text-xs font-black uppercase tracking-widest dark:text-zinc-300">Synced</span>
-                          </div>
                         </div>
                     </motion.div>
                   )}
@@ -290,10 +282,9 @@ export const Profile: React.FC = () => {
                          <div className="grid grid-cols-3 gap-0 border-2 border-black bg-gray-100 dark:bg-zinc-800 p-1 relative">
                             <motion.button 
                               onClick={() => setTheme('dark')}
-                              className={`py-2 border border-black font-bold text-sm flex items-center justify-center gap-1 relative z-10 ${theme === 'dark' ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black' : 'text-gray-500 dark:text-zinc-400'}`}
+                              className={`py-2 border border-black font-bold text-sm flex items-center justify-center gap-1 relative z-10 ${theme === 'dark' ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black' : 'text-gray-600 dark:text-zinc-400'}`}
                               whileHover={theme !== 'dark' ? { 
-                                backgroundColor: 'rgba(255,255,255,0.1)',
-                                color: theme === 'light' ? '#000' : '#fff',
+                                backgroundColor: 'rgba(127,127,127,0.12)',
                               } : {}}
                               whileTap={{ scale: 0.95 }}
                             >
@@ -303,13 +294,13 @@ export const Profile: React.FC = () => {
                                 >
                                   <Moon size={16} />
                                 </motion.div>
+                                <span>Dark</span>
                             </motion.button>
                             <motion.button 
                               onClick={() => setTheme('light')}
-                              className={`py-2 border border-black font-bold text-sm flex items-center justify-center gap-1 relative z-10 ${theme === 'light' ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black' : 'text-gray-500 dark:text-zinc-400'}`}
+                              className={`py-2 border border-black font-bold text-sm flex items-center justify-center gap-1 relative z-10 ${theme === 'light' ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black' : 'text-gray-600 dark:text-zinc-400'}`}
                               whileHover={theme !== 'light' ? { 
-                                backgroundColor: 'rgba(255,255,255,0.1)',
-                                color: '#fff',
+                                backgroundColor: 'rgba(127,127,127,0.12)',
                               } : {}}
                               whileTap={{ scale: 0.95 }}
                             >
@@ -319,13 +310,13 @@ export const Profile: React.FC = () => {
                                 >
                                   <Sun size={16} />
                                 </motion.div>
+                                <span>Light</span>
                             </motion.button>
                             <motion.button 
                               onClick={() => setTheme('system')}
-                              className={`py-2 border border-black font-bold text-sm flex items-center justify-center gap-1 relative z-10 ${theme === 'system' ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black' : 'text-gray-500 dark:text-zinc-400'}`}
+                              className={`py-2 border border-black font-bold text-sm flex items-center justify-center gap-1 relative z-10 ${theme === 'system' ? 'bg-neo-yellow shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black' : 'text-gray-600 dark:text-zinc-400'}`}
                               whileHover={theme !== 'system' ? { 
-                                backgroundColor: 'rgba(255,255,255,0.1)',
-                                color: theme === 'light' ? '#000' : '#fff',
+                                backgroundColor: 'rgba(127,127,127,0.12)',
                               } : {}}
                               whileTap={{ scale: 0.95 }}
                             >
@@ -335,135 +326,69 @@ export const Profile: React.FC = () => {
                                 >
                                   <Monitor size={16} />
                                 </motion.div>
+                                <span>System</span>
                             </motion.button>
                         </div>
                     </div>
                 </NeoCard>
             </section>
 
-            {[
-              { to: '/settings/categories', label: 'Categories', icon: Tags },
-              { to: '/settings/subscriptions', label: 'Subscriptions', icon: Repeat },
-            ].map(({ to, label, icon: Icon }) => (
-              <Link
-                key={to}
-                to={to}
-                className="w-full bg-white dark:bg-zinc-900 border-2 border-black p-4 shadow-neo-sm flex items-center justify-between gap-3 hover:bg-purple-50 dark:hover:bg-zinc-800"
-              >
-                <span className="flex items-center gap-3 font-bold uppercase text-sm dark:text-zinc-100">
-                  <span className="w-8 h-8 bg-neo-yellow border-2 border-black grid place-items-center text-black">
-                    <Icon size={16} aria-hidden="true" />
-                  </span>
-                  {label}
+            {(() => {
+              const row = 'w-full min-h-14 px-4 py-3 flex items-center justify-between gap-3 text-left text-black dark:text-zinc-100 hover:bg-gray-50 dark:hover:bg-zinc-800';
+              const tile = (bg: string, Icon: typeof Tags) => (
+                <span className={`w-8 h-8 shrink-0 ${bg} border-2 border-black grid place-items-center text-black`}><Icon size={16} aria-hidden="true" /></span>
+              );
+              const body = (label: string, hint?: string, danger = false) => (
+                <span className="min-w-0">
+                  <span className={`block font-bold ${danger ? 'text-neo-danger' : ''}`}>{label}</span>
+                  {hint && <span className={`block text-xs font-medium ${danger ? 'text-neo-danger' : 'text-gray-600 dark:text-zinc-400'}`}>{hint}</span>}
                 </span>
-                <ArrowRight size={16} aria-hidden="true" className="dark:text-zinc-100" />
-              </Link>
-            ))}
-
-            {(
-              <Link
-                to="/profile/agent-access"
-                className="w-full bg-white dark:bg-zinc-900 border-2 border-black p-4 shadow-neo-sm flex items-center justify-between gap-3 hover:bg-purple-50 dark:hover:bg-zinc-800"
-              >
-                <span className="flex items-center gap-3 font-bold uppercase text-sm dark:text-zinc-100">
-                  <span className="w-8 h-8 bg-neo-purple border-2 border-black grid place-items-center text-black">
-                    <KeyRound size={16} aria-hidden="true" />
-                  </span>
-                  Agent Access
-                </span>
-                <ArrowRight size={16} aria-hidden="true" className="dark:text-zinc-100" />
-              </Link>
-            )}
-
-            {(
-              <Link
-                to="/profile/import"
-                className="w-full bg-white dark:bg-zinc-900 border-2 border-black p-4 shadow-neo-sm flex items-center justify-between gap-3 hover:bg-purple-50 dark:hover:bg-zinc-800"
-              >
-                <span className="flex items-center gap-3 font-bold uppercase text-sm dark:text-zinc-100">
-                  <span className="w-8 h-8 bg-neo-purple border-2 border-black grid place-items-center text-black">
-                    <Download size={16} aria-hidden="true" />
-                  </span>
-                  Import from Money+
-                </span>
-                <ArrowRight size={16} aria-hidden="true" className="dark:text-zinc-100" />
-              </Link>
-            )}
-
-            <section>
-                 <h3 className="text-xs font-black uppercase tracking-widest mb-3 flex items-center gap-2 dark:text-zinc-400">
-                    <Download size={16} /> Data Management
-                </h3>
-                <div className="flex flex-col gap-4">
-                    <button 
-                      onClick={handleExportCSV}
-                      className="w-full bg-white dark:bg-zinc-900 border-2 border-black p-4 shadow-neo-sm flex items-center justify-between group active:shadow-none active:translate-y-[2px] transition-all hover:bg-purple-50 dark:hover:bg-zinc-800"
-                    >
-                        <div className="flex items-center gap-3 text-black dark:text-zinc-100">
-                            <div className="w-8 h-8 bg-neo-purple border-2 border-black flex items-center justify-center text-black">
-                                <Download size={16} />
-                            </div>
-                            <div className="text-left">
-                                <span className="block font-bold uppercase text-sm">Export to CSV</span>
-                                <span className="block text-[10px] text-gray-500 dark:text-zinc-500 font-bold uppercase tracking-wider">All entries</span>
-                            </div>
-                        </div>
-                        <ArrowRight size={18} className="-rotate-45 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform text-black dark:text-zinc-100" />
-                    </button>
-
-                     <button 
-                       onClick={() => setShowClearConfirm(true)}
-                       className="w-full bg-white dark:bg-zinc-900 border-2 border-black p-4 shadow-neo-sm flex items-center justify-between group active:shadow-none active:translate-y-[2px] transition-all hover:bg-red-50 dark:hover:bg-zinc-800"
-                     >
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-neo-red border-2 border-black flex items-center justify-center text-white">
-                                <Trash2 size={16} />
-                            </div>
-                            <div className="text-left">
-                                <span className="block font-bold uppercase text-sm text-red-600">Clear All Data</span>
-                                <span className="block text-[10px] text-red-400 font-bold uppercase tracking-wider">Cannot be undone</span>
-                            </div>
-                        </div>
-                    </button>
-
-                    <button 
-                      onClick={handleSignOut}
-                      className="w-full bg-white dark:bg-zinc-900 border-2 border-black p-4 shadow-neo-sm flex items-center justify-between group active:shadow-none active:translate-y-[2px] transition-all hover:bg-gray-50 dark:hover:bg-zinc-800"
-                    >
-                        <div className="flex items-center gap-3 text-black dark:text-zinc-100">
-                            <div className="w-8 h-8 bg-neo-blue border-2 border-black flex items-center justify-center text-white">
-                                <LogOut size={16} />
-                            </div>
-                            <div className="text-left">
-                                <span className="block font-bold uppercase text-sm">Sign Out</span>
-                                <span className="block text-[10px] text-gray-500 dark:text-zinc-500 font-bold uppercase tracking-wider">Log out of your account</span>
-                            </div>
-                        </div>
-                        <ArrowRight size={18} className="-rotate-45 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform text-black dark:text-zinc-100" />
-                    </button>
-                </div>
-            </section>
-
-            <section>
-                <button 
-                  onClick={() => setShowHowToUse(true)}
-                  className="w-full text-left block bg-neo-pink text-black border-2 border-black p-5 shadow-neo hover:shadow-neo-lg hover:-translate-y-0.5 transition-all flex items-center justify-between group active:translate-y-[2px] active:shadow-none cursor-pointer"
-                >
-                    <div className="flex items-center gap-4">
-                        <HelpCircle size={32} className="animate-pulse" />
-                        <div className="flex flex-col">
-                            <span className="font-black uppercase text-xl leading-none">How to use</span>
-                            <span className="text-xs text-black font-bold tracking-widest mt-1 opacity-75">Master the app</span>
-                        </div>
+              );
+              const group = 'bg-white dark:bg-zinc-900 border-2 border-black shadow-neo-sm divide-y divide-black/10 dark:divide-white/10';
+              const links: { to: string; label: string; hint: string; icon: typeof Tags; bg: string }[] = [
+                { to: '/settings/categories', label: 'Categories', hint: 'Names, icons and colours', icon: Tags, bg: 'bg-neo-yellow' },
+                { to: '/settings/subscriptions', label: 'Subscriptions', hint: 'Recurring bills logged automatically', icon: Repeat, bg: 'bg-neo-yellow' },
+                { to: '/profile/agent-access', label: 'Agent access', hint: 'Let Claude log entries for you', icon: KeyRound, bg: 'bg-neo-purple' },
+                { to: '/profile/import', label: 'Import from Money+', hint: 'Bring in a CSV export', icon: Download, bg: 'bg-neo-purple' },
+              ];
+              return (
+                <>
+                  <section>
+                    <h3 className="text-xs font-bold uppercase tracking-widest mb-2 text-gray-600 dark:text-zinc-400">Manage</h3>
+                    <div className={group}>
+                      {links.map(({ to, label, hint, icon, bg }) => (
+                        <Link key={to} to={to} className={row}>
+                          <span className="flex items-center gap-3 min-w-0">{tile(bg, icon)}{body(label, hint)}</span>
+                          <ChevronRight size={18} aria-hidden="true" className="shrink-0 text-gray-600 dark:text-zinc-400" />
+                        </Link>
+                      ))}
+                      <button type="button" onClick={handleExportCSV} className={row}>
+                        <span className="flex items-center gap-3 min-w-0">{tile('bg-neo-blue', Download)}{body('Export to CSV', 'All entries')}</span>
+                      </button>
+                      <button type="button" onClick={() => setShowHowToUse(true)} className={row}>
+                        <span className="flex items-center gap-3 min-w-0">{tile('bg-neo-pink', HelpCircle)}{body('How to use', 'Quick tour of the app')}</span>
+                        <ChevronRight size={18} aria-hidden="true" className="shrink-0 text-gray-600 dark:text-zinc-400" />
+                      </button>
                     </div>
-                     <div className="w-8 h-8 bg-white dark:bg-zinc-100 border-2 border-black flex items-center justify-center">
-                        <ArrowRight size={16} className="text-black font-bold" />
+                  </section>
+
+                  <section>
+                    <h3 className="text-xs font-bold uppercase tracking-widest mb-2 text-gray-600 dark:text-zinc-400">Account</h3>
+                    <div className={group}>
+                      <button type="button" onClick={handleSignOut} className={row}>
+                        <span className="flex items-center gap-3 min-w-0">{tile('bg-neo-bg dark:bg-zinc-200', LogOut)}{body('Sign out')}</span>
+                      </button>
+                      <button type="button" onClick={() => setShowClearConfirm(true)} className={row}>
+                        <span className="flex items-center gap-3 min-w-0">{tile('bg-neo-red', Trash2)}{body('Clear all data', 'Deletes every entry and friend. Cannot be undone.', true)}</span>
+                      </button>
                     </div>
-                </button>
-            </section>
-            
+                  </section>
+                </>
+              );
+            })()}
+
             <div className="text-center mt-4 mb-4">
-                <p className="text-[10px] font-bold text-gray-400 dark:text-zinc-600 uppercase tracking-widest">SquareOne v1.0.0</p>
+                <p className="text-[10px] font-bold text-gray-600 dark:text-zinc-500 uppercase tracking-widest">SquareOne v1.0.0</p>
             </div>
         </main>
 

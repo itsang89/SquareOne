@@ -47,7 +47,7 @@ export const Categories: React.FC = () => {
       <header className="sticky top-0 z-20 bg-neo-bg/95 dark:bg-zinc-950/95 backdrop-blur-sm border-b-2 border-black px-5 py-3 flex items-center justify-between">
         <BackButton to="/profile" />
         <h1 className="text-lg font-black uppercase tracking-widest dark:text-zinc-100">Categories</h1>
-        <button type="button" onClick={() => open('new')} aria-label="Add category" className="w-10 h-10 bg-neo-yellow border-2 border-black shadow-neo-sm grid place-items-center"><Plus size={20} /></button>
+        <button type="button" onClick={() => open('new')} aria-label="Add category" className="w-11 h-11 bg-neo-yellow border-2 border-black shadow-neo-sm grid place-items-center"><Plus size={20} /></button>
       </header>
 
       <main className="p-5 space-y-4">
@@ -62,11 +62,11 @@ export const Categories: React.FC = () => {
               <button type="button" onClick={() => open(c)} className={`w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 dark:hover:bg-zinc-800 ${c.archived ? 'opacity-50' : ''}`}>
                 <CategoryTile category={c} />
                 <span className="flex-1 font-bold dark:text-zinc-100">{c.name}</span>
-                {c.archived && <span className="text-[10px] font-black uppercase text-gray-400">archived</span>}
+                {c.archived && <span className="text-[10px] font-black uppercase text-gray-600">archived</span>}
               </button>
             </li>
           ))}
-          {list.length === 0 && <li className="p-6 text-center font-black uppercase text-gray-400">No categories</li>}
+          {list.length === 0 && <li className="p-6 text-center font-black uppercase text-gray-600">No categories</li>}
         </ul>
 
         {archivedCount > 0 && (

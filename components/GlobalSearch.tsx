@@ -115,7 +115,7 @@ export const GlobalSearch: React.FC = () => {
               <button
                 type="button"
                 onClick={closeSearch}
-                className="shrink-0 w-10 h-10 flex items-center justify-center border-2 border-black bg-white hover:bg-neo-red/20 transition-colors"
+                className="shrink-0 w-11 h-11 flex items-center justify-center border-2 border-black bg-white hover:bg-neo-red/20 transition-colors"
                 aria-label="Close search"
               >
                 <X size={20} className="text-black" />
@@ -124,17 +124,17 @@ export const GlobalSearch: React.FC = () => {
             <h2 id={titleId} className="sr-only">
               Global search
             </h2>
-            <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-gray-600 dark:text-zinc-500 border-b border-black/10">
+            <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-gray-600 dark:text-zinc-400 border-b border-black/10">
               ⌘K / Ctrl+K to open from anywhere
             </p>
 
             <div className="flex-1 overflow-y-auto no-scrollbar p-3 space-y-6 min-h-[40vh]">
               {!hasQuery ? (
-                <p className="text-sm font-bold text-gray-500 dark:text-zinc-500 text-center py-8">
+                <p className="text-sm font-bold text-gray-600 dark:text-zinc-400 text-center py-8">
                   Type to search your friends and entries.
                 </p>
               ) : noResults ? (
-                <p className="text-sm font-bold uppercase text-gray-400 dark:text-zinc-600 text-center py-8">
+                <p className="text-sm font-bold uppercase text-gray-600 dark:text-zinc-500 text-center py-8">
                   No results
                 </p>
               ) : (

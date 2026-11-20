@@ -25,7 +25,7 @@ interface Props {
 export const SplitEditor: React.FC<Props> = ({ friends, ids, onToggle, mode, onMode, custom, onCustom, each, mine, owe, currency }) => (
   <div className="border-2 border-black bg-white dark:bg-zinc-900 p-3 space-y-3 shadow-neo-sm">
     {friends.length === 0 ? (
-      <p className="text-xs font-bold uppercase text-gray-500">No friends yet. Add one in Friends first.</p>
+      <p className="text-xs font-bold uppercase text-gray-600">No friends yet. Add one in Friends first.</p>
     ) : (
       <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
         {friends.map((f) => (
@@ -65,11 +65,11 @@ export const SplitEditor: React.FC<Props> = ({ friends, ids, onToggle, mode, onM
         </ul>
         <div className="grid grid-cols-2 gap-2 pt-2 border-t-2 border-black text-center">
           <div>
-            <p className="text-[10px] font-black uppercase text-gray-500">Your share</p>
-            <p className={`font-black ${mine < 0 ? 'text-neo-red' : 'dark:text-zinc-100'}`}>{formatCurrency(mine, currency)}</p>
+            <p className="text-[10px] font-black uppercase text-gray-600">Your share</p>
+            <p className={`font-black ${mine < 0 ? 'text-neo-danger' : 'dark:text-zinc-100'}`}>{formatCurrency(mine, currency)}</p>
           </div>
           <div>
-            <p className="text-[10px] font-black uppercase text-gray-500">Friends owe you</p>
+            <p className="text-[10px] font-black uppercase text-gray-600">Friends owe you</p>
             <p className="font-black text-neo-greenDark">{formatCurrency(owe, currency)}</p>
           </div>
         </div>

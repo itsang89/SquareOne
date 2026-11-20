@@ -39,7 +39,7 @@ const SplitBillsVisual = () => {
   return (
     <div className="relative h-40 bg-gray-50 dark:bg-zinc-800/50 border-2 border-black flex items-center justify-center overflow-hidden p-4">
       <div className="relative z-10 w-24 h-16 bg-white dark:bg-zinc-900 border-2 border-black shadow-neo flex flex-col items-center justify-center animate-in zoom-in duration-500">
-        <span className="text-[10px] font-black uppercase text-gray-400">Bill</span>
+        <span className="text-[10px] font-black uppercase text-gray-600">Bill</span>
         <span className="font-black text-xl">$100</span>
       </div>
       
@@ -79,7 +79,7 @@ const SettleUpVisual = () => {
         
         <div className="flex flex-col gap-2">
           <div className="relative h-8 w-24 border-2 border-black bg-white dark:bg-zinc-900 flex items-center justify-center overflow-hidden">
-            <span className={`absolute transition-all duration-500 font-black ${settled ? '-translate-y-10' : 'text-neo-red'}`}>
+            <span className={`absolute transition-all duration-500 font-black ${settled ? '-translate-y-10' : 'text-neo-danger'}`}>
               -$50.00
             </span>
             <span className={`absolute transition-all duration-500 font-black text-neo-greenDark ${settled ? 'translate-y-0' : 'translate-y-10'}`}>

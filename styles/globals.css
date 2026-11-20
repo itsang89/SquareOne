@@ -34,4 +34,11 @@ body {
 body {
   font-variant-numeric: tabular-nums;
 }
-.dark .text-neo-greenDark { color: #62E3A4; }
+.dark .text-neo-greenDark { color: #7CE5AC; }
+.dark .text-neo-danger { color: #FF9095; }
+:root { color-scheme: light; }
+.dark { color-scheme: dark; }
+/* Bright fills always take dark ink, even in dark mode (white on yellow is 1.4:1). */
+.dark :is(.bg-neo-yellow, .bg-neo-orange, .bg-neo-green, .bg-neo-blue, .bg-neo-purple, .bg-neo-pink) { color: #171513; }
+/* Muted text without its own dark: variant stays readable in dark mode (explicit dark: classes still win). */
+.dark :where(.text-gray-600) { color: #a1a1aa; }

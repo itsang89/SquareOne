@@ -15,7 +15,7 @@ export const BackButton: React.FC<BackButtonProps> = ({ to }) => {
   return (
     <motion.button
       onClick={() => (to ? navigate(to) : navigate(-1))}
-      className="w-10 h-10 bg-white dark:bg-zinc-900 border-2 border-black shadow-neo-sm flex items-center justify-center hover:bg-gray-100 dark:hover:bg-zinc-800 text-black dark:text-zinc-100"
+      className="w-11 h-11 bg-white dark:bg-zinc-900 border-2 border-black shadow-neo-sm flex items-center justify-center hover:bg-gray-100 dark:hover:bg-zinc-800 text-black dark:text-zinc-100"
       aria-label="Go back"
       whileHover={{
         scale: 1.05,

@@ -59,7 +59,7 @@ export const Subscriptions: React.FC = () => {
       <header className="sticky top-0 z-20 bg-neo-bg/95 dark:bg-zinc-950/95 backdrop-blur-sm border-b-2 border-black px-5 py-3 flex items-center justify-between">
         <BackButton to="/profile" />
         <h1 className="text-lg font-black uppercase tracking-widest dark:text-zinc-100">Subscriptions</h1>
-        <button type="button" onClick={() => open('new')} aria-label="Add subscription" className="w-10 h-10 bg-neo-yellow border-2 border-black shadow-neo-sm grid place-items-center"><Plus size={20} /></button>
+        <button type="button" onClick={() => open('new')} aria-label="Add subscription" className="w-11 h-11 bg-neo-yellow border-2 border-black shadow-neo-sm grid place-items-center"><Plus size={20} /></button>
       </header>
 
       <main className="p-5 space-y-4">
@@ -74,7 +74,7 @@ export const Subscriptions: React.FC = () => {
               <button type="button" onClick={() => open(s)} className="flex-1 min-w-0 p-3 flex items-center justify-between gap-3 text-left">
                 <span className="min-w-0">
                   <span className="block font-bold truncate dark:text-zinc-100">{s.title}</span>
-                  <span className="block text-[11px] font-bold uppercase text-gray-400">
+                  <span className="block text-[11px] font-bold uppercase text-gray-600">
                     {s.cadence} · {s.active ? `next ${s.nextDate}` : 'paused'}
                   </span>
                 </span>
@@ -85,7 +85,13 @@ export const Subscriptions: React.FC = () => {
               </button>
             </li>
           ))}
-          {subscriptions.length === 0 && <li className="text-center py-10 font-black uppercase text-gray-400">No subscriptions yet</li>}
+          {subscriptions.length === 0 && (
+            <li className="text-center py-10 px-4 space-y-3">
+              <p className="font-bold dark:text-zinc-100">No subscriptions yet</p>
+              <p className="text-sm text-gray-600 dark:text-zinc-400">Add rent, phone or streaming once and SquareOne logs it on each due date.</p>
+              <button type="button" onClick={() => open('new')} className="px-4 py-2 bg-neo-yellow text-black border-2 border-black shadow-neo-sm font-bold">Add subscription</button>
+            </li>
+          )}
         </ul>
       </main>
 

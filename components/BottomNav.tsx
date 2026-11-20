@@ -19,11 +19,11 @@ const NavItem: React.FC<NavItemProps> = ({ to, icon: Icon, label, isActive }) =>
     <div className={`p-1.5 rounded-md border-2 transition-all ${isActive ? 'bg-neo-yellow border-black shadow-neo-sm' : 'border-transparent group-hover:bg-gray-100 dark:group-hover:bg-zinc-800'}`}>
       <Icon 
         size={24} 
-        className={isActive ? 'text-black' : 'text-gray-500 dark:text-zinc-400'} 
+        className={isActive ? 'text-black' : 'text-gray-600 dark:text-zinc-400'} 
         strokeWidth={isActive ? 2.5 : 2} 
       />
     </div>
-    <span className={`text-[10px] font-bold uppercase tracking-wider ${isActive ? 'text-black dark:text-zinc-100' : 'text-gray-400 dark:text-zinc-500'}`}>
+    <span className={`text-[11px] font-bold uppercase tracking-wide ${isActive ? 'text-black dark:text-zinc-100' : 'text-gray-600 dark:text-zinc-400'}`}>
       {label}
     </span>
   </Link>

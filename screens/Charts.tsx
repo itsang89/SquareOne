@@ -54,8 +54,11 @@ export const Charts: React.FC = () => {
   const arrow = 'w-11 h-11 bg-white dark:bg-zinc-900 border-2 border-black shadow-neo-sm flex items-center justify-center active:shadow-neo-pressed disabled:opacity-30 text-black dark:text-zinc-100';
 
   return (
-    <div className="max-w-md mx-auto p-4 pb-28 space-y-4 text-black dark:text-zinc-100">
-      <h1 className="text-3xl font-black">Charts</h1>
+    <div className="min-h-screen pb-28 bg-neo-bg dark:bg-zinc-950 text-black dark:text-zinc-100">
+      <header className="sticky top-0 z-20 bg-neo-bg/95 dark:bg-zinc-950/95 backdrop-blur-sm border-b-2 border-black px-5 py-4">
+        <h1 className="text-3xl font-black uppercase leading-none">Charts</h1>
+      </header>
+      <div className="max-w-md mx-auto p-5 space-y-4">
 
       <div className="flex items-center gap-2">
         <button className={arrow} onClick={() => step(-1)} aria-label="Previous period"><ChevronLeft /></button>
@@ -100,6 +103,7 @@ export const Charts: React.FC = () => {
       ) : (
         <NetWorthChart points={data.points} hasData={accounts.length > 0 || entries.length > 0} table={month === null} />
       )}
+      </div>
     </div>
   );
 };

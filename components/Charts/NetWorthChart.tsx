@@ -23,7 +23,7 @@ export const NetWorthChart: React.FC<Props> = ({ points, hasData, table }) => {
     return (
       <NeoCard className="text-center py-10">
         <p className="font-bold">No net worth yet</p>
-        <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">Add an account in Wallet and log entries to track it.</p>
+        <p className="text-sm text-gray-600 dark:text-zinc-400 mt-1">Add an account in Wallet and log entries to track it.</p>
       </NeoCard>
     );
   }
@@ -35,12 +35,12 @@ export const NetWorthChart: React.FC<Props> = ({ points, hasData, table }) => {
     <div className="space-y-4">
       <NeoCard className="flex gap-3">
         <div className="flex-1">
-          <div className="text-[10px] font-bold uppercase text-gray-500 dark:text-zinc-400">Now</div>
+          <div className="text-[10px] font-bold uppercase text-gray-600 dark:text-zinc-400">Now</div>
           <div className="font-black text-xl">{hkd(close)}</div>
         </div>
         <div className="text-right">
-          <div className="text-[10px] font-bold uppercase text-gray-500 dark:text-zinc-400">Change</div>
-          <div className={`font-black text-xl ${close - open >= 0 ? 'text-neo-greenDark' : 'text-neo-red'}`}>
+          <div className="text-[10px] font-bold uppercase text-gray-600 dark:text-zinc-400">Change</div>
+          <div className={`font-black text-xl ${close - open >= 0 ? 'text-neo-greenDark' : 'text-neo-danger'}`}>
             {hkd(close - open, true)}
           </div>
         </div>
@@ -64,7 +64,7 @@ export const NetWorthChart: React.FC<Props> = ({ points, hasData, table }) => {
               <div key={p.label} className="flex items-center p-3 text-sm">
                 <span className="w-12 font-bold">{p.label}</span>
                 <span className="flex-1 tabular-nums">{hkd(p.value)}</span>
-                <span className={`font-black tabular-nums ${d >= 0 ? 'text-neo-greenDark' : 'text-neo-red'}`}>{hkd(d, true)}</span>
+                <span className={`font-black tabular-nums ${d >= 0 ? 'text-neo-greenDark' : 'text-neo-danger'}`}>{hkd(d, true)}</span>
               </div>
             );
           })}

@@ -83,10 +83,7 @@ export const Friends: React.FC = () => {
     <div className="min-h-screen pb-24 bg-neo-bg dark:bg-zinc-950 flex flex-col transition-colors duration-300">
       <header className="sticky top-0 z-20 bg-neo-bg/95 dark:bg-zinc-950/95 backdrop-blur-sm border-b-2 border-black px-5 pt-6 pb-4">
         <div className="flex items-end justify-between mb-4">
-            <div>
-                <h2 className="text-xs font-bold tracking-widest text-gray-500 dark:text-zinc-500 leading-none mb-1">SQUARE ONE</h2>
-                <h1 className="text-4xl font-black uppercase leading-none dark:text-zinc-100">Friends</h1>
-            </div>
+            <h1 className="text-3xl font-black uppercase leading-none dark:text-zinc-100">Friends</h1>
             <div className="flex items-center gap-2">
             <button
               type="button"
@@ -115,7 +112,7 @@ export const Friends: React.FC = () => {
                     className={`px-5 py-2 border-2 border-black font-bold text-xs uppercase tracking-wide transition-all whitespace-nowrap ${
                         filter === f 
                         ? 'bg-neo-yellow shadow-neo text-black' 
-                        : 'bg-white dark:bg-zinc-900 text-gray-500 dark:text-zinc-500 border-gray-400 dark:border-zinc-700 hover:border-black dark:hover:border-zinc-100 hover:text-black dark:hover:text-zinc-100'
+                        : 'bg-white dark:bg-zinc-900 text-black dark:text-zinc-100'
                     }`}
                 >
                     {f === 'High-Low' ? 'Largest Balance' : f}
@@ -149,18 +146,18 @@ export const Friends: React.FC = () => {
                        friend.balance > 0 ? 'bg-neo-orange' : friend.balance < 0 ? 'bg-neo-red' : 'bg-gray-200 dark:bg-zinc-800'
                   }`}></div>
 
-                  <div className="flex items-center justify-between gap-4 pl-3">
-                      <div className="flex items-center gap-4 flex-1 min-w-0">
-                          <Avatar src={friend.avatar} alt={friend.name} size="lg" />
-                          <div className="flex flex-col truncate">
-                              <h3 className="text-xl font-bold truncate uppercase dark:text-zinc-100">{friend.name}</h3>
-                              <span className="text-xs font-bold text-gray-500 dark:text-zinc-500 uppercase tracking-wider">Last: {friend.lastActivity}</span>
+                  <div className="flex items-center justify-between gap-3 pl-2">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <Avatar src={friend.avatar} alt={friend.name} size="md" />
+                          <div className="flex flex-col min-w-0">
+                              <h3 className="text-lg font-bold leading-tight truncate dark:text-zinc-100">{friend.name}</h3>
+                              <span className="text-xs font-medium text-gray-600 dark:text-zinc-400 truncate">{friend.lastActivity}</span>
                           </div>
                       </div>
 
                       <div className="text-right shrink-0 flex flex-col items-end">
-                          <p className={`text-2xl font-black tracking-tight tabular-nums ${
-                              friend.balance > 0 ? 'text-black dark:text-zinc-100' : friend.balance < 0 ? 'text-neo-red' : 'text-gray-400 dark:text-zinc-600'
+                          <p className={`text-lg font-black tracking-tight tabular-nums ${
+                              friend.balance > 0 ? 'text-black dark:text-zinc-100' : friend.balance < 0 ? 'text-neo-danger' : 'text-gray-600 dark:text-zinc-500'
                           }`}>
                               {friend.balance === 0 ? formatCurrency(0) : `${friend.balance > 0 ? '+' : '-'}${formatCurrency(Math.abs(friend.balance))}`}
                           </p>
@@ -185,17 +182,13 @@ export const Friends: React.FC = () => {
         ) : (
           <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
             <div className="w-20 h-20 bg-neo-yellow/20 dark:bg-neo-yellow/10 border-2 border-black border-dashed flex items-center justify-center">
-              <UserPlus size={40} className="text-gray-400 dark:text-zinc-600" />
+              <UserPlus size={40} className="text-gray-600 dark:text-zinc-500" />
             </div>
-            <p className="text-gray-500 dark:text-zinc-500 font-bold uppercase tracking-wider">No friends yet</p>
+            <p className="text-gray-600 dark:text-zinc-400 font-bold uppercase tracking-wider">No friends yet</p>
             <NeoButton onClick={() => setShowAddFriend(true)} variant="primary">Add your first friend</NeoButton>
           </div>
         )}
 
-        <div className="mt-8 flex flex-col items-center justify-center gap-4 opacity-40">
-            <div className="h-2 w-2 bg-black dark:bg-zinc-100"></div>
-            <p className="text-xs font-mono uppercase text-black dark:text-zinc-100">End of list</p>
-        </div>
       </main>
       
       <NeoModal

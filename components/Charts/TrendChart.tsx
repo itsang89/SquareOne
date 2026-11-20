@@ -24,14 +24,14 @@ export const TrendChart: React.FC<Props> = ({ series, daily, days }) => {
     return (
       <NeoCard className="text-center py-10">
         <p className="font-bold">Nothing to compare yet</p>
-        <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">Log some income and expenses to see the trend.</p>
+        <p className="text-sm text-gray-600 dark:text-zinc-400 mt-1">Log some income and expenses to see the trend.</p>
       </NeoCard>
     );
   }
 
   const stat = (name: string, v: number, cls = '') => (
     <div className="flex-1 min-w-0">
-      <div className="text-[10px] font-bold uppercase text-gray-500 dark:text-zinc-400">{name}</div>
+      <div className="text-[10px] font-bold uppercase text-gray-600 dark:text-zinc-400">{name}</div>
       <div className={`font-black truncate ${cls}`}>{hkd(v)}</div>
     </div>
   );

@@ -142,11 +142,12 @@ export function AgentAccess() {
 
   return (
     <div className="min-h-screen pb-24 bg-neo-bg dark:bg-zinc-950 font-display dark:text-zinc-100">
-      <header className="flex items-center gap-4 p-6">
+      <header className="sticky top-0 z-20 bg-neo-bg/95 dark:bg-zinc-950/95 backdrop-blur-sm border-b-2 border-black px-5 py-3 flex items-center justify-between">
         <BackButton to="/profile" />
-        <h1 className="text-xl font-black uppercase tracking-wide">Agent Access</h1>
+        <h1 className="text-lg font-black uppercase tracking-widest">Agent access</h1>
+        <div className="w-10" />
       </header>
-      <main className="mx-auto max-w-2xl px-6 flex flex-col gap-6">
+      <main className="mx-auto max-w-2xl p-5 flex flex-col gap-6">
         <NeoCard>
           <h2 className="font-black uppercase mb-2">Connect an agent</h2>
           <p className="text-sm mb-3">Send these instructions to your agent. Open the link it gives you and approve the permissions you want.</p>

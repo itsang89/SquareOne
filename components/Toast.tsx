@@ -22,10 +22,11 @@ export const ToastContainer: React.FC = () => {
   const { toasts, remove } = useToast();
 
   return (
-    <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-3 w-full max-w-[320px]">
+    <div className="fixed top-4 right-4 left-4 sm:left-auto z-[9999] flex flex-col gap-3 sm:w-full sm:max-w-[320px]" aria-live="polite">
       {toasts.map((toast) => (
         <div
           key={toast.id}
+          role={toast.type === 'error' ? 'alert' : 'status'}
           className={`border-2 border-black shadow-neo-sm p-4 ${ToastColor(toast.type)} flex gap-3 items-start animate-in slide-in-from-right duration-300`}
         >
           <div className="mt-0.5">
@@ -39,7 +40,8 @@ export const ToastContainer: React.FC = () => {
           </div>
           <button
             onClick={() => remove(toast.id)}
-            className="hover:bg-black/10 p-1 -mr-2 -mt-2 transition-colors"
+            aria-label="Dismiss"
+            className="hover:bg-black/10 p-2 -mr-2 -mt-2 transition-colors"
           >
             <X size={16} />
           </button>

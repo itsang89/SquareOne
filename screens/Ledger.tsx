@@ -94,7 +94,7 @@ export const Ledger: React.FC = () => {
 
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" aria-hidden />
             <input
               type="search"
               value={q}
@@ -139,9 +139,9 @@ export const Ledger: React.FC = () => {
 
         <p className="text-xs font-black uppercase tracking-wide dark:text-zinc-100">
           <span className="dark:text-zinc-100">Spent {formatCurrency(totals.expense)}</span>
-          <span className="mx-2 text-gray-400">·</span>
+          <span className="mx-2 text-gray-600">·</span>
           <span className="text-neo-greenDark">In {formatCurrency(totals.income)}</span>
-          <span className="ml-2 text-gray-400">{filtered.length} entries</span>
+          <span className="ml-2 text-gray-600">{filtered.length} entries</span>
         </p>
       </header>
 
@@ -151,7 +151,7 @@ export const Ledger: React.FC = () => {
         {loading ? (
           [1, 2, 3, 4].map((i) => <TransactionSkeleton key={i} />)
         ) : days.length === 0 ? (
-          <p className="text-center py-16 font-black uppercase text-gray-400 dark:text-zinc-600">Nothing here</p>
+          <p className="text-center py-16 font-black uppercase text-gray-600 dark:text-zinc-500">Nothing here</p>
         ) : (
           days.map(({ day, items }) => {
             const spent = items.reduce((s, e) => s + myExpense(e), 0);

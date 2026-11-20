@@ -51,7 +51,7 @@ export const NeoInput: React.FC<NeoInputProps> = ({
       />
       {error && (
         <motion.span
-          className="block mt-1 text-neo-red text-xs font-black uppercase tracking-tight"
+          className="block mt-1 text-neo-danger text-xs font-black uppercase tracking-tight"
           variants={getVariants(fadeInDown)}
           initial="hidden"
           animate="visible"

@@ -52,4 +52,11 @@ describe('entryUi', () => {
     const theirs = entryView(e({ shares: [{ friendId: 'f1', amount: 40 }] }), lookups, 'f1');
     expect([theirs.amount, theirs.sign]).toEqual([40, '+']);
   });
+
+  it('does not repeat the category in the subtitle when it is already the title', () => {
+    const lookups = { accounts, categories, friends };
+    const cat = categories[0];
+    expect(entryView(e({ accountId: 'a1', categoryId: cat.id, title: cat.name }), lookups).sub).not.toContain(cat.name);
+    expect(entryView(e({ accountId: 'a1', categoryId: cat.id, title: 'Lunch' }), lookups).sub).toContain(cat.name);
+  });
 });

@@ -165,7 +165,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
         <Chip key={a.id} active={a.id === value} onClick={() => onPick(a.id)} color="bg-neo-yellow">{a.name}</Chip>
       ))}
       {none && <Chip active={value === undefined} onClick={() => onPick(null)} color="bg-neo-orange">{none}</Chip>}
-      {liveAccounts.length === 0 && <p className="text-xs font-bold uppercase text-gray-500">No accounts yet. Add one in Wallet.</p>}
+      {liveAccounts.length === 0 && <p className="text-xs font-bold uppercase text-gray-600">No accounts yet. Add one in Wallet.</p>}
     </div>
   );
 
@@ -193,6 +193,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
           onAmountChange={(v) => { setAmount(v); setAmountAuto(false); }}
           showNumpad={showNumpad}
           onToggleNumpad={() => setShowNumpad((v) => !v)}
+          currency={currency}
         />
 
         {kind === 'settlement' && (
@@ -203,13 +204,13 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
                 <Chip key={f.id} active={f.id === friendId} onClick={() => pickFriend(f.id)} color="bg-neo-yellow">
                   <Avatar src={f.avatar} alt={f.name} size="sm" />
                   <span className="text-left leading-tight">{f.name.split(' ')[0]}
-                    <span className={`block text-[10px] ${f.balance > 0 ? 'text-neo-greenDark' : 'text-gray-400'}`}>
+                    <span className={`block text-[10px] ${f.balance > 0 ? 'text-neo-greenDark' : 'text-gray-600'}`}>
                       {f.balance > 0 ? `owes ${formatCurrency(f.balance)}` : 'settled'}
                     </span>
                   </span>
                 </Chip>
               ))}
-              {friends.length === 0 && <p className="text-xs font-bold uppercase text-gray-500">No friends yet.</p>}
+              {friends.length === 0 && <p className="text-xs font-bold uppercase text-gray-600">No friends yet.</p>}
             </div>
           </div>
         )}
@@ -294,7 +295,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
 
       <div className="fixed bottom-0 inset-x-0 z-40 bg-neo-bg dark:bg-zinc-950 border-t-2 border-black p-4">
         <div className="max-w-md mx-auto">
-          {problem && total > 0 && <p className="text-xs font-black uppercase text-neo-red mb-2 text-center">{problem}</p>}
+          {problem && total > 0 && <p className="text-xs font-black uppercase text-neo-danger mb-2 text-center">{problem}</p>}
           <NeoButton fullWidth variant="primary" disabled={!!problem} isLoading={isProcessing} onClick={() => void save()}>
             {entry ? 'Save changes' : `Save ${KIND_LABEL[kind].toLowerCase()}`}
             {total > 0 && ` · ${formatCurrency(total, currency)}`}

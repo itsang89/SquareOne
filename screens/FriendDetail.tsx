@@ -115,7 +115,7 @@ export const FriendDetail: React.FC = () => {
         
         <div className="flex items-center gap-2 mb-6 z-10 bg-black/5 dark:bg-white/5 px-3 py-1 rounded-full border border-black/10 dark:border-white/10">
              <div className={`w-2.5 h-2.5 rounded-full border border-black dark:border-zinc-400 ${calculatedBalance >= 0 ? 'bg-neo-green' : 'bg-neo-red animate-pulse'}`}></div>
-             <p className={`text-xs font-bold uppercase tracking-widest ${calculatedBalance >= 0 ? 'text-green-700 dark:text-neo-greenDark' : 'text-red-700 dark:text-neo-red'}`}>
+             <p className={`text-xs font-bold uppercase tracking-widest ${calculatedBalance >= 0 ? 'text-neo-greenDark' : 'text-neo-danger'}`}>
                 {calculatedBalance >= 0 ? 'Owes you' : 'You owe'}
              </p>
         </div>
@@ -135,23 +135,16 @@ export const FriendDetail: React.FC = () => {
               { label: 'Repaid', value: formatCurrency(friendStats.repaid) },
             ].map(({ label, value }) => (
               <div key={label} className="bg-neo-bg dark:bg-zinc-800 border-2 border-black p-2 text-center shadow-neo-sm">
-                <p className="text-[9px] font-black uppercase tracking-widest text-gray-500 dark:text-zinc-400 mb-0.5">{label}</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-gray-600 dark:text-zinc-400 mb-0.5">{label}</p>
                 <p className="text-sm font-black dark:text-zinc-100 leading-tight">{value}</p>
               </div>
             ))}
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4 w-full z-10">
-            <NeoButton variant="primary" onClick={() => navigate('/add', { state: { kind: 'settlement', friendId: friend.id } })}>
-                <HandCoins size={18} /> Settle Up
-            </NeoButton>
-            <NeoButton variant="secondary" disabled className="relative opacity-60 cursor-not-allowed">
-                <span className="text-black">👋</span>
-                <span className="text-black">Nudge</span>
-                <span className="absolute -top-2 -right-2 bg-neo-yellow text-black text-[9px] font-black uppercase px-1.5 py-0.5 border border-black leading-none">Soon</span>
-            </NeoButton>
-        </div>
+        <NeoButton fullWidth variant="primary" className="z-10" onClick={() => navigate('/add', { state: { kind: 'settlement', friendId: friend.id } })}>
+            <HandCoins size={18} /> Settle up
+        </NeoButton>
         <NeoButton fullWidth variant="neutral" className="mt-4 z-10" onClick={() => navigate('/add', { state: { splitFriendId: friend.id } })}>
           Split an expense
         </NeoButton>
@@ -161,7 +154,7 @@ export const FriendDetail: React.FC = () => {
         {friendEntries.length > 0 && (
           <div className="pt-4 pb-1">
             <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" />
               <input
                 type="text"
                 value={query}
@@ -171,14 +164,14 @@ export const FriendDetail: React.FC = () => {
               />
               {query && (
                 <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <X size={13} className="text-gray-400" />
+                  <X size={13} className="text-gray-600" />
                 </button>
               )}
             </div>
           </div>
         )}
         {filteredEntries.length === 0 ? (
-          <p className="text-center py-10 font-black uppercase text-gray-400 dark:text-zinc-600">{query ? 'No results' : 'No history yet'}</p>
+          <p className="text-center py-10 font-black uppercase text-gray-600 dark:text-zinc-500">{query ? 'No results' : 'No history yet'}</p>
         ) : (
           <div className="mt-4 border-2 border-black shadow-neo-sm divide-y-2 divide-black/10">
             {filteredEntries.map((e) => <EntryRow key={e.id} entry={e} lookups={lookups} forFriend={friend.id} />)}

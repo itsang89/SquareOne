@@ -22,7 +22,7 @@ export const DataLoadErrorBanner: React.FC<DataLoadErrorBannerProps> = ({
       role="alert"
     >
       <span className="flex items-center gap-2">
-        <AlertTriangle size={16} className="shrink-0 text-neo-red" />
+        <AlertTriangle size={16} className="shrink-0 text-neo-danger" />
         Couldn&apos;t load your data. Check your connection and try again.
       </span>
       <NeoButton

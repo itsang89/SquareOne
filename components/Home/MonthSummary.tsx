@@ -11,7 +11,10 @@ export const MonthSummary: React.FC = () => {
   const { entries } = useAppContext();
   const now = new Date();
   const cur = rangeTotals(entries, monthRange(now.getFullYear(), now.getMonth()));
-  const prev = rangeTotals(entries, monthRange(now.getFullYear(), now.getMonth() - 1));
+  // Compare like for like: last month up to the same day, not the full month.
+  const prevMonth = monthRange(now.getFullYear(), now.getMonth() - 1);
+  const sameDay = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate() + 1);
+  const prev = rangeTotals(entries, { from: prevMonth.from, to: sameDay < prevMonth.to ? sameDay : prevMonth.to });
   const diff = cur.expense - prev.expense;
 
   return (
@@ -22,17 +25,17 @@ export const MonthSummary: React.FC = () => {
           <ChevronRight size={18} />
         </div>
         <div>
-          <div className="text-xs font-bold uppercase opacity-70">Spent</div>
+          <div className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-zinc-400">You spent</div>
           <div className="text-3xl font-black">{hkd(cur.expense)}</div>
           {prev.expense > 0 && (
-            <div className="text-xs font-bold">
-              {diff === 0 ? 'Same as' : `${hkd(Math.abs(diff))} ${diff > 0 ? 'more' : 'less'} than`} last month
+            <div className="text-sm font-medium text-gray-600 dark:text-zinc-400">
+              {diff === 0 ? 'Same as' : `${hkd(Math.abs(diff))} ${diff > 0 ? 'more' : 'less'} than`} this time last month
             </div>
           )}
         </div>
         <div className="grid grid-cols-2 gap-2 border-t-2 border-black dark:border-zinc-600 pt-3">
-          <div><div className="text-[10px] font-bold uppercase opacity-70">Income</div><div className="font-black text-neo-greenDark">{hkd(cur.income)}</div></div>
-          <div><div className="text-[10px] font-bold uppercase opacity-70">Net</div><div className="font-black">{hkd(cur.net, true)}</div></div>
+          <div><div className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-zinc-400">Income</div><div className="font-black text-neo-greenDark">{hkd(cur.income)}</div></div>
+          <div><div className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-zinc-400">Income − spent</div><div className={`font-black ${cur.net < 0 ? 'text-neo-danger' : 'text-neo-greenDark'}`}>{hkd(cur.net, true)}</div></div>
         </div>
       </NeoCard>
     </Link>

@@ -90,9 +90,7 @@ The amount field in `AddTransaction` accepts **arithmetic expressions** (e.g. `1
 
 ### Known Inert UI
 
-Two buttons exist with no handlers (see `improvement.md` items #5 and #9):
-- Nudge button on `FriendDetail` (around `screens/FriendDetail.tsx:170`) — `onClick={() => {}}`.
-- Camera button on `AddTransaction` (around `screens/AddTransaction.tsx:287`) — no `onClick` prop.
+None. The Nudge teaser on `FriendDetail` was removed until it does something (`improvement.md` #2), and the old Camera button is gone.
 
 (The earlier Bell icon on `Home` and its `unsettledCount` miscount have since been removed.)
 

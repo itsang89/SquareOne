@@ -68,11 +68,13 @@ export function ImportMoneyPlus() {
   const busy = progress !== null;
 
   return (
-    <div className="p-4 pb-32 max-w-lg mx-auto flex flex-col gap-4">
-      <div className="flex items-center gap-3">
+    <div className="min-h-screen pb-32 bg-neo-bg dark:bg-zinc-950">
+      <header className="sticky top-0 z-20 bg-neo-bg/95 dark:bg-zinc-950/95 backdrop-blur-sm border-b-2 border-black px-5 py-3 flex items-center justify-between">
         <BackButton />
-        <h1 className="text-2xl font-black uppercase dark:text-zinc-100">Import Money+</h1>
-      </div>
+        <h1 className="text-lg font-black uppercase tracking-widest dark:text-zinc-100">Import Money+</h1>
+        <div className="w-10" />
+      </header>
+      <div className="p-5 max-w-lg mx-auto flex flex-col gap-4">
 
       <NeoCard>
         <p className="text-sm font-bold mb-3 dark:text-zinc-100">Pick the Money+ CSV export. Nothing is saved until you press Import.</p>
@@ -114,6 +116,7 @@ export function ImportMoneyPlus() {
           <p className="font-black text-lg dark:text-zinc-100">Done. {result.added} added{result.skipped > 0 && `, ${result.skipped} already there`}.</p>
         </NeoCard>
       )}
+      </div>
     </div>
   );
 }

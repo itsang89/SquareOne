@@ -114,7 +114,7 @@ export const Friends: React.FC = () => {
                     onClick={() => setFilter(f)}
                     className={`px-5 py-2 border-2 border-black font-bold text-xs uppercase tracking-wide transition-all whitespace-nowrap ${
                         filter === f 
-                        ? 'bg-neo-purple shadow-neo text-black' 
+                        ? 'bg-neo-yellow shadow-neo text-black' 
                         : 'bg-white dark:bg-zinc-900 text-gray-500 dark:text-zinc-500 border-gray-400 dark:border-zinc-700 hover:border-black dark:hover:border-zinc-100 hover:text-black dark:hover:text-zinc-100'
                     }`}
                 >
@@ -146,7 +146,7 @@ export const Friends: React.FC = () => {
               >
                   {/* Colored accent line */}
                   <div className={`absolute left-0 top-0 bottom-0 w-1.5 border-r-2 border-black ${
-                       friend.balance > 0 ? 'bg-neo-green' : friend.balance < 0 ? 'bg-neo-red' : 'bg-gray-200 dark:bg-zinc-800'
+                       friend.balance > 0 ? 'bg-neo-orange' : friend.balance < 0 ? 'bg-neo-red' : 'bg-gray-200 dark:bg-zinc-800'
                   }`}></div>
 
                   <div className="flex items-center justify-between gap-4 pl-3">
@@ -154,20 +154,20 @@ export const Friends: React.FC = () => {
                           <Avatar src={friend.avatar} alt={friend.name} size="lg" />
                           <div className="flex flex-col truncate">
                               <h3 className="text-xl font-bold truncate uppercase dark:text-zinc-100">{friend.name}</h3>
-                              <span className="text-xs font-mono text-gray-500 dark:text-zinc-500 uppercase tracking-wider">Last: {friend.lastActivity}</span>
+                              <span className="text-xs font-bold text-gray-500 dark:text-zinc-500 uppercase tracking-wider">Last: {friend.lastActivity}</span>
                           </div>
                       </div>
 
                       <div className="text-right shrink-0 flex flex-col items-end">
-                          <p className={`text-2xl font-black tracking-tight font-mono ${
-                              friend.balance > 0 ? 'text-neo-greenDark' : friend.balance < 0 ? 'text-neo-red' : 'text-gray-400 dark:text-zinc-600'
+                          <p className={`text-2xl font-black tracking-tight tabular-nums ${
+                              friend.balance > 0 ? 'text-black dark:text-zinc-100' : friend.balance < 0 ? 'text-neo-red' : 'text-gray-400 dark:text-zinc-600'
                           }`}>
                               {friend.balance === 0 ? formatCurrency(0) : `${friend.balance > 0 ? '+' : '-'}${formatCurrency(Math.abs(friend.balance))}`}
                           </p>
                           
                           {friend.balance !== 0 ? (
                                <div className={`flex items-center justify-center gap-1 border-2 border-black px-2 py-0.5 shadow-sm mt-1 ${
-                                  friend.balance > 0 ? 'bg-neo-green text-black' : 'bg-neo-red text-white'
+                                  friend.balance > 0 ? 'bg-neo-orange text-black' : 'bg-neo-red text-white'
                                }`}>
                                   <span className="text-[10px] font-bold uppercase leading-none">{friend.balance > 0 ? 'Owes you' : 'You owe'}</span>
                                   {friend.balance > 0 ? <ArrowDownLeft size={10} strokeWidth={4} /> : <ArrowUpRight size={10} strokeWidth={4}/>}

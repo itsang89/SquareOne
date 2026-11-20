@@ -25,9 +25,9 @@ export const Avatar: React.FC<AvatarProps> = ({
 
   return (
     <div
-      className={`relative ${SIZES[size]} rounded-full border-2 border-black overflow-hidden bg-gray-200 dark:bg-zinc-800 ${className}`}
+      className={`relative shrink-0 ${SIZES[size]} rounded-full border-2 border-black overflow-hidden bg-gray-200 dark:bg-zinc-800 ${className}`}
     >
-      {hasError ? (
+      {hasError || !src ? (
         <div className="w-full h-full flex items-center justify-center bg-neo-blue dark:bg-neo-blue font-bold text-xs dark:text-black">
           {alt.charAt(0).toUpperCase()}
         </div>

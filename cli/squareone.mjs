@@ -87,9 +87,10 @@ MANAGE
   accounts delete --id A                    Needs browser approval; only for accounts with no entries
   categories add --name N [--kind expense|income] [--icon E] [--color #hex] | edit --id C [--name] [--icon] [--color] [--archive|--unarchive]
   subscriptions add --title T --amount N --cadence weekly|monthly|yearly --next-date D [--category C] [--account A]
+                                            --next-date = date of the next charge (today if the user gave none)
   subscriptions edit --id S [fields] | pause --id S [--resume]
   friends add --name N | edit --id F [--name N] | delete --id F (needs browser approval)
-  profile show|edit [--name N] [--avatar URL]
+  profile show|edit [--name N] [--avatar URL]   --avatar only accepts the app's preset avatar URLs (friends too)
   data export [--format json|csv]           Needs browser approval, then repeat the same command
   data clear                                Needs browser approval, then repeat the same command
 
@@ -105,6 +106,9 @@ EXAMPLES (plain English -> command)
   "Alex paid me back 500 to Bank"
     entries add --kind settlement --amount 500 --friend Alex --account Bank
   "How much did I spend in November?"       stats --month 2026-11
+  "How much did I spend on food this month?"  stats --month 2026-11, read by_category (my share only)
+  "Netflix 78 every month from Bank"
+    subscriptions add --title Netflix --amount 78 --cadence monthly --next-date 2026-12-01 --account Bank --category Entertainment
   "What does Alex owe me?"                  friends list
 
 Writes take --request-id UUID (one is generated and echoed back if you omit it). Retry a failed write with the

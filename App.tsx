@@ -20,6 +20,7 @@ const SettleUp = lazy(() => import('./screens/SettleUp').then(m => ({ default: m
 const History = lazy(() => import('./screens/History').then(m => ({ default: m.History })));
 const Profile = lazy(() => import('./screens/Profile').then(m => ({ default: m.Profile })));
 const AgentAccess = lazy(() => import('./screens/AgentAccess').then(m => ({ default: m.AgentAccess })));
+const ImportMoneyPlus = lazy(() => import('./screens/ImportMoneyPlus').then(m => ({ default: m.ImportMoneyPlus })));
 const ConnectAgent = lazy(() => import('./screens/ConnectAgent').then(m => ({ default: m.ConnectAgent })));
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -99,6 +100,14 @@ const AppContent: React.FC = () => {
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile/import"
+            element={
+              <ProtectedRoute>
+                <ImportMoneyPlus />
               </ProtectedRoute>
             }
           />

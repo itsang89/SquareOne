@@ -7,7 +7,8 @@ import { Avatar } from '../components/Avatar';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
-import { calculateTotalOwed, calculateTotalOwing, calculateNetBalance, calculateDebtOrigins, calculateMonthlyTotals, shouldGrayTransaction } from '../utils/calculations';
+import { totalOwed as sumOwed, totalOwing as sumOwing } from '../utils/calculations';
+import { calculateDebtOrigins, calculateMonthlyTotals, shouldGrayTransaction } from '../utils/transactions';
 import { getTransactionCounterparty } from '../utils/search';
 import { Transaction } from '../types';
 import { useToast } from '../components/ToastContext';
@@ -20,7 +21,7 @@ import { DeleteConfirmButton } from '../components/DeleteConfirmButton';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
-  const { friends, transactions, deleteTransaction, loading, error, refetch } = useAppContext();
+  const { friends, entries, transactions, deleteTransaction, loading, error, refetch } = useAppContext();
   const { user } = useAuth();
   const { openSearch } = useSearch();
   const { success, error: showError } = useToast();
@@ -46,9 +47,9 @@ export const Home: React.FC = () => {
     [deleteTransaction, success, showError]
   );
   
-  const totalOwed = useMemo(() => calculateTotalOwed(transactions), [transactions]);
-  const totalOwing = useMemo(() => calculateTotalOwing(transactions), [transactions]);
-  const netBalance = useMemo(() => calculateNetBalance(transactions), [transactions]);
+  const totalOwed = useMemo(() => sumOwed(entries), [entries]);
+  const totalOwing = useMemo(() => sumOwing(entries), [entries]);
+  const netBalance = totalOwed - totalOwing;
   const debtOriginsData = useMemo(() => calculateDebtOrigins(transactions), [transactions]);
   const monthlyData = useMemo(() => calculateMonthlyTotals(transactions), [transactions]);
   
@@ -83,15 +84,6 @@ export const Home: React.FC = () => {
         </button>
         </div>
       </header>
-
-      {user?.id === 'guest' && (
-        <div
-          className="mx-5 mt-3 px-4 py-3 bg-neo-blue/30 dark:bg-neo-blue/20 border-2 border-black text-sm font-bold text-black dark:text-zinc-100 shadow-neo-sm"
-          role="status"
-        >
-          Guest — data is saved on this device only. Sign in to sync across devices.
-        </div>
-      )}
 
       <DataLoadErrorBanner error={error} loading={loading} onRetry={refetch} />
 

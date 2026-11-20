@@ -94,7 +94,7 @@ function ReviewRequest({ code, kind }: { code: string; kind: 'connect' | 'action
 }
 
 export function ConnectAgent() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading } = useAuth();
   const [params] = useSearchParams();
   const kind = params.has('action') ? 'action' : 'connect';
   const code = params.get(kind === 'action' ? 'action' : 'code') ?? '';
@@ -103,12 +103,6 @@ export function ConnectAgent() {
     return <main className="mx-auto max-w-2xl p-6"><NeoCard>
       <p className="mb-3">Open the approval link from your agent’s CLI.</p>
       <Link to="/profile/agent-access" className="font-bold underline">Go to Agent Access</Link>
-    </NeoCard></main>;
-  }
-  if (user?.id === 'guest') {
-    return <main className="mx-auto max-w-2xl p-6"><NeoCard>
-      <p className="mb-3">Sign in with your SquareOne account to approve this request.</p>
-      <NeoButton type="button" onClick={() => void signOut()}>Sign in</NeoButton>
     </NeoCard></main>;
   }
   if (!user) return <Login approvalPath={`/connect-agent?${params.toString()}`} />;

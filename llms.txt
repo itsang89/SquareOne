@@ -3,10 +3,9 @@
 
 ## Core Files
 - `App.tsx`: Main application entry point and routing (HashRouter).
-- `context/AppContext.tsx`: Primary state management for friends, transactions, and custom types. Routes all reads/writes to Supabase (authenticated) or localStorage (guest).
+- `context/AppContext.tsx`: Primary state management for friends, transactions, and custom types. Loads/saves accounts, categories, entries (with shares), subscriptions and friends via Supabase.
 - `context/AuthContext.tsx`: Authentication state management using Supabase Auth (email, Google, Apple).
 - `utils/supabase.ts`: Supabase client initialization.
-- `utils/guestStorage.ts`: localStorage CRUD for guest sessions (key: `squareone_guest_data`). Cleared when a real session attaches.
 - `utils/calculations.ts`: Client-side friend balance and net balance calculations.
 - `utils/formatters.ts`: Currency and date formatting helpers.
 - `components/NeoComponents.tsx`: Core UI design system (neo-brutalist / Neo style).
@@ -15,7 +14,6 @@
 - **Neo-brutalism (Neo)**: The visual style — bold black borders, high contrast, modern aesthetic.
 - **Real-time Sync**: Authenticated data kept in sync via Supabase PostgreSQL changes listener.
 - **Friend Balances**: Calculated on the client from raw transaction history (`utils/calculations.ts`).
-- **Guest Mode**: A fully functional offline mode for users without an account. All friends and transactions are stored in `localStorage` under `squareone_guest_data`. No Supabase calls are made for `user.id === 'guest'`. Guest data is cleared when a real account session starts.
 - **HashRouter**: All routes use `/#/` prefix. Supabase Auth redirect URLs must include the hash (e.g. `window.location.origin + '/#/dashboard'`).
 
 ## Tech Stack
@@ -31,5 +29,5 @@
 - canvas-confetti (settlement success celebration)
 
 ## Docs
-- `docs/architecture.md`: System architecture, routing, state management, guest path, animation layer.
+- `docs/architecture.md`: System architecture, routing, state management, animation layer.
 - `docs/database.md`: Full schema, RLS policies, real-time setup.

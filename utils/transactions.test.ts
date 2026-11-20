@@ -1,67 +1,89 @@
 import { describe, it, expect } from 'vitest';
-import { toDbTransaction } from './transactions';
-import type { Transaction } from '../types';
+import {
+  entriesToTransactions, legacyDelta, legacyToEntry, shouldGrayTransaction, transactionToEntryInput, type LegacyRow,
+} from './transactions';
+import { friendBalancesMap } from './calculations';
+import type { Entry, EntryInput, Transaction } from '../types';
 
-const baseTx = (overrides: Partial<Transaction> = {}): Transaction => ({
-  id: 'tx-1',
-  title: 'Pizza',
-  amount: 20,
-  date: '2025-01-01T00:00:00.000Z',
-  type: 'Meal',
-  payerId: 'me',
-  friendId: 'friend-uuid',
-  ...overrides,
+const asEntry = (i: EntryInput): Entry => ({
+  title: '', currency: 'HKD', fxRate: 1, occurredAt: '2026-01-01T00:00:00Z', shares: [], ...i, id: i.id ?? 'x',
 });
 
-describe('toDbTransaction', () => {
-  const USER = 'user-uuid';
+/** Pre-migration balance, exactly as the old calculations.ts computed it. */
+function legacyBalances(rows: LegacyRow[]) {
+  const m = new Map<string, number>();
+  for (const r of rows) m.set(r.friendId, (m.get(r.friendId) ?? 0) + legacyDelta(r.payerIsMe, r.amount));
+  return m;
+}
 
-  it('maps "me" payerId to the user UUID and leaves friendId alone', () => {
-    const row = toDbTransaction(baseTx({ payerId: 'me', friendId: 'friend-uuid' }), USER);
-    expect(row.payer_id).toBe(USER);
-    expect(row.friend_id).toBe('friend-uuid');
+describe('legacy transactions → entries (mirrors the SQL migration)', () => {
+  // Deterministic pseudo-random rows across 3 friends, payers and settlement flags.
+  const rows: LegacyRow[] = Array.from({ length: 200 }, (_, i) => ({
+    id: `t${i}`, title: `row ${i}`, date: '2026-01-01T00:00:00Z',
+    amount: Math.round((((i * 7919) % 10000) / 100) * 100) / 100,
+    friendId: ['a', 'b', 'c'][i % 3],
+    payerIsMe: (i * 31) % 5 < 3,
+  }));
+
+  it('preserves every friend balance exactly', () => {
+    const entries = rows.map((r) => legacyToEntry(r)).filter((e): e is EntryInput => !!e).map(asEntry);
+    const before = legacyBalances(rows);
+    const after = friendBalancesMap(entries);
+    for (const f of ['a', 'b', 'c']) expect(after.get(f) ?? 0).toBeCloseTo(before.get(f) ?? 0, 2);
   });
 
-  it('maps "me" friendId to the payerId (who is the friend in this case)', () => {
-    const row = toDbTransaction(baseTx({ payerId: 'friend-uuid', friendId: 'me' }), USER);
-    expect(row.payer_id).toBe('friend-uuid');
-    expect(row.friend_id).toBe('friend-uuid');
+  it('maps I-paid to a receivable-only expense and friend-paid to an offset settlement', () => {
+    const base = { id: 'i', title: 'T', amount: 25, date: '2026-01-01', friendId: 'f' };
+    const mine = legacyToEntry({ ...base, payerIsMe: true }, 'cat');
+    expect(mine).toMatchObject({ id: 'i', kind: 'expense', amount: 25, categoryId: 'cat', shares: [{ friendId: 'f', amount: 25 }] });
+    expect(mine?.accountId).toBeUndefined();
+    const theirs = legacyToEntry({ ...base, payerIsMe: false });
+    expect(theirs).toMatchObject({ kind: 'settlement', friendId: 'f', amount: 25 });
+    expect(theirs?.accountId).toBeUndefined();
+    expect(legacyToEntry({ ...base, amount: 0, payerIsMe: true })).toBeNull();
   });
 
-  it('passes through real UUIDs unchanged', () => {
-    const row = toDbTransaction(
-      baseTx({ payerId: 'user-A', friendId: 'user-B' }),
-      USER,
-    );
-    expect(row.payer_id).toBe('user-A');
-    expect(row.friend_id).toBe('user-B');
+  it('treats legacy settlements by payer, like regular rows', () => {
+    // friend repays 30 (payer = friend, is_settlement) → balance -30
+    expect(legacyDelta(false, 30)).toBe(-30);
+    // I hand cash back (payer = me, is_settlement) → balance +30
+    expect(legacyDelta(true, 30)).toBe(30);
+  });
+});
+
+describe('transaction ↔ entry view', () => {
+  const tx = (o: Partial<Transaction>): Transaction => ({
+    id: 't', title: 'T', amount: 40, date: '2026-01-02T00:00:00Z', type: 'Meal', payerId: 'me', friendId: 'f', ...o,
   });
 
-  it('coerces missing note to null and missing isSettlement to false', () => {
-    const tx = baseTx();
-    delete (tx as Partial<Transaction>).note;
-    delete (tx as Partial<Transaction>).isSettlement;
-    const row = toDbTransaction(tx, USER);
-    expect(row.note).toBeNull();
-    expect(row.is_settlement).toBe(false);
+  it('translates old-screen rows into entries', () => {
+    expect(transactionToEntryInput(tx({}))).toMatchObject({ kind: 'expense', shares: [{ friendId: 'f', amount: 40 }] });
+    expect(transactionToEntryInput(tx({ payerId: 'f', friendId: 'me' }))).toMatchObject({ kind: 'settlement', friendId: 'f' });
+    expect(transactionToEntryInput(tx({ payerId: 'f', friendId: 'me', isSettlement: true }))).toMatchObject({ kind: 'settlement' });
   });
 
-  it('preserves note and isSettlement when set', () => {
-    const row = toDbTransaction(
-      baseTx({ note: 'split 4 ways', isSettlement: true }),
-      USER,
-    );
-    expect(row.note).toBe('split 4 ways');
-    expect(row.is_settlement).toBe(true);
+  it('projects split expenses to one row per friend and settlements back', () => {
+    const entries: Entry[] = [
+      asEntry({ id: 'e1', kind: 'expense', amount: 300, accountId: 'bank', occurredAt: '2026-01-02T00:00:00Z',
+        shares: [{ friendId: 'a', amount: 100 }, { friendId: 'b', amount: 100 }] }),
+      asEntry({ id: 'e2', kind: 'settlement', amount: 100, friendId: 'a', occurredAt: '2026-01-03T00:00:00Z' }),
+      asEntry({ id: 'e3', kind: 'income', amount: 9, accountId: 'bank' }),
+    ];
+    const view = entriesToTransactions(entries, []);
+    expect(view.map((t) => t.id)).toEqual(['e2', 'e1:a', 'e1:b']);
+    expect(view[0]).toMatchObject({ payerId: 'a', friendId: 'me', isSettlement: true });
+    // balance in the view equals the entries' balance
+    const a = view.reduce((s, t) => s + (t.friendId === 'a' ? t.amount : t.payerId === 'a' ? -t.amount : 0), 0);
+    expect(a).toBe(friendBalancesMap(entries).get('a'));
   });
 
-  it('copies identity and detail fields verbatim', () => {
-    const row = toDbTransaction(baseTx(), USER);
-    expect(row.id).toBe('tx-1');
-    expect(row.user_id).toBe(USER);
-    expect(row.title).toBe('Pizza');
-    expect(row.amount).toBe(20);
-    expect(row.date).toBe('2025-01-01T00:00:00.000Z');
-    expect(row.type).toBe('Meal');
+  it('grays rows at or before the last time a friend was squared up', () => {
+    const rows = [
+      tx({ id: '1', amount: 100, date: '2026-01-01T00:00:00Z' }),
+      tx({ id: '2', amount: 100, payerId: 'f', friendId: 'me', isSettlement: true, date: '2026-01-02T00:00:00Z' }),
+      tx({ id: '3', amount: 20, date: '2026-01-03T00:00:00Z' }),
+    ];
+    expect(shouldGrayTransaction(rows[0], 'f', rows)).toBe(true);
+    expect(shouldGrayTransaction(rows[2], 'f', rows)).toBe(false);
   });
 });

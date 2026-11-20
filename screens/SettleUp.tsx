@@ -7,7 +7,6 @@ import { NeoInput } from '../components/NeoInput';
 import { BackButton } from '../components/BackButton';
 import { Avatar } from '../components/Avatar';
 import { useAppContext } from '../context/AppContext';
-import { calculateFriendBalance } from '../utils/calculations';
 import { Transaction } from '../types';
 import { useToast } from '../components/ToastContext';
 import { DatePicker } from '../components/AddTransaction/DatePicker';
@@ -21,14 +20,11 @@ import { evaluateExpression } from '../utils/calculator';
 export const SettleUp: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { transactions, addTransaction, getFriendById } = useAppContext();
+  const { addTransaction, getFriendById } = useAppContext();
   const { success, error: showError } = useToast();
   const friend = id ? getFriendById(id) : undefined;
   
-  const balance = useMemo(() => {
-    if (!friend) return 0;
-    return calculateFriendBalance(friend.id, transactions);
-  }, [friend, transactions]);
+  const balance = friend?.balance ?? 0;
   
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);

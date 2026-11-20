@@ -1,701 +1,462 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Friend, FriendStatus, Transaction } from '../types';
-import { calculateFriendBalance, getLastActivity } from '../utils/calculations';
+import type {
+  Account, Category, Entry, EntryInput, Friend, Subscription, SubscriptionInput, Transaction,
+} from '../types';
+import { friendBalancesMap, getLastActivity } from '../utils/calculations';
+import { entriesToTransactions, transactionToEntryInput } from '../utils/transactions';
 import { supabase } from '../utils/supabase';
-import {
-  readGuestSnapshot,
-  writeGuestSnapshot,
-  type GuestPersistedFriend,
-} from '../utils/guestStorage';
-import {
-  readCustomTypesFromLocal,
-  writeCustomTypesToLocal,
-} from '../utils/customTypesStorage';
-import { toDbTransaction } from '../utils/transactions';
 import { AuthContext } from './AuthContext';
 
-function transactionInvolvesFriend(t: Transaction, friendId: string): boolean {
-  return (
-    (t.payerId === friendId || t.friendId === friendId) &&
-    (t.payerId === 'me' || t.friendId === 'me')
-  );
-}
+export type Result = { success: boolean; error?: Error };
+export type IdResult = Result & { id?: string };
 
-function buildGuestFriendsList(
-  base: GuestPersistedFriend[],
-  transactions: Transaction[]
-): Friend[] {
-  return base.map((f) => {
-    const balance = calculateFriendBalance(f.id, transactions);
-    const lastActivity = getLastActivity(f.id, transactions);
-    const status: FriendStatus = Math.abs(balance) < 0.01 ? 'settled' : 'active';
-    return {
-      id: f.id,
-      name: f.name,
-      avatar: f.avatar,
-      balance,
-      lastActivity,
-      status,
-    };
-  });
-}
+interface FriendRow { id: string; user_id: string; name: string; avatar: string | null }
 
 interface AppContextType {
-  friends: Friend[];
-  transactions: Transaction[];
+  // Data
+  friends: Friend[]; // with balance (they owe me) / lastActivity / status
+  accounts: Account[];
+  categories: Category[];
+  entries: Entry[]; // newest first, shares attached
+  subscriptions: Subscription[];
   loading: boolean;
   error: Error | null;
-  refetch: () => Promise<void>;
-  addTransaction: (transaction: Transaction) => Promise<{ success: boolean; error?: Error }>;
-  updateTransaction: (transaction: Transaction) => Promise<{ success: boolean; error?: Error }>;
-  updateFriend: (friendId: string, updates: Partial<Friend>) => Promise<{ success: boolean; error?: Error }>;
-  deleteTransaction: (transactionId: string) => Promise<{ success: boolean; error?: Error }>;
-  addFriend: (friend: Omit<Friend, 'id' | 'balance' | 'lastActivity' | 'status'>) => Promise<{ success: boolean; error?: Error }>;
-  deleteFriend: (friendId: string) => Promise<{ success: boolean; error?: Error }>;
-  getFriendById: (friendId: string) => Friend | undefined;
   isProcessing: boolean;
-  customTypes: string[];
-  addCustomType: (name: string) => Promise<{ success: boolean; error?: Error }>;
-  removeCustomType: (name: string) => Promise<{ success: boolean; error?: Error }>;
+  refetch: () => Promise<void>;
+  // Entries
+  addEntry: (input: EntryInput) => Promise<IdResult>;
+  updateEntry: (entry: Entry) => Promise<Result>;
+  deleteEntry: (id: string) => Promise<Result>;
+  // Accounts
+  addAccount: (input: { name: string; currency?: string; sort?: number }) => Promise<IdResult>;
+  updateAccount: (id: string, updates: Partial<Omit<Account, 'id'>>) => Promise<Result>;
+  deleteAccount: (id: string) => Promise<Result>; // fails if entries reference it; archive instead
+  // Categories
+  addCategory: (input: Pick<Category, 'name' | 'kind'> & Partial<Pick<Category, 'icon' | 'color' | 'sort'>>) => Promise<IdResult>;
+  updateCategory: (id: string, updates: Partial<Omit<Category, 'id'>>) => Promise<Result>;
+  deleteCategory: (id: string) => Promise<Result>; // entries become uncategorised
+  // Subscriptions
+  addSubscription: (input: SubscriptionInput) => Promise<IdResult>;
+  updateSubscription: (id: string, updates: Partial<Omit<Subscription, 'id'>>) => Promise<Result>;
+  deleteSubscription: (id: string) => Promise<Result>;
+  // Friends
+  addFriend: (friend: Omit<Friend, 'id' | 'balance' | 'lastActivity' | 'status'>) => Promise<Result>;
+  updateFriend: (friendId: string, updates: Partial<Friend>) => Promise<Result>;
+  deleteFriend: (friendId: string) => Promise<Result>;
+  getFriendById: (friendId: string) => Friend | undefined;
+  // Legacy friend-ledger view, used by the pre-redesign screens
+  transactions: Transaction[];
+  addTransaction: (transaction: Transaction) => Promise<Result>;
+  updateTransaction: (transaction: Transaction) => Promise<Result>;
+  deleteTransaction: (transactionId: string) => Promise<Result>;
+  customTypes: string[]; // names of expense categories
+  addCustomType: (name: string) => Promise<Result>;
+  removeCustomType: (name: string) => Promise<Result>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+const PAGE = 1000; // PostgREST caps responses at 1000 rows
+
+/** Fetch every row of a query, paging past the server's row cap. */
+async function fetchAll<T>(
+  page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>
+): Promise<{ data: T[]; error: { message: string } | null }> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await page(from, from + PAGE - 1);
+    if (error) return { data: [], error };
+    rows.push(...(data ?? []));
+    if (!data || data.length < PAGE) return { data: rows, error: null };
+  }
+}
+
+const toError = (err: unknown, fallback: string): Error =>
+  err instanceof Error ? err : new Error((err as { message?: string } | null)?.message || fallback);
+
+const num = (v: unknown) => (typeof v === 'string' ? parseFloat(v) : (v as number));
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const toAccount = (r: any): Account => ({ id: r.id, name: r.name, currency: r.currency, archived: r.archived, sort: r.sort });
+const toCategory = (r: any): Category => ({
+  id: r.id, name: r.name, kind: r.kind, icon: r.icon ?? undefined, color: r.color ?? undefined,
+  archived: r.archived, sort: r.sort,
+});
+const toSubscription = (r: any): Subscription => ({
+  id: r.id, title: r.title, amount: num(r.amount), currency: r.currency, fxRate: num(r.fx_rate),
+  categoryId: r.category_id ?? undefined, accountId: r.account_id ?? undefined, cadence: r.cadence,
+  nextDate: r.next_date, active: r.active,
+});
+const toEntry = (r: any): Entry => ({
+  id: r.id, kind: r.kind, occurredAt: r.occurred_at, title: r.title, note: r.note ?? undefined,
+  amount: num(r.amount), currency: r.currency, fxRate: num(r.fx_rate),
+  accountId: r.account_id ?? undefined, toAccountId: r.to_account_id ?? undefined,
+  categoryId: r.category_id ?? undefined, friendId: r.friend_id ?? undefined,
+  subscriptionId: r.subscription_id ?? undefined, requestId: r.request_id ?? undefined,
+  shares: (r.entry_shares ?? []).map((s: any) => ({ friendId: s.friend_id, amount: num(s.amount) })),
+});
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+const entryPayload = (e: EntryInput) => ({
+  id: e.id, kind: e.kind, occurred_at: e.occurredAt ?? new Date().toISOString(), title: e.title ?? '',
+  note: e.note ?? null, amount: e.amount, currency: e.currency ?? 'HKD', fx_rate: e.fxRate ?? 1,
+  account_id: e.accountId ?? null, to_account_id: e.toAccountId ?? null, category_id: e.categoryId ?? null,
+  friend_id: e.friendId ?? null, subscription_id: e.subscriptionId ?? null, request_id: e.requestId ?? null,
+});
+
+const subscriptionRow = (s: Partial<Subscription>) => ({
+  ...(s.title !== undefined && { title: s.title }),
+  ...(s.amount !== undefined && { amount: s.amount }),
+  ...(s.currency !== undefined && { currency: s.currency }),
+  ...(s.fxRate !== undefined && { fx_rate: s.fxRate }),
+  ...('categoryId' in s && { category_id: s.categoryId ?? null }),
+  ...('accountId' in s && { account_id: s.accountId ?? null }),
+  ...(s.cadence !== undefined && { cadence: s.cadence }),
+  ...(s.nextDate !== undefined && { next_date: s.nextDate }),
+  ...(s.active !== undefined && { active: s.active }),
+});
+
+const REALTIME_TABLES = ['friends', 'accounts', 'categories', 'entries', 'entry_shares', 'subscriptions'];
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const authContext = useContext(AuthContext);
   const user = authContext?.user || null;
-  const [friends, setFriends] = useState<Friend[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [customTypes, setCustomTypes] = useState<string[]>([]);
+  const [friendRows, setFriendRows] = useState<FriendRow[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [entries, setEntries] = useState<Entry[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  /** Latest committed transactions for balance math when the transactions query fails but friends load. */
-  const transactionsRef = useRef<Transaction[]>([]);
   /** Tracks which user ID has already had its first data load, so background refreshes don't show skeletons. */
   const loadedUserIdRef = useRef<string | null>(null);
   /** Shared debounce timer for all Realtime subscription callbacks. */
   const realtimeRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    transactionsRef.current = transactions;
-  }, [transactions]);
-
-  const loadCustomTypes = useCallback(async () => {
-    if (!user) {
-      setCustomTypes([]);
-      return;
-    }
-    if (user.id === 'guest') {
-      setCustomTypes(readCustomTypesFromLocal());
-      return;
-    }
-    const { data, error } = await supabase
-      .from('custom_types')
-      .select('name')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: true });
-    if (error) {
-      console.warn('Error loading custom_types (table may not exist):', error.message);
-      return;
-    }
-    setCustomTypes((data || []).map((r: { name: string }) => r.name));
-  }, [user]);
 
   const loadData = useCallback(async () => {
     if (!user) {
-      setFriends([]);
-      setTransactions([]);
-      setCustomTypes([]);
+      setFriendRows([]); setAccounts([]); setCategories([]); setEntries([]); setSubscriptions([]);
       setLoading(false);
       loadedUserIdRef.current = null;
       return;
     }
 
     // Only show the loading skeleton on the first fetch for this user identity.
-    // Background refreshes (e.g. auth token refresh on tab focus) silently update.
     const isFirstLoad = loadedUserIdRef.current !== user.id;
     loadedUserIdRef.current = user.id;
-
-    if (user.id === 'guest') {
-      if (isFirstLoad) setLoading(true);
-      setError(null);
-      const snap = readGuestSnapshot();
-      const base = snap?.friends ?? [];
-      const txs = snap?.transactions ?? [];
-      setFriends(buildGuestFriendsList(base, txs));
-      setTransactions(txs);
-      setCustomTypes(readCustomTypesFromLocal());
-      setLoading(false);
-      return;
-    }
-
     if (isFirstLoad) setLoading(true);
-    setError(null);
     try {
-      const [friendsRes, transactionsRes, customTypesRes] = await Promise.all([
-        supabase
-          .from('friends')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('transactions')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('date', { ascending: false }),
-        supabase
-          .from('custom_types')
-          .select('name')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: true }),
+      const uid = user.id;
+      const [friendsRes, accountsRes, categoriesRes, entriesRes, subsRes] = await Promise.all([
+        fetchAll<FriendRow>((a, b) => supabase.from('friends').select('*').eq('user_id', uid)
+          .order('created_at', { ascending: false }).order('id').range(a, b)),
+        fetchAll((a, b) => supabase.from('accounts').select('*').eq('user_id', uid)
+          .order('sort').order('created_at').order('id').range(a, b)),
+        fetchAll((a, b) => supabase.from('categories').select('*').eq('user_id', uid)
+          .order('sort').order('created_at').order('id').range(a, b)),
+        fetchAll((a, b) => supabase.from('entries').select('*, entry_shares(friend_id, amount)').eq('user_id', uid)
+          .order('occurred_at', { ascending: false }).order('id').range(a, b)),
+        fetchAll((a, b) => supabase.from('subscriptions').select('*').eq('user_id', uid)
+          .order('next_date').order('id').range(a, b)),
       ]);
 
-      const friendsError = friendsRes.error;
-      const friendsData = friendsRes.data;
-      const transactionsError = transactionsRes.error;
-      const transactionsData = transactionsRes.data;
-      const customTypesError = customTypesRes.error;
-      const customTypesData = customTypesRes.data;
+      const failures = [friendsRes, accountsRes, categoriesRes, entriesRes, subsRes]
+        .map((r) => r.error?.message).filter(Boolean);
+      failures.forEach((m) => console.warn('Error loading data:', m));
+      // Surface a recoverable error; successful results below are still applied.
+      setError(failures.length ? new Error(failures.join('; ')) : null);
 
-      if (friendsError) {
-        console.warn('Error loading friends:', friendsError.message);
-      }
-
-      if (transactionsError) {
-        console.warn('Error loading transactions:', transactionsError.message);
-      }
-
-      if (customTypesError) {
-        console.warn('Error loading custom_types (table may not exist):', customTypesError.message);
-      }
-
-      // Surface a recoverable error when core data (friends or transactions) fails
-      // so the UI can show a retry prompt rather than silently appearing empty.
-      if (friendsError || transactionsError) {
-        const msg = [friendsError?.message, transactionsError?.message]
-          .filter(Boolean)
-          .join('; ');
-        setError(new Error(msg));
-      } else {
-        setError(null);
-      }
-
-      const mappedTransactions: Transaction[] = (transactionsData || []).map(t => ({
-        id: t.id,
-        user_id: t.user_id,
-        title: t.title,
-        amount: typeof t.amount === 'string' ? parseFloat(t.amount) : t.amount,
-        date: t.date,
-        type: t.type,
-        payerId: t.payer_id === user.id ? 'me' : t.friend_id,
-        friendId: t.payer_id === user.id ? t.friend_id : 'me',
-        note: t.note || undefined,
-        isSettlement: t.is_settlement || false,
-      }));
-
-      const txsForBalances = transactionsError
-        ? transactionsRef.current
-        : mappedTransactions;
-
-      // Calculate friend balances and status
-      const mappedFriends: Friend[] = (friendsData || []).map(f => {
-        const balance = calculateFriendBalance(f.id, txsForBalances);
-        const lastActivity = getLastActivity(f.id, txsForBalances);
-        const status = Math.abs(balance) < 0.01 ? 'settled' : 'active';
-
-        return {
-          id: f.id,
-          user_id: f.user_id,
-          name: f.name,
-          avatar: f.avatar || '',
-          balance,
-          lastActivity,
-          status,
-        };
-      });
-
-      // Do not overwrite a successful snapshot with [] when only one query failed.
-      if (!friendsError) {
-        setFriends(mappedFriends);
-      }
-      if (!transactionsError) {
-        setTransactions(mappedTransactions);
-      }
-      if (!customTypesError) {
-        setCustomTypes((customTypesData || []).map((r: { name: string }) => r.name));
-      }
+      // Never overwrite a good snapshot with [] when only one query failed.
+      if (!friendsRes.error) setFriendRows(friendsRes.data);
+      if (!accountsRes.error) setAccounts(accountsRes.data.map(toAccount));
+      if (!categoriesRes.error) setCategories(categoriesRes.data.map(toCategory));
+      if (!entriesRes.error) setEntries(entriesRes.data.map(toEntry));
+      if (!subsRes.error) setSubscriptions(subsRes.data.map(toSubscription));
     } catch (err: unknown) {
       console.error('Unexpected error loading data:', err);
-      // Set empty data instead of throwing
-      setFriends([]);
-      setTransactions([]);
-      setCustomTypes([]);
-      setError(err instanceof Error ? err : new Error(String(err) || 'Failed to load data'));
+      setError(toError(err, 'Failed to load data'));
     } finally {
       setLoading(false);
     }
   }, [user]);
 
-  // Initial load
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // Set up real-time subscriptions
+  // Realtime: every table feeds one debounced refresh.
   useEffect(() => {
-    if (!user || user.id === 'guest') return;
-
-    const scheduleRealtimeRefresh = () => {
+    if (!user) return;
+    const schedule = () => {
       if (realtimeRefreshTimer.current) clearTimeout(realtimeRefreshTimer.current);
       realtimeRefreshTimer.current = setTimeout(() => void loadData(), 400);
     };
-
-    const friendsChannel = supabase
-      .channel('friends-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'friends',
-          filter: `user_id=eq.${user.id}`,
-        },
-        scheduleRealtimeRefresh
-      )
-      .subscribe();
-
-    const transactionsChannel = supabase
-      .channel('transactions-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'transactions',
-          filter: `user_id=eq.${user.id}`,
-        },
-        scheduleRealtimeRefresh
-      )
-      .subscribe();
-
-    const customTypesChannel = supabase
-      .channel('custom-types-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'custom_types',
-          filter: `user_id=eq.${user.id}`,
-        },
-        scheduleRealtimeRefresh
-      )
-      .subscribe();
-
+    const channels = REALTIME_TABLES.map((table) =>
+      supabase
+        .channel(`${table}-changes`)
+        .on('postgres_changes', { event: '*', schema: 'public', table, filter: `user_id=eq.${user.id}` }, schedule)
+        .subscribe()
+    );
     return () => {
       if (realtimeRefreshTimer.current) {
         clearTimeout(realtimeRefreshTimer.current);
         realtimeRefreshTimer.current = null;
       }
-      supabase.removeChannel(friendsChannel);
-      supabase.removeChannel(transactionsChannel);
-      supabase.removeChannel(customTypesChannel);
+      channels.forEach((c) => supabase.removeChannel(c));
     };
-  }, [user, loadData, loadCustomTypes]);
-
-  const addCustomType = useCallback(
-    async (name: string) => {
-      const trimmed = name.trim();
-      if (!trimmed) {
-        return { success: false, error: new Error('Empty type name') };
-      }
-      if (!user) {
-        return { success: false, error: new Error('User not authenticated') };
-      }
-
-      if (user.id === 'guest') {
-        setCustomTypes((prev) => {
-          if (prev.includes(trimmed)) return prev;
-          const next = [...prev, trimmed];
-          writeCustomTypesToLocal(next);
-          return next;
-        });
-        return { success: true };
-      }
-
-      try {
-        const { error } = await supabase.from('custom_types').insert({
-          user_id: user.id,
-          name: trimmed,
-        });
-        if (error) {
-          if (error.code === '23505') {
-            await loadCustomTypes();
-            return { success: true };
-          }
-          throw error;
-        }
-        await loadCustomTypes();
-        return { success: true };
-      } catch (err: unknown) {
-        console.error('Error adding custom type:', err);
-        return {
-          success: false,
-          error: err instanceof Error ? err : new Error(String(err)),
-        };
-      }
-    },
-    [user, loadCustomTypes]
-  );
-
-  const removeCustomType = useCallback(
-    async (name: string) => {
-      const trimmed = name.trim();
-      if (!trimmed) {
-        return { success: false, error: new Error('Empty type name') };
-      }
-      if (!user) {
-        return { success: false, error: new Error('User not authenticated') };
-      }
-
-      if (user.id === 'guest') {
-        setCustomTypes((prev) => {
-          const next = prev.filter((n) => n !== trimmed);
-          writeCustomTypesToLocal(next);
-          return next;
-        });
-        return { success: true };
-      }
-
-      try {
-        const { error } = await supabase
-          .from('custom_types')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('name', trimmed);
-        if (error) throw error;
-        await loadCustomTypes();
-        return { success: true };
-      } catch (err: unknown) {
-        console.error('Error removing custom type:', err);
-        return {
-          success: false,
-          error: err instanceof Error ? err : new Error(String(err)),
-        };
-      }
-    },
-    [user, loadCustomTypes]
-  );
-
-  const addTransaction = useCallback(async (transaction: Transaction) => {
-    if (!user) return { success: false, error: new Error('User not authenticated') };
-
-    if (user.id === 'guest') {
-      setIsProcessing(true);
-      try {
-        const snap = readGuestSnapshot() ?? { friends: [], transactions: [] };
-        const nextTxs = [...snap.transactions, transaction];
-        writeGuestSnapshot({ friends: snap.friends, transactions: nextTxs });
-        setFriends(buildGuestFriendsList(snap.friends, nextTxs));
-        setTransactions(nextTxs);
-        return { success: true };
-      } finally {
-        setIsProcessing(false);
-      }
-    }
-
-    setIsProcessing(true);
-    try {
-      const dbTransaction = toDbTransaction(transaction, user.id);
-
-      const { error } = await supabase
-        .from('transactions')
-        .upsert(dbTransaction, { onConflict: 'id' });
-
-      if (error) throw error;
-
-      // Optimistic update handled by real-time subscription or manual refresh
-      await loadData();
-      return { success: true };
-    } catch (err: unknown) {
-      console.error('Error adding transaction:', err);
-      return { success: false, error: err instanceof Error ? err : new Error(String(err) || 'Failed to add transaction') };
-    } finally {
-      setIsProcessing(false);
-    }
   }, [user, loadData]);
 
-  const updateTransaction = useCallback(async (transaction: Transaction) => {
-    if (!user) return { success: false, error: new Error('User not authenticated') };
-
-    if (user.id === 'guest') {
-      setIsProcessing(true);
-      try {
-        const snap = readGuestSnapshot();
-        if (!snap) {
-          return { success: false, error: new Error('No guest data') };
-        }
-        const idx = snap.transactions.findIndex((t) => t.id === transaction.id);
-        if (idx === -1) {
-          return { success: false, error: new Error('Transaction not found') };
-        }
-        const nextTxs = [...snap.transactions];
-        nextTxs[idx] = transaction;
-        writeGuestSnapshot({ friends: snap.friends, transactions: nextTxs });
-        setFriends(buildGuestFriendsList(snap.friends, nextTxs));
-        setTransactions(nextTxs);
-        return { success: true };
-      } finally {
-        setIsProcessing(false);
-      }
-    }
-
-    setIsProcessing(true);
-    try {
-      const dbTransaction = toDbTransaction(transaction, user.id);
-
-      const { error } = await supabase
-        .from('transactions')
-        .upsert(dbTransaction, { onConflict: 'id' });
-
-      if (error) throw error;
-
-      await loadData();
-      return { success: true };
-    } catch (err: unknown) {
-      console.error('Error updating transaction:', err);
-      return { success: false, error: err instanceof Error ? err : new Error(String(err) || 'Failed to update transaction') };
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [user, loadData]);
-
-  const updateFriend = useCallback(async (friendId: string, updates: Partial<Friend>) => {
-    if (!user) return { success: false, error: new Error('User not authenticated') };
-
-    if (user.id === 'guest') {
-      setIsProcessing(true);
-      try {
-        const snap = readGuestSnapshot();
-        if (!snap) {
-          return { success: false, error: new Error('No guest data') };
-        }
-        const idx = snap.friends.findIndex((f) => f.id === friendId);
-        if (idx === -1) {
-          return { success: false, error: new Error('Friend not found') };
-        }
-        const nextBase = [...snap.friends];
-        nextBase[idx] = {
-          ...nextBase[idx],
-          ...(updates.name !== undefined ? { name: updates.name } : {}),
-          ...(updates.avatar !== undefined ? { avatar: updates.avatar } : {}),
-        };
-        writeGuestSnapshot({ friends: nextBase, transactions: snap.transactions });
-        setFriends(buildGuestFriendsList(nextBase, snap.transactions));
-        return { success: true };
-      } finally {
-        setIsProcessing(false);
-      }
-    }
-
-    setIsProcessing(true);
-    try {
-      const dbUpdates: { name?: string; avatar?: string } = {};
-      if (updates.name !== undefined) dbUpdates.name = updates.name;
-      if (updates.avatar !== undefined) dbUpdates.avatar = updates.avatar;
-
-      const { error } = await supabase
-        .from('friends')
-        .update(dbUpdates)
-        .eq('id', friendId)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-
-      await loadData();
-      return { success: true };
-    } catch (err: unknown) {
-      console.error('Error updating friend:', err);
-      return { success: false, error: err instanceof Error ? err : new Error(String(err) || 'Failed to update friend') };
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [user, loadData]);
-
-  const deleteTransaction = useCallback(async (transactionId: string) => {
-    if (!user) return { success: false, error: new Error('User not authenticated') };
-
-    if (user.id === 'guest') {
-      setIsProcessing(true);
-      try {
-        const snap = readGuestSnapshot();
-        if (!snap) {
-          return { success: false, error: new Error('No guest data') };
-        }
-        const nextTxs = snap.transactions.filter((t) => t.id !== transactionId);
-        writeGuestSnapshot({ friends: snap.friends, transactions: nextTxs });
-        setFriends(buildGuestFriendsList(snap.friends, nextTxs));
-        setTransactions(nextTxs);
-        return { success: true };
-      } finally {
-        setIsProcessing(false);
-      }
-    }
-
-    setIsProcessing(true);
-    try {
-      const { error } = await supabase
-        .from('transactions')
-        .delete()
-        .eq('id', transactionId)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-
-      await loadData();
-      return { success: true };
-    } catch (err: unknown) {
-      console.error('Error deleting transaction:', err);
-      return { success: false, error: err instanceof Error ? err : new Error(String(err) || 'Failed to delete transaction') };
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [user, loadData]);
-
-  const addFriend = useCallback(async (friendData: Omit<Friend, 'id' | 'balance' | 'lastActivity' | 'status'>) => {
-    if (!user) return { success: false, error: new Error('User not authenticated') };
-
-    if (user.id === 'guest') {
-      setIsProcessing(true);
-      try {
-        const snap = readGuestSnapshot() ?? { friends: [], transactions: [] };
-        const newFriend: GuestPersistedFriend = {
-          id: crypto.randomUUID(),
-          name: friendData.name,
-          avatar: friendData.avatar || '',
-        };
-        const nextFriends = [...snap.friends, newFriend];
-        writeGuestSnapshot({ friends: nextFriends, transactions: snap.transactions });
-        setFriends(buildGuestFriendsList(nextFriends, snap.transactions));
-        setTransactions(snap.transactions);
-        return { success: true };
-      } finally {
-        setIsProcessing(false);
-      }
-    }
-
-    setIsProcessing(true);
-    try {
-      const dbFriend = {
-        user_id: user.id,
-        name: friendData.name,
-        avatar: friendData.avatar || null,
+  const friends = useMemo<Friend[]>(() => {
+    const balances = friendBalancesMap(entries);
+    return friendRows.map((f) => {
+      const balance = balances.get(f.id) ?? 0;
+      return {
+        id: f.id, user_id: f.user_id, name: f.name, avatar: f.avatar || '', balance,
+        lastActivity: getLastActivity(f.id, entries),
+        status: Math.abs(balance) < 0.01 ? 'settled' : 'active',
       };
+    });
+  }, [friendRows, entries]);
 
-      const { error } = await supabase
-        .from('friends')
-        .insert(dbFriend);
+  const transactions = useMemo(() => entriesToTransactions(entries, categories), [entries, categories]);
 
-      if (error) throw error;
-
-      await loadData();
-      return { success: true };
-    } catch (err: unknown) {
-      console.error('Error adding friend:', err);
-      return { success: false, error: err instanceof Error ? err : new Error(String(err) || 'Failed to add friend') };
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [user, loadData]);
-
-  const deleteFriend = useCallback(async (friendId: string) => {
-    if (!user) return { success: false, error: new Error('User not authenticated') };
-
-    if (user.id === 'guest') {
+  /** Run a write for the signed-in user, then reload. Never throws. */
+  const write = useCallback(
+    async <T extends object = object>(label: string, fn: (uid: string) => Promise<T | void>): Promise<Result & T> => {
+      if (!user) return { success: false, error: new Error('User not authenticated') } as Result & T;
       setIsProcessing(true);
       try {
-        const snap = readGuestSnapshot();
-        if (!snap) {
-          return { success: false, error: new Error('No guest data') };
-        }
-        const nextFriends = snap.friends.filter((f) => f.id !== friendId);
-        const nextTxs = snap.transactions.filter((t) => !transactionInvolvesFriend(t, friendId));
-        writeGuestSnapshot({ friends: nextFriends, transactions: nextTxs });
-        setFriends(buildGuestFriendsList(nextFriends, nextTxs));
-        setTransactions(nextTxs);
-        return { success: true };
+        const extra = await fn(user.id);
+        await loadData();
+        return { success: true, ...(extra ?? {}) } as Result & T;
+      } catch (err: unknown) {
+        console.error(`Error ${label}:`, err);
+        return { success: false, error: toError(err, `Failed ${label}`) } as Result & T;
       } finally {
         setIsProcessing(false);
       }
-    }
+    },
+    [user, loadData]
+  );
 
-    setIsProcessing(true);
-    try {
-      // Transactions deleted via DB cascade or manually
-      const { error: txError } = await supabase
-        .from('transactions')
-        .delete()
-        .or(`payer_id.eq.${friendId},friend_id.eq.${friendId}`)
-        .eq('user_id', user.id);
+  const ok = ({ error }: { error: { message: string } | null }) => {
+    if (error) throw error;
+  };
 
-      if (txError) throw txError;
-
-      const { error } = await supabase
-        .from('friends')
-        .delete()
-        .eq('id', friendId)
-        .eq('user_id', user.id);
-
+  // ---- Entries ----
+  const saveEntry = useCallback(
+    async (input: EntryInput): Promise<string> => {
+      const { data, error } = await supabase.rpc('save_entry', {
+        p_entry: entryPayload(input),
+        p_shares: (input.shares ?? []).map((s) => ({ friend_id: s.friendId, amount: s.amount })),
+      });
       if (error) throw error;
+      return data as string;
+    },
+    []
+  );
 
-      await loadData();
-      return { success: true };
-    } catch (err: unknown) {
-      console.error('Error deleting friend:', err);
-      return { success: false, error: err instanceof Error ? err : new Error(String(err) || 'Failed to delete friend') };
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [user, loadData]);
+  const addEntry = useCallback((input: EntryInput) => write('adding entry', async () => ({ id: await saveEntry(input) })), [write, saveEntry]);
+  const updateEntry = useCallback((entry: Entry) => write('updating entry', async () => { await saveEntry(entry); }), [write, saveEntry]);
+  const deleteEntry = useCallback(
+    (id: string) => write('deleting entry', async (uid) => ok(await supabase.from('entries').delete().eq('id', id).eq('user_id', uid))),
+    [write]
+  );
 
-  const getFriendById = useCallback((friendId: string): Friend | undefined => {
-    return friends.find(f => f.id === friendId);
-  }, [friends]);
+  // ---- Accounts ----
+  const addAccount = useCallback<AppContextType['addAccount']>(
+    (input) => write('adding account', async (uid) => {
+      const { data, error } = await supabase.from('accounts')
+        .insert({ user_id: uid, name: input.name.trim(), currency: input.currency ?? 'HKD', sort: input.sort ?? 0 })
+        .select('id').single();
+      if (error) throw error;
+      return { id: data.id as string };
+    }),
+    [write]
+  );
+  const updateAccount = useCallback<AppContextType['updateAccount']>(
+    (id, u) => write('updating account', async (uid) => ok(await supabase.from('accounts')
+      .update({ ...(u.name !== undefined && { name: u.name.trim() }), ...(u.currency !== undefined && { currency: u.currency }),
+        ...(u.archived !== undefined && { archived: u.archived }), ...(u.sort !== undefined && { sort: u.sort }) })
+      .eq('id', id).eq('user_id', uid))),
+    [write]
+  );
+  const deleteAccount = useCallback(
+    (id: string) => write('deleting account', async (uid) => ok(await supabase.from('accounts').delete().eq('id', id).eq('user_id', uid))),
+    [write]
+  );
 
-  const value = useMemo(() => ({
-    friends,
-    transactions,
-    loading,
-    error,
-    refetch: loadData,
-    addTransaction,
-    updateTransaction,
-    updateFriend,
-    deleteTransaction,
-    addFriend,
-    deleteFriend,
-    getFriendById,
-    isProcessing,
-    customTypes,
-    addCustomType,
-    removeCustomType,
+  // ---- Categories ----
+  const addCategory = useCallback<AppContextType['addCategory']>(
+    (input) => write('adding category', async (uid) => {
+      const { data, error } = await supabase.from('categories')
+        .insert({ user_id: uid, name: input.name.trim(), kind: input.kind, icon: input.icon ?? null, color: input.color ?? null, sort: input.sort ?? 0 })
+        .select('id').single();
+      if (error) throw error;
+      return { id: data.id as string };
+    }),
+    [write]
+  );
+  const updateCategory = useCallback<AppContextType['updateCategory']>(
+    (id, u) => write('updating category', async (uid) => ok(await supabase.from('categories')
+      .update({ ...(u.name !== undefined && { name: u.name.trim() }), ...(u.kind !== undefined && { kind: u.kind }),
+        ...('icon' in u && { icon: u.icon ?? null }), ...('color' in u && { color: u.color ?? null }),
+        ...(u.archived !== undefined && { archived: u.archived }), ...(u.sort !== undefined && { sort: u.sort }) })
+      .eq('id', id).eq('user_id', uid))),
+    [write]
+  );
+  const deleteCategory = useCallback(
+    (id: string) => write('deleting category', async (uid) => ok(await supabase.from('categories').delete().eq('id', id).eq('user_id', uid))),
+    [write]
+  );
+
+  // ---- Subscriptions ----
+  const addSubscription = useCallback<AppContextType['addSubscription']>(
+    (input) => write('adding subscription', async (uid) => {
+      const { data, error } = await supabase.from('subscriptions')
+        .insert({ user_id: uid, ...subscriptionRow({ currency: 'HKD', fxRate: 1, active: true, ...input }) })
+        .select('id').single();
+      if (error) throw error;
+      return { id: data.id as string };
+    }),
+    [write]
+  );
+  const updateSubscription = useCallback<AppContextType['updateSubscription']>(
+    (id, u) => write('updating subscription', async (uid) =>
+      ok(await supabase.from('subscriptions').update(subscriptionRow(u)).eq('id', id).eq('user_id', uid))),
+    [write]
+  );
+  const deleteSubscription = useCallback(
+    (id: string) => write('deleting subscription', async (uid) => ok(await supabase.from('subscriptions').delete().eq('id', id).eq('user_id', uid))),
+    [write]
+  );
+
+  // ---- Friends ----
+  const addFriend = useCallback<AppContextType['addFriend']>(
+    (f) => write('adding friend', async (uid) => ok(await supabase.from('friends').insert({ user_id: uid, name: f.name, avatar: f.avatar || null }))),
+    [write]
+  );
+  const updateFriend = useCallback<AppContextType['updateFriend']>(
+    (friendId, updates) => write('updating friend', async (uid) => {
+      const row: { name?: string; avatar?: string } = {};
+      if (updates.name !== undefined) row.name = updates.name;
+      if (updates.avatar !== undefined) row.avatar = updates.avatar;
+      ok(await supabase.from('friends').update(row).eq('id', friendId).eq('user_id', uid));
+    }),
+    [write]
+  );
+  const deleteFriend = useCallback(
+    (friendId: string) => write('deleting friend', async (uid) => {
+      // Receivable-only entries (no account) exist just for this friend's share; drop them so
+      // they don't turn into my own expense once the share cascades away.
+      const orphaned = entries
+        .filter((e) => e.kind === 'expense' && !e.accountId && e.shares.length > 0 && e.shares.every((s) => s.friendId === friendId))
+        .map((e) => e.id);
+      if (orphaned.length) ok(await supabase.from('entries').delete().in('id', orphaned).eq('user_id', uid));
+      // Legacy table is kept until cutover; clear this friend's rows so re-running the migration can't resurrect them.
+      ok(await supabase.from('transactions').delete().eq('friend_id', friendId).eq('user_id', uid));
+      ok(await supabase.from('friends').delete().eq('id', friendId).eq('user_id', uid));
+    }),
+    [write, entries]
+  );
+  const getFriendById = useCallback((friendId: string) => friends.find((f) => f.id === friendId), [friends]);
+
+  // ---- Legacy friend-ledger API (old screens) ----
+  const categoryIdFor = useCallback(
+    async (name: string, uid: string): Promise<string | undefined> => {
+      const existing = categories.find((c) => c.kind === 'expense' && c.name === name);
+      if (existing || !name) return existing?.id;
+      const { data, error } = await supabase.from('categories').insert({ user_id: uid, name, kind: 'expense' }).select('id').single();
+      if (error) throw error;
+      return data.id as string;
+    },
+    [categories]
+  );
+
+  const addTransaction = useCallback(
+    (tx: Transaction) => write('adding transaction', async (uid) => {
+      const input = transactionToEntryInput(tx, await categoryIdFor(tx.type, uid));
+      if (!input) throw new Error('Amount must be greater than zero');
+      await saveEntry(input);
+    }),
+    [write, saveEntry, categoryIdFor]
+  );
+
+  const updateTransaction = useCallback(
+    (tx: Transaction) => write('updating transaction', async (uid) => {
+      const id = tx.entryId ?? tx.id;
+      const old = entries.find((e) => e.id === id);
+      const categoryId = await categoryIdFor(tx.type, uid);
+      // Plain ledger rows (no account, ≤1 share) are rebuilt from the row; richer entries keep their
+      // account/split and only take the edited text, date and this friend's amount.
+      if (!old || (!old.accountId && old.shares.length <= 1)) {
+        const input = transactionToEntryInput({ ...tx, entryId: id }, categoryId);
+        if (!input) throw new Error('Amount must be greater than zero');
+        return void (await saveEntry(input));
+      }
+      const next: Entry = { ...old, title: tx.title, note: tx.note, occurredAt: tx.date };
+      if (old.kind === 'expense') {
+        const oldShare = old.shares.find((s) => s.friendId === tx.friendId)?.amount ?? 0;
+        next.categoryId = categoryId ?? old.categoryId;
+        next.shares = old.shares.map((s) => (s.friendId === tx.friendId ? { ...s, amount: tx.amount } : s));
+        next.amount = Math.round((old.amount + tx.amount - oldShare) * 100) / 100;
+      } else {
+        next.amount = tx.amount;
+      }
+      await saveEntry(next);
+    }),
+    [write, saveEntry, categoryIdFor, entries]
+  );
+
+  const deleteTransaction = useCallback(
+    (txId: string) => {
+      const tx = transactions.find((t) => t.id === txId);
+      const entryId = tx?.entryId ?? txId;
+      const entry = entries.find((e) => e.id === entryId);
+      // A split row only removes that friend's share; everything else deletes the whole entry.
+      if (tx && entry && entry.kind === 'expense' && entry.shares.length > 1) {
+        const shares = entry.shares.filter((s) => s.friendId !== tx.friendId);
+        return write('deleting transaction', async () => { await saveEntry({ ...entry, shares }); });
+      }
+      return deleteEntry(entryId);
+    },
+    [transactions, entries, write, saveEntry, deleteEntry]
+  );
+
+  const customTypes = useMemo(() => categories.filter((c) => c.kind === 'expense' && !c.archived).map((c) => c.name), [categories]);
+  const addCustomType = useCallback(
+    async (name: string): Promise<Result> => {
+      const trimmed = name.trim();
+      if (!trimmed) return { success: false, error: new Error('Empty type name') };
+      if (customTypes.includes(trimmed)) return { success: true };
+      return addCategory({ name: trimmed, kind: 'expense' });
+    },
+    [customTypes, addCategory]
+  );
+  const removeCustomType = useCallback(
+    async (name: string): Promise<Result> => {
+      const c = categories.find((x) => x.kind === 'expense' && x.name === name.trim());
+      return c ? deleteCategory(c.id) : { success: true };
+    },
+    [categories, deleteCategory]
+  );
+
+  const value = useMemo<AppContextType>(() => ({
+    friends, accounts, categories, entries, subscriptions, loading, error, isProcessing, refetch: loadData,
+    addEntry, updateEntry, deleteEntry,
+    addAccount, updateAccount, deleteAccount,
+    addCategory, updateCategory, deleteCategory,
+    addSubscription, updateSubscription, deleteSubscription,
+    addFriend, updateFriend, deleteFriend, getFriendById,
+    transactions, addTransaction, updateTransaction, deleteTransaction,
+    customTypes, addCustomType, removeCustomType,
   }), [
-    friends,
-    transactions,
-    loading,
-    error,
-    loadData,
-    addTransaction,
-    updateTransaction,
-    updateFriend,
-    deleteTransaction,
-    addFriend,
-    deleteFriend,
-    getFriendById,
-    isProcessing,
-    customTypes,
-    addCustomType,
-    removeCustomType,
+    friends, accounts, categories, entries, subscriptions, loading, error, isProcessing, loadData,
+    addEntry, updateEntry, deleteEntry, addAccount, updateAccount, deleteAccount,
+    addCategory, updateCategory, deleteCategory, addSubscription, updateSubscription, deleteSubscription,
+    addFriend, updateFriend, deleteFriend, getFriendById,
+    transactions, addTransaction, updateTransaction, deleteTransaction, customTypes, addCustomType, removeCustomType,
   ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

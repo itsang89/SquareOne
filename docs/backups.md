@@ -25,10 +25,14 @@ gh run download -n squareone-db-backup          # or download the artifact in th
 openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass env:BACKUP_PASSPHRASE \
   -in squareone-2026-11-20.dump.enc -out squareone.dump
 # Into an EMPTY database (a new Supabase project, or the local demo):
-pg_restore --no-owner --no-privileges --dbname "$TARGET_DB_URL" squareone.dump
+pg_restore --no-owner --dbname "$TARGET_DB_URL" squareone.dump
+# Before exposing the API on the restored database, assert the privilege matrix (exits non-zero on any mismatch):
+psql "$TARGET_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/privileges.sql
 ```
 
-`schema "public" already exists` is harmless; everything else restores. Verified 2026-11-20 against the local demo (dump → encrypt → decrypt → restore: entries and users match). Restoring into a fresh *hosted* Supabase project is untested: its `auth` schema already exists, so expect extra "already exists" errors. Try `pg_restore --clean --if-exists` there, and check row counts afterwards.
+The dump keeps privileges (`GRANT`/`REVOKE`), on purpose: the agent functions are executable only by `service_role`, the internal `SECURITY DEFINER` helpers by nobody, and the legacy tables are read-only. A dump without them restores a database where stock PostgreSQL defaults make those functions callable by `PUBLIC`. The roles `anon`, `authenticated` and `service_role` must exist on the target (they do on any Supabase project). Restore into a throwaway database first and run `privileges.sql` there; if it fails, re-apply the migrations' `grant`/`revoke` lines.
+
+`schema "public" already exists` is harmless; everything else restores. Verified 2026-11-20 against the local demo, before the dump started keeping privileges (dump → encrypt → decrypt → restore: entries and users match). Restoring into a fresh *hosted* Supabase project is untested: its `auth` schema already exists, so expect extra "already exists" errors. Try `pg_restore --clean --if-exists` there, and check row counts afterwards.
 
 Delete `squareone.dump` after use. It is unencrypted.
 
@@ -37,7 +41,7 @@ Delete `squareone.dump` after use. It is unencrypted.
 **Profile → Import from Money+** takes the Money+ CSV export, shows a preview (counts, resulting account balances, categories to create, date range), then imports in batches of 500 rows.
 
 - Expense/Income → entries; missing categories are created with the right kind; title = category; Money+ note → `note`. Transfer → transfer between accounts. Accounts are created by name; `To Be Received` and `futu` are created archived. Timestamps are HKT (+08:00).
-- Safe to re-run: each row's `request_id` is a UUID hashed from its content and position, so a second import of the same file adds 0 rows.
+- Safe to re-run: each row's `request_id` is a UUID hashed from its content (date, category, amount, kind, accounts, currency, note) plus an occurrence counter for byte-identical rows. Row position is not used, so a second import of the same file adds 0 rows, and a newer overlapping export adds only the new rows. Accounts and categories are found or created server-side (`import_ensure_targets`), case-insensitively and under a per-user lock; with duplicate account names it picks the active, oldest one.
 - Zero-amount bills (the real export has 2) are skipped; the database requires `amount > 0` and they move no money.
 - Reconciliation against the real export on the local demo: Bank 60,878.54, Octopus 360.70, To Be Received 0, futu 20,000; 1,544 expenses, 417 income, 102 transfers (the expected 1,545/418 minus the two zero rows).
 

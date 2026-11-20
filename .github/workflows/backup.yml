@@ -30,8 +30,9 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
-          # public (app data) + auth (users; entries.user_id references them). No owners/grants so it restores anywhere.
-          pg_dump "$SUPABASE_DB_URL" --format=custom --no-owner --no-privileges --schema=public --schema=auth \
+          # public (app data) + auth (users; entries.user_id references them). No owners, but KEEP privileges (GRANT/REVOKE):
+          # the app's RPC security (service_role-only agent functions, frozen legacy tables) lives in them.
+          pg_dump "$SUPABASE_DB_URL" --format=custom --no-owner --schema=public --schema=auth \
             | openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -pass env:BACKUP_PASSPHRASE \
             > "squareone-$(date -u +%Y-%m-%d).dump.enc"
           test "$(stat -c %s squareone-*.dump.enc)" -gt 1024

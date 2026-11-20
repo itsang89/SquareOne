@@ -256,7 +256,7 @@ function historyCsv(items) {
   ])];
   return rows.map((row) => row.map((value) => {
     const text = String(value ?? '');
-    const safeText = /^[\s]*[=+@-]/.test(text) ? "'" + text : text;
+    const safeText = /^[=+\-@\t\r]/.test(text) ? "'" + text : text; // spreadsheet formula guard (same rule as utils/csv.ts)
     return `"${safeText.replaceAll('"', '""')}"`;
   }).join(',')).join('\n') + '\n';
 }

@@ -15,6 +15,7 @@ import { PRESET_AVATARS } from '../constants';
 import { useToast } from '../components/ToastContext';
 import { springs, fadeIn, staggerContainer, staggerItem, bounceIn, moonRotate, sunRotateScale, monitorPulse } from '../utils/animations';
 import { useAnimations } from '../hooks/useAnimations';
+import { toCsv } from '../utils/csv';
 import { applyTheme, getStoredTheme, Theme } from '../utils/theme';
 
 export const Profile: React.FC = () => {
@@ -77,10 +78,7 @@ export const Profile: React.FC = () => {
         e.note || '',
       ]);
 
-      const csvContent = [
-        headers.join(','),
-        ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
-      ].join('\n');
+      const csvContent = toCsv([headers, ...rows]);
 
       const blob = new Blob([csvContent], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
@@ -127,20 +125,12 @@ export const Profile: React.FC = () => {
 
     setIsUpdating(true);
     try {
-      for (const table of ['entries', 'transactions']) {
-        const { error: delError } = await supabase.from(table).delete().eq('user_id', user.id);
-        if (delError) throw delError;
-      }
-
-      const { error: friendsError } = await supabase
-        .from('friends')
-        .delete()
-        .eq('user_id', user.id);
-
-      if (friendsError) throw friendsError;
+      // One server transaction: entries, subscriptions, friends and the frozen legacy rows.
+      const { error: clearError } = await supabase.rpc('clear_my_data');
+      if (clearError) throw clearError;
 
       await refetch();
-      success('Data cleared', 'All your entries and friends have been removed.');
+      success('Data cleared', 'Entries, subscriptions and friends have been removed.');
       setShowClearConfirm(false);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

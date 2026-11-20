@@ -48,6 +48,7 @@ export function AgentAccess() {
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [refresh, setRefresh] = useState(0);
+  const [allActivity, setAllActivity] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -138,7 +139,48 @@ export function AgentAccess() {
   }
 
   const labels = new Map(tokens?.map(({ id, label }) => [id, label]));
+  const isLive = (t: AgentToken) => !t.revoked_at && Date.parse(t.refresh_expires_at ?? t.expires_at) > Date.now();
+  const live = tokens?.filter(isLive) ?? [];
+  const inactive = tokens?.filter((t) => !isLive(t)) ?? [];
   const instructions = `Connect to SquareOne. Run node cli/squareone.mjs connect --url ${window.location.origin} --name "My expense agent" and give me the browser approval link.`;
+
+  const tokenRow = (token: AgentToken) => {
+    const connected = !!token.refresh_expires_at;
+    const expires = token.refresh_expires_at ?? token.expires_at;
+    const expired = Date.parse(expires) <= Date.now();
+    return (
+      <li key={token.id} className="py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0 break-words">
+            <p className="font-bold">{token.label}</p>
+            <p className="text-sm">{connected ? 'Browser connection' : 'Manual token'} ·{' '}
+              {token.revoked_at ? 'Revoked' : expired ? 'Expired' :
+                connected ? 'Active' : `Expires ${new Date(expires).toLocaleDateString()}`}</p>
+            <p className="text-xs text-gray-600 dark:text-zinc-400">{token.scopes.length >= Object.keys(permissionLabels).length ? 'All permissions' : token.scopes.map((scope) => permissionLabels[scope]).join(', ')}</p>
+          </div>
+          {!token.revoked_at && !expired && (
+            <div className="flex flex-wrap gap-2">
+              <NeoButton type="button" variant="neutral" aria-label={`Edit permissions for ${token.label}`} disabled={!!pending}
+                onClick={() => setEditing({ id: token.id, scopes: token.scopes })}>Permissions</NeoButton>
+              <NeoButton type="button" variant="neutral" aria-label={`Revoke ${token.label}`} disabled={!!pending}
+                onClick={() => void revokeToken(token.id)}>{connected ? 'Disconnect' : 'Revoke'}</NeoButton>
+            </div>
+          )}
+        </div>
+        {editing?.id === token.id && (
+          <div className="mt-4">
+            <AgentPermissions value={editing.scopes} onChange={(value) => setEditing({ id: token.id, scopes: value })} disabled={!!pending} />
+            <div className="flex flex-wrap gap-3">
+              <NeoButton type="button" disabled={!editing.scopes.length || !!pending} onClick={() => void savePermissions()}>
+                Save permissions
+              </NeoButton>
+              <NeoButton type="button" variant="neutral" disabled={!!pending} onClick={() => setEditing(null)}>Cancel</NeoButton>
+            </div>
+          </div>
+        )}
+      </li>
+    );
+  };
 
   return (
     <div className="min-h-screen pb-24 bg-neo-bg dark:bg-zinc-950 font-display dark:text-zinc-100">
@@ -154,73 +196,7 @@ export function AgentAccess() {
           <p className="mb-3 break-words border-2 border-black/20 dark:border-white/20 p-3 text-sm">{instructions}</p>
           <NeoButton type="button" onClick={() => void copy(instructions, 'Connection instructions copied.')}>Copy instructions</NeoButton>
           {status && <p role="status" className="mt-3 text-sm">{status}</p>}
-          {error && <p role="alert" className="mt-3 text-sm text-red-700 dark:text-red-300">{error}</p>}
-        </NeoCard>
-
-        <NeoCard>
-          <h2 className="font-black uppercase mb-2">Connected agents & tokens</h2>
-          {tokens === null && <p className="text-sm">{error ? 'Agent access unavailable.' : 'Loading agents…'}</p>}
-          {tokens?.length === 0 && <p className="text-sm">No agents connected yet.</p>}
-          <ul className="divide-y divide-black/20 dark:divide-white/20">
-            {tokens?.map((token) => {
-              const connected = !!token.refresh_expires_at;
-              const expires = token.refresh_expires_at ?? token.expires_at;
-              const expired = Date.parse(expires) <= Date.now();
-              return (
-                <li key={token.id} className="py-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="min-w-0 break-words">
-                      <p className="font-bold">{token.label}</p>
-                      <p className="text-sm">{connected ? 'Browser connection' : 'Manual token'} ·{' '}
-                        {token.revoked_at ? 'Revoked' : expired ? 'Expired' :
-                          connected ? 'Active' : `Expires ${new Date(expires).toLocaleDateString()}`}</p>
-                      <p className="text-sm">{token.scopes.map((scope) => permissionLabels[scope]).join(', ')}</p>
-                    </div>
-                    {!token.revoked_at && !expired && (
-                      <div className="flex flex-wrap gap-2">
-                        <NeoButton type="button" variant="neutral" aria-label={`Edit permissions for ${token.label}`} disabled={!!pending}
-                          onClick={() => setEditing({ id: token.id, scopes: token.scopes })}>Permissions</NeoButton>
-                        <NeoButton type="button" variant="neutral" aria-label={`Revoke ${token.label}`} disabled={!!pending}
-                          onClick={() => void revokeToken(token.id)}>{connected ? 'Disconnect' : 'Revoke'}</NeoButton>
-                      </div>
-                    )}
-                  </div>
-                  {editing?.id === token.id && (
-                    <div className="mt-4">
-                      <AgentPermissions value={editing.scopes} onChange={(value) => setEditing({ id: token.id, scopes: value })} disabled={!!pending} />
-                      <div className="flex flex-wrap gap-3">
-                        <NeoButton type="button" disabled={!editing.scopes.length || !!pending} onClick={() => void savePermissions()}>
-                          Save permissions
-                        </NeoButton>
-                        <NeoButton type="button" variant="neutral" disabled={!!pending} onClick={() => setEditing(null)}>Cancel</NeoButton>
-                      </div>
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </NeoCard>
-
-        <NeoCard>
-          <div className="flex items-center justify-between gap-3 mb-2">
-            <h2 className="font-black uppercase">Recent agent activity</h2>
-            <button type="button" className="text-sm font-bold underline" disabled={!!pending} onClick={() => {
-              setError('');
-              setTokens(null);
-              setRefresh((value) => value + 1);
-            }}>Refresh</button>
-          </div>
-          {tokens !== null && edits.length === 0 && <p className="text-sm">No agent activity yet.</p>}
-          <ul className="divide-y divide-black/20 dark:divide-white/20">
-            {edits.map((edit) => (
-              <li key={edit.id} className="py-2 text-sm">
-                <p className="break-words"><strong>{labels.get(edit.token_id) ?? 'Agent'}</strong>{' '}
-                  {activityLabels[edit.operation] ?? 'completed an action'} on {new Date(edit.created_at).toLocaleDateString()}.</p>
-                <p className="break-all text-xs font-mono">{edit.transaction_id ?? edit.resource_id}</p>
-              </li>
-            ))}
-          </ul>
+          {error && <p role="alert" className="mt-3 text-sm text-neo-danger">{error}</p>}
         </NeoCard>
 
         <NeoCard>
@@ -246,6 +222,44 @@ export function AgentAccess() {
             )}
           </details>
         </NeoCard>
+
+        <NeoCard>
+          <h2 className="font-black uppercase mb-2">Connected agents & tokens</h2>
+          {tokens === null && <p className="text-sm">{error ? 'Agent access unavailable.' : 'Loading agents…'}</p>}
+          {tokens && live.length === 0 && <p className="text-sm">No active agents.</p>}
+          {live.length > 0 && <ul className="divide-y divide-black/20 dark:divide-white/20">{live.map(tokenRow)}</ul>}
+          {inactive.length > 0 && (
+            <details className="mt-3 border-t-2 border-black/10 dark:border-white/10 pt-3">
+              <summary className="cursor-pointer text-sm font-bold text-gray-600 dark:text-zinc-400">Revoked or expired ({inactive.length})</summary>
+              <ul className="divide-y divide-black/20 dark:divide-white/20">{inactive.map(tokenRow)}</ul>
+            </details>
+          )}
+        </NeoCard>
+
+        <NeoCard>
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <h2 className="font-black uppercase">Recent agent activity</h2>
+            <button type="button" className="text-sm font-bold underline" disabled={!!pending} onClick={() => {
+              setError('');
+              setTokens(null);
+              setRefresh((value) => value + 1);
+            }}>Refresh</button>
+          </div>
+          {tokens !== null && edits.length === 0 && <p className="text-sm">No agent activity yet.</p>}
+          <ul className="divide-y divide-black/20 dark:divide-white/20">
+            {(allActivity ? edits : edits.slice(0, 5)).map((edit) => (
+              <li key={edit.id} className="py-2 text-sm">
+                <p className="break-words"><strong>{labels.get(edit.token_id) ?? 'Agent'}</strong>{' '}
+                  {activityLabels[edit.operation] ?? 'completed an action'}</p>
+                <p className="text-xs text-gray-600 dark:text-zinc-400">{new Date(edit.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</p>
+              </li>
+            ))}
+          </ul>
+          {!allActivity && edits.length > 5 && (
+            <button type="button" className="mt-2 text-sm font-bold underline" onClick={() => setAllActivity(true)}>Show all ({edits.length})</button>
+          )}
+        </NeoCard>
+
       </main>
     </div>
   );

@@ -33,7 +33,7 @@ export const MonthSummary: React.FC = () => {
             </div>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-2 border-t-2 border-black dark:border-zinc-600 pt-3">
+        <div className="grid grid-cols-2 gap-2 border-t-2 border-black pt-3">
           <div><div className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-zinc-400">Income</div><div className="font-black text-neo-greenDark">{hkd(cur.income)}</div></div>
           <div><div className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-zinc-400">Income − spent</div><div className={`font-black ${cur.net < 0 ? 'text-neo-danger' : 'text-neo-greenDark'}`}>{hkd(cur.net, true)}</div></div>
         </div>

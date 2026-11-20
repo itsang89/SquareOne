@@ -67,7 +67,7 @@ LOG MONEY (kinds: expense | income | transfer | settlement; default expense)
   entries edit --id UUID [same fields] [--clear-note] [--no-split]
   entries delete --id UUID
   entries list [--from D] [--to D] [--kind K] [--category C] [--account A] [--friend F] [--search TEXT]
-               [--limit 20] [--offset N]       newest first; dates are inclusive, Hong Kong time
+               [--limit 20] [--offset N] [--tz Asia/Hong_Kong]   newest first; dates are inclusive, Hong Kong time unless --tz
 
   Names or UUIDs work for --account, --category, --friend (case-insensitive, unique partial match ok).
   Date defaults to now. Account defaults to your only account; otherwise name it ("--account none" = no account).
@@ -77,7 +77,7 @@ LOG MONEY (kinds: expense | income | transfer | settlement; default expense)
   Always --dry-run first if a name or split is ambiguous: prints the resolved entry, writes nothing.
 
 REPORTS
-  stats --month 2026-11 | --from D --to D   My spending/income (my share only) + by category, in HKD
+  stats --month 2026-11 | --from D --to D [--tz ZONE]   My spending/income (my share only) + by category, in HKD
   balances                                  Account balances, net worth, what friends owe me
   accounts list [--all]    categories list [--kind expense|income] [--all]    subscriptions list [--all]
   friends list              Friends with balances (positive = owes me)
@@ -289,6 +289,19 @@ async function main(args, env) {
     throw new Error('Provide at least one field to change.');
   }
   if (values.format && !['json', 'csv'].includes(values.format)) throw new Error('Use --format json or csv.');
+  // Catch bad dates here with a clear message instead of a vague server error.
+  for (const name of ['date', 'from', 'to', 'next-date']) {
+    const v = values[name];
+    if (v === undefined) continue;
+    const m = /^(\d{4})-(\d{2})-(\d{2})(T.*)?$/.exec(v.trim());
+    const d = m && new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    if (!m || d.getUTCMonth() !== +m[2] - 1 || d.getUTCDate() !== +m[3]) {
+      throw new Error(`--${name} "${v}" is not a real date. Use YYYY-MM-DD, e.g. --${name} 2026-11-21.`);
+    }
+  }
+  if (values.month !== undefined && !/^\d{4}-(0[1-9]|1[0-2])$/.test(values.month.trim())) {
+    throw new Error(`--month "${values.month}" is not valid. Use YYYY-MM, e.g. --month 2026-11.`);
+  }
   const dryRun = Boolean(values['dry-run']);
   // Writes get a request ID: yours, or a generated one that is echoed back so a retry can reuse it.
   const requestId = command.write && !dryRun ? values['request-id']?.trim() || randomUUID() : undefined;

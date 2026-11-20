@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { BackButton } from '../components/BackButton';
+import { DataLoadErrorBanner } from '../components/DataLoadErrorBanner';
 import { NeoButton } from '../components/NeoButton';
 import { NeoInput } from '../components/NeoInput';
 import { NeoModal } from '../components/NeoModal';
@@ -13,7 +14,7 @@ import { ICONS, TILE_COLORS as CATEGORY_COLORS } from '../utils/categoryStyle';
 import type { Category, CategoryKind } from '../types';
 
 export const Categories: React.FC = () => {
-  const { categories, entries, addCategory, updateCategory, isProcessing } = useAppContext();
+  const { categories, entries, loading, error, refetch, addCategory, updateCategory, isProcessing } = useAppContext();
   const { success, error: showError } = useToast();
   const [kind, setKind] = useState<CategoryKind>('expense');
   const [showArchived, setShowArchived] = useState(false);
@@ -50,6 +51,8 @@ export const Categories: React.FC = () => {
         <button type="button" onClick={() => open('new')} aria-label="Add category" className="w-11 h-11 bg-neo-yellow border-2 border-black shadow-neo-sm grid place-items-center"><Plus size={20} /></button>
       </header>
 
+      <DataLoadErrorBanner error={error} loading={loading} onRetry={refetch} />
+
       <main className="p-5 space-y-4">
         <div className="grid grid-cols-2 gap-2">
           <Chip active={kind === 'expense'} onClick={() => setKind('expense')} color="bg-neo-yellow" className="justify-center">Expense</Chip>
@@ -66,7 +69,7 @@ export const Categories: React.FC = () => {
               </button>
             </li>
           ))}
-          {list.length === 0 && <li className="p-6 text-center font-black uppercase text-gray-600">No categories</li>}
+          {!loading && list.length === 0 && <li className="p-6 text-center font-bold text-gray-600">No categories yet. Tap + to add one.</li>}
         </ul>
 
         {archivedCount > 0 && (

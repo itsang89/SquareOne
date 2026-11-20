@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Search, SlidersHorizontal } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from 'lucide-react';
 import { EntryRow } from '../components/EntryRow';
 import { DataLoadErrorBanner } from '../components/DataLoadErrorBanner';
 import { TransactionSkeleton } from '../components/LoadingSkeleton';
@@ -76,6 +76,18 @@ export const Ledger: React.FC = () => {
     return groups;
   }, [filtered, limit]);
 
+  const clearFilters = () => {
+    const next = new URLSearchParams(params);
+    ['q', 'kind', 'category', 'account', 'friend'].forEach((k) => next.delete(k));
+    setParams(next, { replace: true });
+  };
+  const activeChips = [
+    kind && { key: 'kind', label: KIND_LABEL[kind as EntryKind] ?? kind },
+    category && { key: 'category', label: categories.find((c) => c.id === category)?.name ?? 'Category' },
+    account && { key: 'account', label: accounts.find((a) => a.id === account)?.name ?? 'Account' },
+    friend && { key: 'friend', label: friends.find((f) => f.id === friend)?.name ?? 'Friend' },
+  ].filter(Boolean) as { key: string; label: string }[];
+
   const monthText = month === 'all' ? 'All time'
     : new Date(`${month}-01T12:00:00`).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 
@@ -84,12 +96,20 @@ export const Ledger: React.FC = () => {
       <header className="sticky top-0 z-20 bg-neo-bg/95 dark:bg-zinc-950/95 backdrop-blur-sm border-b-2 border-black px-5 pt-5 pb-3 space-y-3">
         <h1 className="text-3xl font-black uppercase leading-none dark:text-zinc-100">Ledger</h1>
 
-        <div className="flex items-center justify-between bg-white dark:bg-zinc-900 border-2 border-black shadow-neo-sm">
-          <button type="button" aria-label="Previous month" disabled={month === 'all'} onClick={() => set('month', shiftMonth(month, -1))} className="p-3 disabled:opacity-20 dark:text-zinc-100"><ChevronLeft size={20} /></button>
-          <button type="button" onClick={() => set('month', month === 'all' ? thisMonth() : 'all')} className="font-black uppercase text-sm dark:text-zinc-100" title="Toggle all time">
-            {monthText}
+        <div className="flex gap-2">
+          <div className="flex-1 flex items-center justify-between bg-white dark:bg-zinc-900 border-2 border-black shadow-neo-sm">
+            <button type="button" aria-label="Previous month" disabled={month === 'all'} onClick={() => set('month', shiftMonth(month, -1))} className="p-3 disabled:opacity-20 dark:text-zinc-100"><ChevronLeft size={20} /></button>
+            <span className="font-black uppercase text-sm dark:text-zinc-100" aria-live="polite">{monthText}</span>
+            <button type="button" aria-label="Next month" disabled={month === 'all' || month >= thisMonth()} onClick={() => set('month', shiftMonth(month, 1))} className="p-3 disabled:opacity-20 dark:text-zinc-100"><ChevronRight size={20} /></button>
+          </div>
+          <button
+            type="button"
+            aria-pressed={month === 'all'}
+            onClick={() => set('month', month === 'all' ? thisMonth() : 'all')}
+            className={`px-3 border-2 border-black font-bold text-sm shadow-neo-sm ${month === 'all' ? 'bg-neo-yellow text-black' : 'bg-white dark:bg-zinc-900 dark:text-zinc-100'}`}
+          >
+            All time
           </button>
-          <button type="button" aria-label="Next month" disabled={month === 'all'} onClick={() => set('month', shiftMonth(month, 1))} className="p-3 disabled:opacity-20 dark:text-zinc-100"><ChevronRight size={20} /></button>
         </div>
 
         <div className="flex gap-2">
@@ -109,10 +129,9 @@ export const Ledger: React.FC = () => {
             onClick={() => setShowFilters((v) => !v)}
             aria-label="Filters"
             aria-expanded={showFilters}
-            className={`relative w-11 border-2 border-black grid place-items-center ${filterCount ? 'bg-neo-yellow' : 'bg-white dark:bg-zinc-900 dark:text-zinc-100'}`}
+            className={`w-11 border-2 border-black grid place-items-center ${filterCount ? 'bg-neo-yellow' : 'bg-white dark:bg-zinc-900 dark:text-zinc-100'}`}
           >
             <SlidersHorizontal size={18} />
-            {filterCount > 0 && <span className="absolute -top-2 -right-2 bg-black text-white text-[10px] font-black w-5 h-5 rounded-full grid place-items-center">{filterCount}</span>}
           </button>
         </div>
 
@@ -137,11 +156,22 @@ export const Ledger: React.FC = () => {
           </div>
         )}
 
-        <p className="text-xs font-black uppercase tracking-wide dark:text-zinc-100">
-          <span className="dark:text-zinc-100">Spent {formatCurrency(totals.expense)}</span>
+        {activeChips.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {activeChips.map(({ key, label }) => (
+              <button key={key} type="button" onClick={() => set(key, '')} aria-label={`Remove filter ${label}`} className="flex items-center gap-1 pl-2.5 pr-1.5 py-1 bg-neo-yellow text-black border-2 border-black text-sm font-bold">
+                {label} <X size={14} aria-hidden />
+              </button>
+            ))}
+            <button type="button" onClick={clearFilters} className="px-2 py-1 text-sm font-bold underline dark:text-zinc-100">Clear all</button>
+          </div>
+        )}
+
+        <p className="text-sm font-bold tabular-nums dark:text-zinc-100">
+          <span>Spent {formatCurrency(totals.expense)}</span>
           <span className="mx-2 text-gray-600">·</span>
-          <span className="text-neo-greenDark">In {formatCurrency(totals.income)}</span>
-          <span className="ml-2 text-gray-600">{filtered.length} entries</span>
+          <span className="text-neo-greenDark">Income {formatCurrency(totals.income)}</span>
+          <span className="ml-2 font-medium text-gray-600">{filtered.length} entries</span>
         </p>
       </header>
 
@@ -151,7 +181,12 @@ export const Ledger: React.FC = () => {
         {loading ? (
           [1, 2, 3, 4].map((i) => <TransactionSkeleton key={i} />)
         ) : days.length === 0 ? (
-          <p className="text-center py-16 font-black uppercase text-gray-600 dark:text-zinc-500">Nothing here</p>
+          <div className="text-center py-16 space-y-3">
+            <p className="font-bold dark:text-zinc-100">{q || filterCount ? 'No entries match' : month === 'all' ? 'No entries yet' : `No entries in ${monthText}`}</p>
+            {(q || filterCount > 0) && (
+              <button type="button" onClick={clearFilters} className="px-4 py-2 bg-white dark:bg-zinc-900 dark:text-zinc-100 border-2 border-black shadow-neo-sm font-bold">Clear search and filters</button>
+            )}
+          </div>
         ) : (
           days.map(({ day, items }) => {
             const spent = items.reduce((s, e) => s + myExpense(e), 0);

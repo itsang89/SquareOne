@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Pause, Play, Plus } from 'lucide-react';
 import { BackButton } from '../components/BackButton';
+import { DataLoadErrorBanner } from '../components/DataLoadErrorBanner';
 import { NeoButton } from '../components/NeoButton';
 import { NeoInput } from '../components/NeoInput';
 import { NeoModal } from '../components/NeoModal';
@@ -16,7 +17,7 @@ import type { Cadence, Subscription } from '../types';
 const PER_MONTH: Record<Cadence, number> = { weekly: 52 / 12, monthly: 1, yearly: 1 / 12 };
 
 export const Subscriptions: React.FC = () => {
-  const { subscriptions, accounts, categories, entries, addSubscription, updateSubscription, deleteSubscription, isProcessing } = useAppContext();
+  const { subscriptions, accounts, categories, entries, loading, error, refetch, addSubscription, updateSubscription, deleteSubscription, isProcessing } = useAppContext();
   const { success, error: showError } = useToast();
   const [editing, setEditing] = useState<Subscription | 'new' | null>(null);
   const [f, setF] = useState({ title: '', amount: '', categoryId: '', accountId: '', cadence: 'monthly' as Cadence, nextDate: '' });
@@ -62,10 +63,12 @@ export const Subscriptions: React.FC = () => {
         <button type="button" onClick={() => open('new')} aria-label="Add subscription" className="w-11 h-11 bg-neo-yellow border-2 border-black shadow-neo-sm grid place-items-center"><Plus size={20} /></button>
       </header>
 
+      <DataLoadErrorBanner error={error} loading={loading} onRetry={refetch} />
+
       <main className="p-5 space-y-4">
         <div className="bg-white dark:bg-zinc-900 dark:text-zinc-100 border-2 border-black shadow-neo p-4">
           <p className="text-xs font-bold uppercase tracking-widest opacity-70">Per month</p>
-          <p className="text-3xl font-black tracking-tighter">{formatCurrency(monthly)}</p>
+          <p className="text-3xl font-black tracking-tighter tabular-nums">{loading && subscriptions.length === 0 ? '…' : formatCurrency(monthly)}</p>
         </div>
 
         <ul className="space-y-3">
@@ -85,7 +88,7 @@ export const Subscriptions: React.FC = () => {
               </button>
             </li>
           ))}
-          {subscriptions.length === 0 && (
+          {!loading && subscriptions.length === 0 && (
             <li className="text-center py-10 px-4 space-y-3">
               <p className="font-bold dark:text-zinc-100">No subscriptions yet</p>
               <p className="text-sm text-gray-600 dark:text-zinc-400">Add rent, phone or streaming once and SquareOne logs it on each due date.</p>

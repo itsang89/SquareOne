@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { NeoCard } from '../components/NeoCard';
+import { DataLoadErrorBanner } from '../components/DataLoadErrorBanner';
 import { useAppContext } from '../context/AppContext';
 import { CategoryBreakdown } from '../components/Charts/CategoryBreakdown';
 import { TrendChart } from '../components/Charts/TrendChart';
@@ -16,7 +17,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const endOf = (d: Date) => new Date(d.getTime() - 1); // last ms before d
 
 export const Charts: React.FC = () => {
-  const { entries, categories, accounts, loading } = useAppContext();
+  const { entries, categories, accounts, loading, error, refetch } = useAppContext();
   const today = new Date();
   const [tab, setTab] = useState<Tab>('expense');
   const [year, setYear] = useState(today.getFullYear());
@@ -58,6 +59,7 @@ export const Charts: React.FC = () => {
       <header className="sticky top-0 z-20 bg-neo-bg/95 dark:bg-zinc-950/95 backdrop-blur-sm border-b-2 border-black px-5 py-4">
         <h1 className="text-3xl font-black uppercase leading-none">Charts</h1>
       </header>
+      <DataLoadErrorBanner error={error} loading={loading} onRetry={refetch} />
       <div className="max-w-md mx-auto p-5 space-y-4">
 
       <div className="flex items-center gap-2">

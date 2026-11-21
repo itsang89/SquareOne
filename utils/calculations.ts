@@ -1,4 +1,4 @@
-import type { Account, Category, CategoryKind, Entry } from '../types';
+import type { Account, Category, CategoryKind, Entry, Subscription } from '../types';
 
 /**
  * Pure functions over the entries model. Conventions:
@@ -50,11 +50,18 @@ export const sharesTotal = (e: Entry): number => round2(e.shares.reduce((s, x) =
 /** My own cost of an expense, in the entry's currency. 0 for non-expenses. */
 export const myShare = (e: Entry): number => (e.kind === 'expense' ? round2(e.amount - sharesTotal(e)) : 0);
 
-/** My own cost of an expense in HKD (what stats show). 0 for non-expenses. */
-export const myExpense = (e: Entry): number => round2(myShare(e) * e.fxRate);
+/**
+ * Wallet "Reconcile" corrections. They move the account balance but are not real spending or income,
+ * so stats skip them. ponytail: marked by title + no category (no schema field); add a column if users clash.
+ */
+export const ADJUSTMENT_TITLE = 'Balance adjustment';
+export const isAdjustment = (e: Entry): boolean => e.title === ADJUSTMENT_TITLE && !e.categoryId && (e.kind === 'income' || e.kind === 'expense');
 
-/** Income in HKD. 0 for non-income. */
-export const incomeAmount = (e: Entry): number => (e.kind === 'income' ? round2(e.amount * e.fxRate) : 0);
+/** My own cost of an expense in HKD (what stats show). 0 for non-expenses and balance adjustments. */
+export const myExpense = (e: Entry): number => (isAdjustment(e) ? 0 : round2(myShare(e) * e.fxRate));
+
+/** Income in HKD. 0 for non-income and balance adjustments. */
+export const incomeAmount = (e: Entry): number => (e.kind === 'income' && !isAdjustment(e) ? round2(e.amount * e.fxRate) : 0);
 
 /** Account movements an entry causes: [accountId, signed delta in account currency]. */
 export function accountDeltas(e: Entry): [string, number][] {
@@ -268,6 +275,16 @@ export function monthlySeries(entries: Entry[], year: number): SeriesPoint[] {
     p.expense += myExpense(e);
   }
   return pts.map((p) => ({ ...p, income: round2(p.income), expense: round2(p.expense) }));
+}
+
+/** % change from prev to cur, rounded. null when there is no previous amount to compare. */
+export const pctChange = (cur: number, prev: number): number | null => (prev > 0 ? Math.round(((cur - prev) / prev) * 100) : null);
+
+/** Active subscriptions whose next date falls today..today+days (local), soonest first. */
+export function subscriptionsDue(subs: Subscription[], now = new Date(), days = 7): Subscription[] {
+  const from = localDay(now.toISOString());
+  const to = localDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() + days, 12).toISOString());
+  return subs.filter((s) => s.active && s.nextDate >= from && s.nextDate <= to).sort((a, b) => a.nextDate.localeCompare(b.nextDate));
 }
 
 /** Category lookup helper for UIs. */

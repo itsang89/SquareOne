@@ -47,7 +47,8 @@ export const AddEntry: React.FC = () => {
       </div>
     );
   }
-  return <EntryForm key={loc.key} entry={entry} />;
+  // Remount per entry and per navigation: jumping from a dirty New entry to an existing one must not carry the draft.
+  return <EntryForm key={`${entry?.id ?? 'new'}:${loc.key}`} entry={entry} />;
 };
 
 const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {

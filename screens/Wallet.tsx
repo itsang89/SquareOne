@@ -169,7 +169,7 @@ export const Wallet: React.FC = () => {
       <NeoModal isOpen={recon !== null} onClose={() => setRecon(null)} title={`Reconcile ${recon?.name ?? ''}`}>
         <NeoInput label={`Actual balance (${recon?.currency ?? ''})`} type="number" inputMode="decimal" step="any" value={actual} onChange={(e) => setActual(e.target.value)} autoFocus />
         <p className="text-xs font-bold uppercase text-gray-600 dark:text-zinc-400">
-          {reconReason || `Moves ${formatCurrency(Math.abs(reconDiff), recon?.currency)} ${reconDiff > 0 ? 'in' : 'out'} via “Balance adjustments” (not income or spending).`}
+          {reconReason || (reconDiff === 0 ? 'Removes the adjustment you just saved.' : `Moves ${formatCurrency(Math.abs(reconDiff), recon?.currency)} ${reconDiff > 0 ? 'in' : 'out'} via “Balance adjustments” (not income or spending).`)}
         </p>
         <NeoButton fullWidth variant="primary" isLoading={isProcessing} disabled={!!reconReason} onClick={() => void reconcile()}>Save</NeoButton>
       </NeoModal>

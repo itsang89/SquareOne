@@ -38,7 +38,7 @@ node cli/squareone.mjs balances
 | Entries | `entries list` (`--from --to --kind --category --account --friend --search --limit --offset`), `add`, `edit`, `delete` |
 | Accounts | `accounts list [--all]`, `add`, `edit`, `archive [--unarchive]`, `delete` (needs approval; only when the account has no entries and no active subscription) |
 | Categories | `categories list`, `add`, `edit` (`--archive`/`--unarchive`) |
-| Subscriptions | `subscriptions list`, `add`, `edit`, `pause [--resume]` |
+| Subscriptions | `subscriptions list`, `add`, `edit` (both take `--kind expense|income`; income needs an account), `pause [--resume]` |
 | Reports | `stats --month YYYY-MM` or `--from --to` (my share only, HKD, by category), `balances` (accounts, net worth, friends owe me) |
 | Friends & profile | `friends list` (with balances), `add`, `edit`, `delete` (needs approval; refused when the friend has any entries or shares); `profile show|edit` |
 | Data | `data export [--format csv]`, `data clear` (both need approval) |

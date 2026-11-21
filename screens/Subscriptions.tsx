@@ -20,16 +20,16 @@ export const Subscriptions: React.FC = () => {
   const { subscriptions, accounts, categories, entries, loading, error, refetch, addSubscription, updateSubscription, deleteSubscription, isProcessing } = useAppContext();
   const { success, error: showError } = useToast();
   const [editing, setEditing] = useState<Subscription | 'new' | null>(null);
-  const [f, setF] = useState({ title: '', amount: '', categoryId: '', accountId: '', cadence: 'monthly' as Cadence, nextDate: '' });
+  const [f, setF] = useState({ title: '', amount: '', categoryId: '', accountId: '', kind: 'expense' as Subscription['kind'], cadence: 'monthly' as Cadence, nextDate: '' });
 
-  const monthly = round2(subscriptions.filter((s) => s.active).reduce((t, s) => t + s.amount * s.fxRate * PER_MONTH[s.cadence], 0));
-  const expenseCats = categories.filter((c) => c.kind === 'expense' && !c.archived);
+  const perMonth = (k: Subscription['kind']) => round2(subscriptions.filter((s) => s.active && s.kind === k).reduce((t, s) => t + s.amount * s.fxRate * PER_MONTH[s.cadence], 0));
+  const cats = categories.filter((c) => c.kind === f.kind && !c.archived);
 
   const open = (s: Subscription | 'new') => {
     setEditing(s);
     setF(s === 'new'
-      ? { title: '', amount: '', categoryId: '', accountId: accounts.find((a) => !a.archived)?.id ?? '', cadence: 'monthly', nextDate: localDay(new Date().toISOString()) }
-      : { title: s.title, amount: String(s.amount), categoryId: s.categoryId ?? '', accountId: s.accountId ?? '', cadence: s.cadence, nextDate: s.nextDate });
+      ? { title: '', amount: '', categoryId: '', accountId: accounts.find((a) => !a.archived)?.id ?? '', kind: 'expense', cadence: 'monthly', nextDate: localDay(new Date().toISOString()) }
+      : { title: s.title, amount: String(s.amount), kind: s.kind, categoryId: s.categoryId ?? '', accountId: s.accountId ?? '', cadence: s.cadence, nextDate: s.nextDate });
   };
 
   const done = (r: { success: boolean; error?: Error }, msg: string) => {
@@ -37,13 +37,13 @@ export const Subscriptions: React.FC = () => {
   };
 
   const amount = parseFloat(f.amount);
-  const valid = f.title.trim() && amount > 0 && f.nextDate;
+  const valid = f.title.trim() && amount > 0 && f.nextDate && (f.kind === 'expense' || f.accountId); // income entries need an account
 
   const save = async () => {
     if (!valid || !editing) return;
     const currency = accounts.find((a) => a.id === f.accountId)?.currency ?? 'HKD';
     const data = {
-      title: f.title.trim(), amount, cadence: f.cadence, nextDate: f.nextDate, currency,
+      title: f.title.trim(), kind: f.kind, amount, cadence: f.cadence, nextDate: f.nextDate, currency,
       fxRate: currency === 'HKD' ? 1 : latestFx(entries)[currency] ?? 1,
       categoryId: f.categoryId || undefined, accountId: f.accountId || undefined,
     };
@@ -68,7 +68,8 @@ export const Subscriptions: React.FC = () => {
       <main className="p-5 space-y-4">
         <div className="bg-white dark:bg-zinc-900 dark:text-zinc-100 border-2 border-black shadow-neo p-4">
           <p className="text-xs font-bold uppercase tracking-widest opacity-70">Per month</p>
-          <p className="text-3xl font-black tracking-tighter tabular-nums">{loading && subscriptions.length === 0 ? '…' : formatCurrency(monthly)}</p>
+          <p className="text-3xl font-black tracking-tighter tabular-nums">{loading && subscriptions.length === 0 ? '…' : formatCurrency(perMonth('expense'))}</p>
+          {perMonth('income') > 0 && <p className="text-sm font-bold text-green-700 dark:text-green-400 tabular-nums">+ {formatCurrency(perMonth('income'))} income</p>}
         </div>
 
         <ul className="space-y-3">
@@ -81,7 +82,7 @@ export const Subscriptions: React.FC = () => {
                     {s.cadence} · {s.active ? `next ${s.nextDate}` : 'paused'}
                   </span>
                 </span>
-                <span className="font-black dark:text-zinc-100">{formatCurrency(s.amount, s.currency)}</span>
+                <span className="font-black dark:text-zinc-100">{s.kind === 'income' ? '+' : ''}{formatCurrency(s.amount, s.currency)}</span>
               </button>
               <button type="button" onClick={() => void toggle(s)} aria-label={s.active ? `Pause ${s.title}` : `Resume ${s.title}`} className="px-3 border-l-2 border-black dark:text-zinc-100 hover:bg-neo-yellow/40">
                 {s.active ? <Pause size={16} /> : <Play size={16} />}
@@ -99,7 +100,11 @@ export const Subscriptions: React.FC = () => {
       </main>
 
       <NeoModal isOpen={editing !== null} onClose={() => setEditing(null)} title={editing === 'new' ? 'New subscription' : 'Edit subscription'}>
-        <NeoInput label="Title" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder="Netflix" autoFocus />
+        <FieldLabel>Type</FieldLabel>
+        <select aria-label="Type" className={`${SELECT_CLASS} mb-4`} value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value as Subscription['kind'], categoryId: '' })}>
+          <option value="expense">Expense</option><option value="income">Income</option>
+        </select>
+        <NeoInput label="Title" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder={f.kind === 'income' ? 'Salary' : 'Netflix'} autoFocus />
         <NeoInput label="Amount" inputMode="decimal" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value.replace(/[^0-9.]/g, '') })} />
         <FieldLabel>Repeats</FieldLabel>
         <select aria-label="Cadence" className={`${SELECT_CLASS} mb-4`} value={f.cadence} onChange={(e) => setF({ ...f, cadence: e.target.value as Cadence })}>
@@ -110,7 +115,7 @@ export const Subscriptions: React.FC = () => {
         <FieldLabel>Category</FieldLabel>
         <select aria-label="Category" className={`${SELECT_CLASS} mb-4`} value={f.categoryId} onChange={(e) => setF({ ...f, categoryId: e.target.value })}>
           <option value="">None</option>
-          {expenseCats.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+          {cats.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
         </select>
         <FieldLabel>Account</FieldLabel>
         <select aria-label="Account" className={`${SELECT_CLASS} mb-6`} value={f.accountId} onChange={(e) => setF({ ...f, accountId: e.target.value })}>

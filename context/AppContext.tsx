@@ -80,7 +80,7 @@ const toCategory = (r: any): Category => ({
   archived: r.archived, sort: r.sort,
 });
 const toSubscription = (r: any): Subscription => ({
-  id: r.id, title: r.title, amount: num(r.amount), currency: r.currency, fxRate: num(r.fx_rate),
+  id: r.id, kind: r.kind, title: r.title, amount: num(r.amount), currency: r.currency, fxRate: num(r.fx_rate),
   categoryId: r.category_id ?? undefined, accountId: r.account_id ?? undefined, cadence: r.cadence,
   nextDate: r.next_date, active: r.active,
 });
@@ -102,6 +102,7 @@ const entryPayload = (e: EntryInput) => ({
 });
 
 const subscriptionRow = (s: Partial<Subscription>) => ({
+  ...(s.kind !== undefined && { kind: s.kind }),
   ...(s.title !== undefined && { title: s.title }),
   ...(s.amount !== undefined && { amount: s.amount }),
   ...(s.currency !== undefined && { currency: s.currency }),

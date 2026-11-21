@@ -9,6 +9,7 @@ import { useAppContext } from '../context/AppContext';
 import { localMonth, rangeTotals, monthRange } from '../utils/calculations';
 import { KIND_LABEL } from '../utils/entryUi';
 import { matchesEntryQuery, normalizeSearchQuery } from '../utils/search';
+import { categoryStyle } from '../utils/categoryStyle';
 import { formatCurrency } from '../utils/formatters';
 import type { EntryKind } from '../types';
 
@@ -98,7 +99,7 @@ export const Ledger: React.FC = () => {
             onClick={() => set('month', month === 'all' ? thisMonth() : 'all')}
             className={`px-3 border-2 border-black font-bold text-sm shadow-neo-sm ${month === 'all' ? 'bg-neo-yellow text-black' : 'bg-white dark:bg-zinc-900 dark:text-zinc-100'}`}
           >
-            All time
+            {month === 'all' ? 'All time ✓' : 'All time'}
           </button>
         </div>
 
@@ -133,7 +134,7 @@ export const Ledger: React.FC = () => {
             </select>
             <select aria-label="Category" className={SELECT_CLASS} value={category} onChange={(e) => set('category', e.target.value)}>
               <option value="">All categories</option>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+              {categories.map((c) => <option key={c.id} value={c.id}>{categoryStyle(c).emoji ?? ''} {c.name}</option>)}
             </select>
             <select aria-label="Account" className={SELECT_CLASS} value={account} onChange={(e) => set('account', e.target.value)}>
               <option value="">All accounts</option>

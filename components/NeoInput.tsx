@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { motion, useAnimation, type HTMLMotionProps } from 'framer-motion';
 import { shakeX, fadeInDown, springs } from '../utils/animations';
 import { useAnimations } from '../hooks/useAnimations';
@@ -17,6 +17,8 @@ export const NeoInput: React.FC<NeoInputProps> = ({
   ...props
 }) => {
   const widthClass = fullWidth ? 'w-full' : '';
+  const autoId = useId();
+  const id = props.id ?? autoId;
   const controls = useAnimation();
   const { getVariants, getTransition } = useAnimations();
   const previousError = useRef(error);
@@ -32,7 +34,7 @@ export const NeoInput: React.FC<NeoInputProps> = ({
   return (
     <div className={`${widthClass} mb-4`}>
       {label && (
-        <label className="block font-black uppercase text-sm mb-1 tracking-wider dark:text-white">
+        <label htmlFor={id} className="block font-black uppercase text-sm mb-1 tracking-wider dark:text-white">
           {label}
         </label>
       )}
@@ -45,6 +47,7 @@ export const NeoInput: React.FC<NeoInputProps> = ({
           ${error ? 'bg-neo-red/10 border-neo-red' : 'bg-white dark:bg-zinc-900 dark:text-zinc-100'}
           ${className}
         `}
+        id={id}
         variants={getVariants(shakeX)}
         animate={controls}
         {...props}

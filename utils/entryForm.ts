@@ -13,7 +13,7 @@ export function offsetAmount(amount: number, rate: number): number {
 
 export function canRepeatEntry(entry: Entry, accounts: Account[]): boolean {
   return entry.title !== 'Balance adjustment' && !(entry.kind === 'transfer' && accounts.some((account) =>
-    account.archived && account.name === 'Balance adjustments'
+    account.archived && account.name.startsWith('Balance adjustments')
     && (account.id === entry.accountId || account.id === entry.toAccountId)
   ));
 }

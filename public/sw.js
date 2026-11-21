@@ -36,7 +36,11 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
-        .then((res) => { const copy = res.clone(); caches.open(CACHE).then((c) => c.put('/', copy)); return res; })
+        .then(async (res) => {
+          // Only a good page replaces the cached shell; on a 5xx serve the shell we have.
+          if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put('/', copy)); return res; }
+          return (await caches.match('/', { ignoreVary: true })) ?? res;
+        })
         .catch(() => caches.match('/', { ignoreVary: true })),
     );
     return;

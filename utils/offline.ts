@@ -16,16 +16,19 @@ function read<T>(k: string, fallback: T): T {
   }
 }
 
-function write(k: string, value: unknown): void {
+/** False when storage is full or blocked. */
+function write(k: string, value: unknown): boolean {
   try {
     localStorage.setItem(k, JSON.stringify(value));
+    return true;
   } catch (err) {
-    console.warn('Offline storage full or blocked:', err); // the app still works online
+    console.warn('Offline storage full or blocked:', err);
+    return false;
   }
 }
 
 export const loadCache = <T>(uid: string): T | null => read<T | null>(key('cache', uid), null);
-export const saveCache = (uid: string, snapshot: unknown) => write(key('cache', uid), snapshot);
+export const saveCache = (uid: string, snapshot: unknown) => void write(key('cache', uid), snapshot);
 /** Drop every user's snapshot (on sign-out). Outboxes stay so unsynced entries are never lost. */
 export const clearCaches = () =>
   Object.keys(localStorage).filter((k) => k.startsWith('squareone_cache_')).forEach((k) => localStorage.removeItem(k));

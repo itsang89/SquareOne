@@ -25,6 +25,8 @@ interface AppContextType {
   online: boolean;
   /** New entries saved offline, waiting to sync. */
   pendingCount: number;
+  /** Queued entries the server refused on the last sync (need an edit or delete). */
+  rejectedCount: number;
   refetch: () => Promise<void>;
   // Entries
   addEntry: (input: EntryInput) => Promise<IdResult & { queued?: boolean }>;
@@ -114,6 +116,7 @@ const subscriptionRow = (s: Partial<Subscription>) => ({
 interface Snapshot { friendRows: FriendRow[]; accounts: Account[]; categories: Category[]; entries: Entry[]; subscriptions: Subscription[] }
 
 const OFFLINE_ERROR = new Error("You're offline. This needs a connection.");
+const STORAGE_ERROR = new Error('Could not save on this device (storage full). Try again when online.');
 
 const REALTIME_TABLES = ['friends', 'accounts', 'categories', 'entries', 'entry_shares', 'subscriptions'];
 
@@ -131,6 +134,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [online, setOnline] = useState(() => navigator.onLine);
   const [outbox, setOutbox] = useState<Entry[]>([]);
   const flushingRef = useRef(false);
+  const [rejectedCount, setRejectedCount] = useState(0);
   /** Tracks which user ID has already had its first data load, so background refreshes don't show skeletons. */
   const loadedUserIdRef = useRef<string | null>(null);
   /** Shared debounce timer for all Realtime subscription callbacks. */
@@ -149,11 +153,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     loadedUserIdRef.current = user.id;
     if (isFirstLoad) {
       // Show the last good snapshot straight away; the fetch below refreshes it.
+      // Always replace: never leave the previous user's rows on screen.
       const cached = loadCache<Snapshot>(user.id);
-      if (cached) {
-        setFriendRows(cached.friendRows); setAccounts(cached.accounts); setCategories(cached.categories);
-        setEntries(cached.entries); setSubscriptions(cached.subscriptions);
-      }
+      setFriendRows(cached?.friendRows ?? []); setAccounts(cached?.accounts ?? []); setCategories(cached?.categories ?? []);
+      setEntries(cached?.entries ?? []); setSubscriptions(cached?.subscriptions ?? []);
       setOutbox(loadOutbox(user.id));
       setLoading(!cached);
     }
@@ -173,6 +176,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           .order('next_date').order('id').range(a, b)),
       ]);
 
+      if (loadedUserIdRef.current !== uid) return; // user changed mid-fetch: drop stale results
       const failures = [friendsRes, accountsRes, categoriesRes, entriesRes, subsRes]
         .map((r) => r.error?.message).filter(Boolean);
       failures.forEach((m) => console.warn('Error loading data:', m));
@@ -276,13 +280,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     []
   );
 
-  /** Queue a new entry locally; it syncs when the connection is back. */
-  const queueEntry = useCallback((entry: Entry) => {
-    if (!user) return;
+  /** Queue a new entry locally; it syncs when the connection is back. False if it couldn't be stored. */
+  const queueEntry = useCallback((entry: Entry): boolean => {
+    if (!user) return false;
     const next = [...loadOutbox(user.id).filter((e) => e.id !== entry.id), entry];
-    saveOutbox(user.id, next);
+    if (!saveOutbox(user.id, next)) return false;
     setOutbox(next);
+    return true;
   }, [user]);
+
 
   const addEntry = useCallback<AppContextType['addEntry']>(async (input) => {
     // Client-made id: save_entry upserts on id, so a retried or replayed save never duplicates.
@@ -292,21 +298,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     const r = await write('adding entry', async () => ({ id: await saveEntry(entry) }));
     if (r.success || !user || !(r.error === OFFLINE_ERROR || isNetworkError(r.error))) return r;
-    queueEntry(entry);
+    if (!queueEntry(entry)) return { success: false, error: STORAGE_ERROR };
     return { success: true, id: entry.id, queued: true };
   }, [write, saveEntry, queueEntry, user]);
 
   // A still-queued entry is edited or deleted in the queue; anything else goes to the server.
   const isQueued = useCallback((id: string) => !!user && loadOutbox(user.id).some((e) => e.id === id), [user]);
   const updateEntry = useCallback(async (entry: Entry): Promise<Result> => {
-    if (isQueued(entry.id)) { queueEntry({ ...entry, pending: undefined }); return { success: true }; }
+    if (isQueued(entry.id)) {
+      return queueEntry({ ...entry, pending: undefined }) ? { success: true } : { success: false, error: STORAGE_ERROR };
+    }
     return write('updating entry', async () => { await saveEntry(entry); });
   }, [write, saveEntry, isQueued, queueEntry]);
   const deleteEntry = useCallback(async (id: string): Promise<Result> => {
     if (user && isQueued(id)) {
       const next = loadOutbox(user.id).filter((e) => e.id !== id);
-      saveOutbox(user.id, next);
+      if (!saveOutbox(user.id, next)) return { success: false, error: STORAGE_ERROR };
       setOutbox(next);
+      // A sync may already have sent it; delete the server copy too (no-op if it never arrived).
+      if (navigator.onLine) await supabase.from('entries').delete().eq('id', id).eq('user_id', user.id);
       return { success: true };
     }
     return write('deleting entry', async (uid) => ok(await supabase.from('entries').delete().eq('id', id).eq('user_id', uid)));
@@ -318,24 +328,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const queued = loadOutbox(user.id);
     if (!queued.length) return;
     flushingRef.current = true;
+    const uid = user.id;
     let sent = 0;
+    let rejected = 0;
     try {
       for (const e of queued) {
+        // save_entry owns rows by auth.uid(): never replay one user's queue under another session.
+        if ((await supabase.auth.getSession()).data.session?.user.id !== uid) break;
         try {
           await saveEntry(e);
-          saveOutbox(user.id, loadOutbox(user.id).filter((x) => x.id !== e.id));
+          // Drop it only if unchanged since we sent it; an edit made meanwhile stays queued and syncs next round.
+          const sentJson = JSON.stringify(e);
+          saveOutbox(uid, loadOutbox(uid).filter((x) => x.id !== e.id || JSON.stringify(x) !== sentJson));
           sent++;
         } catch (err) {
           if (isNetworkError(err)) break;
-          // ponytail: a rejected entry (e.g. its category was deleted) retries forever; add a "discard" action if this happens.
+          // Server said no (e.g. its category was deleted). It stays queued; the user edits or deletes it.
           console.warn('Queued entry rejected:', err);
+          rejected++;
         }
       }
+      // Load server rows before dropping pending copies, so an open entry never flickers to "not found".
+      if (sent) await loadData();
     } finally {
       flushingRef.current = false;
-      setOutbox(loadOutbox(user.id));
+      setRejectedCount(rejected);
+      setOutbox(loadOutbox(uid));
     }
-    if (sent) await loadData();
   }, [user, saveEntry, loadData]);
 
   // Track connectivity; on reconnect sync the outbox and refresh. Retry every 30 s while entries wait (flaky signal fires no event).
@@ -450,14 +469,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const value = useMemo<AppContextType>(() => ({
     friends, accounts, categories, entries: allEntries, subscriptions, loading, error, isProcessing, refetch: loadData,
-    online, pendingCount: outbox.length,
+    online, pendingCount: outbox.length, rejectedCount,
     addEntry, updateEntry, deleteEntry,
     addAccount, updateAccount, deleteAccount,
     addCategory, updateCategory, deleteCategory,
     addSubscription, updateSubscription, deleteSubscription,
     addFriend, updateFriend, deleteFriend, getFriendById,
   }), [
-    friends, accounts, categories, allEntries, subscriptions, loading, error, isProcessing, loadData, online, outbox.length,
+    friends, accounts, categories, allEntries, subscriptions, loading, error, isProcessing, loadData, online, outbox.length, rejectedCount,
     addEntry, updateEntry, deleteEntry, addAccount, updateAccount, deleteAccount,
     addCategory, updateCategory, deleteCategory, addSubscription, updateSubscription, deleteSubscription,
     addFriend, updateFriend, deleteFriend, getFriendById,

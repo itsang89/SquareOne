@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User as SupabaseUser, Session, AuthError } from '@supabase/supabase-js';
-import { storedSession, supabase } from '../utils/supabase';
+import { clearStoredSession, storedSession, supabase } from '../utils/supabase';
 import { clearCaches } from '../utils/offline';
 import { User } from '../types';
 
@@ -138,6 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!mounted) return;
       // A failed token refresh while offline is not a sign-out; keep the user until the connection is back.
       if (!session && event !== 'SIGNED_OUT' && !navigator.onLine) return;
+      if (event === 'SIGNED_OUT') clearCaches(); // also covers a sign-out from a rejected token refresh
 
       // Skip if we're already in the middle of loading a profile from signInWithPassword
       if (isLoadingProfileRef.current && event === 'SIGNED_IN') {
@@ -266,7 +267,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     setIsProcessing(true);
     try {
-      await supabase.auth.signOut();
+      // Offline, signOut errors before clearing the saved session (even scope 'local' calls the server). Clear it ourselves.
+      const { error } = await supabase.auth.signOut();
+      if (error) clearStoredSession();
       clearCaches(); // don't leave a readable copy of the ledger on a shared device
       setUser(null);
       setSession(null);

@@ -47,3 +47,9 @@ export function storedSession(): Session | null {
     return null;
   }
 }
+
+/** Forget the saved session on this device (for sign-out when the server can't be reached). */
+export function clearStoredSession(): void {
+  localStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem(SESSION_KEY);
+}

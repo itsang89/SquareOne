@@ -22,6 +22,8 @@ export const Wallet: React.FC = () => {
   const [name, setName] = useState('');
   const [currency, setCurrency] = useState('HKD');
   const [recon, setRecon] = useState<Account | null>(null);
+  // One id per reconcile session: a retry after a lost response upserts the same entry instead of adding the delta twice.
+  const [reconId, setReconId] = useState('');
   const [actual, setActual] = useState('');
 
   const balances = useMemo(() => accountBalances(accounts, entries), [accounts, entries]);
@@ -68,7 +70,7 @@ export const Wallet: React.FC = () => {
     }
     const up = reconDiff > 0;
     const r = await addEntry({
-      kind: 'transfer', amount: Math.abs(reconDiff), title: 'Balance adjustment', currency: recon.currency, fxRate: reconFx,
+      id: reconId, kind: 'transfer', amount: Math.abs(reconDiff), title: 'Balance adjustment', currency: recon.currency, fxRate: reconFx,
       accountId: up ? adj : recon.id, toAccountId: up ? recon.id : adj,
     }, { onlineOnly: true });
     if (r.success) { success('Balance adjusted', `${up ? '+' : '−'}${formatCurrency(Math.abs(reconDiff), recon.currency)}`); setRecon(null); }
@@ -95,7 +97,7 @@ export const Wallet: React.FC = () => {
       <button type="button" onClick={() => open(a)} aria-label={`Edit ${a.name}`} className="w-12 grid place-items-center border-l-2 border-black dark:text-zinc-100 hover:bg-neo-yellow/40">
         <Pencil size={16} />
       </button>
-      <button type="button" onClick={() => { setRecon(a); setActual(String(balances.get(a.id) ?? 0)); }} aria-label={`Reconcile ${a.name}`} className="w-12 grid place-items-center border-l-2 border-black dark:text-zinc-100 hover:bg-neo-yellow/40">
+      <button type="button" onClick={() => { setRecon(a); setReconId(crypto.randomUUID()); setActual(String(balances.get(a.id) ?? 0)); }} aria-label={`Reconcile ${a.name}`} className="w-12 grid place-items-center border-l-2 border-black dark:text-zinc-100 hover:bg-neo-yellow/40">
         <Scale size={16} />
       </button>
     </li>

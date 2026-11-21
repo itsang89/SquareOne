@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User as SupabaseUser, Session, AuthError } from '@supabase/supabase-js';
-import { supabase } from '../utils/supabase';
+import { storedSession, supabase } from '../utils/supabase';
+import { clearCaches } from '../utils/offline';
 import { User } from '../types';
 
 // Build the hash-based redirect URL so Supabase lands inside the HashRouter SPA.
@@ -96,6 +97,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initAuth = async () => {
       try {
         setLoading(true);
+        // Offline: getSession would try (and fail) to refresh an expired token and sign you out. Use the saved session.
+        const saved = navigator.onLine ? null : storedSession();
+        if (saved?.user) {
+          setSession(saved);
+          const profile = await loadUserProfile(saved.user);
+          if (mounted && profile !== null) setUser(profile);
+          return;
+        }
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) throw error;
@@ -127,6 +136,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
+      // A failed token refresh while offline is not a sign-out; keep the user until the connection is back.
+      if (!session && event !== 'SIGNED_OUT' && !navigator.onLine) return;
 
       // Skip if we're already in the middle of loading a profile from signInWithPassword
       if (isLoadingProfileRef.current && event === 'SIGNED_IN') {
@@ -256,6 +267,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsProcessing(true);
     try {
       await supabase.auth.signOut();
+      clearCaches(); // don't leave a readable copy of the ledger on a shared device
       setUser(null);
       setSession(null);
     } finally {

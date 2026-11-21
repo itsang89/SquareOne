@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type Session } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -34,3 +34,16 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
+
+/** supabase-js default key for the saved session. */
+const SESSION_KEY = `sb-${new URL(supabaseUrl).hostname.split('.')[0]}-auth-token`;
+
+/** The saved session as-is, without refreshing it. Keeps you signed in offline after the access token expires. */
+export function storedSession(): Session | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY) ?? sessionStorage.getItem(SESSION_KEY);
+    return raw ? (JSON.parse(raw) as Session) : null;
+  } catch {
+    return null;
+  }
+}

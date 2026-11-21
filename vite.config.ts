@@ -14,6 +14,7 @@ export default defineConfig({
     },
   },
   build: {
+    manifest: 'asset-manifest.json', // read by public/sw.js to precache every chunk
     rollupOptions: {
       output: {
         manualChunks: {

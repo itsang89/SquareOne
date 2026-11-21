@@ -4,6 +4,7 @@ import type {
 } from '../types';
 import { friendBalancesMap, getLastActivity } from '../utils/calculations';
 import { supabase } from '../utils/supabase';
+import { isNetworkError, loadCache, loadOutbox, mergePending, saveCache, saveOutbox } from '../utils/offline';
 import { AuthContext } from './AuthContext';
 
 export type Result = { success: boolean; error?: Error };
@@ -21,9 +22,12 @@ interface AppContextType {
   loading: boolean;
   error: Error | null;
   isProcessing: boolean;
+  online: boolean;
+  /** New entries saved offline, waiting to sync. */
+  pendingCount: number;
   refetch: () => Promise<void>;
   // Entries
-  addEntry: (input: EntryInput) => Promise<IdResult>;
+  addEntry: (input: EntryInput) => Promise<IdResult & { queued?: boolean }>;
   updateEntry: (entry: Entry) => Promise<Result>;
   deleteEntry: (id: string) => Promise<Result>;
   // Accounts
@@ -107,6 +111,10 @@ const subscriptionRow = (s: Partial<Subscription>) => ({
   ...(s.active !== undefined && { active: s.active }),
 });
 
+interface Snapshot { friendRows: FriendRow[]; accounts: Account[]; categories: Category[]; entries: Entry[]; subscriptions: Subscription[] }
+
+const OFFLINE_ERROR = new Error("You're offline. This needs a connection.");
+
 const REALTIME_TABLES = ['friends', 'accounts', 'categories', 'entries', 'entry_shares', 'subscriptions'];
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -120,6 +128,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [online, setOnline] = useState(() => navigator.onLine);
+  const [outbox, setOutbox] = useState<Entry[]>([]);
+  const flushingRef = useRef(false);
   /** Tracks which user ID has already had its first data load, so background refreshes don't show skeletons. */
   const loadedUserIdRef = useRef<string | null>(null);
   /** Shared debounce timer for all Realtime subscription callbacks. */
@@ -127,7 +138,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const loadData = useCallback(async () => {
     if (!user) {
-      setFriendRows([]); setAccounts([]); setCategories([]); setEntries([]); setSubscriptions([]);
+      setFriendRows([]); setAccounts([]); setCategories([]); setEntries([]); setSubscriptions([]); setOutbox([]);
       setLoading(false);
       loadedUserIdRef.current = null;
       return;
@@ -136,7 +147,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Only show the loading skeleton on the first fetch for this user identity.
     const isFirstLoad = loadedUserIdRef.current !== user.id;
     loadedUserIdRef.current = user.id;
-    if (isFirstLoad) setLoading(true);
+    if (isFirstLoad) {
+      // Show the last good snapshot straight away; the fetch below refreshes it.
+      const cached = loadCache<Snapshot>(user.id);
+      if (cached) {
+        setFriendRows(cached.friendRows); setAccounts(cached.accounts); setCategories(cached.categories);
+        setEntries(cached.entries); setSubscriptions(cached.subscriptions);
+      }
+      setOutbox(loadOutbox(user.id));
+      setLoading(!cached);
+    }
+    if (!navigator.onLine) { setLoading(false); return; }
     try {
       const uid = user.id;
       const [friendsRes, accountsRes, categoriesRes, entriesRes, subsRes] = await Promise.all([
@@ -164,9 +185,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!categoriesRes.error) setCategories(categoriesRes.data.map(toCategory));
       if (!entriesRes.error) setEntries(entriesRes.data.map(toEntry));
       if (!subsRes.error) setSubscriptions(subsRes.data.map(toSubscription));
+      if (!failures.length) {
+        saveCache(uid, {
+          friendRows: friendsRes.data, accounts: accountsRes.data.map(toAccount), categories: categoriesRes.data.map(toCategory),
+          entries: entriesRes.data.map(toEntry), subscriptions: subsRes.data.map(toSubscription),
+        } satisfies Snapshot);
+      }
     } catch (err: unknown) {
       console.error('Unexpected error loading data:', err);
-      setError(toError(err, 'Failed to load data'));
+      if (!isNetworkError(err)) setError(toError(err, 'Failed to load data'));
     } finally {
       setLoading(false);
     }
@@ -198,22 +225,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [user, loadData]);
 
+  const allEntries = useMemo(() => mergePending(entries, outbox), [entries, outbox]);
+
   const friends = useMemo<Friend[]>(() => {
-    const balances = friendBalancesMap(entries);
+    const balances = friendBalancesMap(allEntries);
     return friendRows.map((f) => {
       const balance = balances.get(f.id) ?? 0;
       return {
         id: f.id, user_id: f.user_id, name: f.name, avatar: f.avatar || '', balance,
-        lastActivity: getLastActivity(f.id, entries),
+        lastActivity: getLastActivity(f.id, allEntries),
         status: Math.abs(balance) < 0.01 ? 'settled' : 'active',
       };
     });
-  }, [friendRows, entries]);
+  }, [friendRows, allEntries]);
 
   /** Run a write for the signed-in user, then reload. Never throws. */
   const write = useCallback(
     async <T extends object = object>(label: string, fn: (uid: string) => Promise<T | void>): Promise<Result & T> => {
       if (!user) return { success: false, error: new Error('User not authenticated') } as Result & T;
+      if (!navigator.onLine) return { success: false, error: OFFLINE_ERROR } as Result & T;
       setIsProcessing(true);
       try {
         const extra = await fn(user.id);
@@ -246,12 +276,84 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     []
   );
 
-  const addEntry = useCallback((input: EntryInput) => write('adding entry', async () => ({ id: await saveEntry(input) })), [write, saveEntry]);
-  const updateEntry = useCallback((entry: Entry) => write('updating entry', async () => { await saveEntry(entry); }), [write, saveEntry]);
-  const deleteEntry = useCallback(
-    (id: string) => write('deleting entry', async (uid) => ok(await supabase.from('entries').delete().eq('id', id).eq('user_id', uid))),
-    [write]
-  );
+  /** Queue a new entry locally; it syncs when the connection is back. */
+  const queueEntry = useCallback((entry: Entry) => {
+    if (!user) return;
+    const next = [...loadOutbox(user.id).filter((e) => e.id !== entry.id), entry];
+    saveOutbox(user.id, next);
+    setOutbox(next);
+  }, [user]);
+
+  const addEntry = useCallback<AppContextType['addEntry']>(async (input) => {
+    // Client-made id: save_entry upserts on id, so a retried or replayed save never duplicates.
+    const entry: Entry = {
+      occurredAt: new Date().toISOString(), title: '', currency: 'HKD', fxRate: 1, shares: [],
+      ...input, id: input.id ?? crypto.randomUUID(),
+    };
+    const r = await write('adding entry', async () => ({ id: await saveEntry(entry) }));
+    if (r.success || !user || !(r.error === OFFLINE_ERROR || isNetworkError(r.error))) return r;
+    queueEntry(entry);
+    return { success: true, id: entry.id, queued: true };
+  }, [write, saveEntry, queueEntry, user]);
+
+  // A still-queued entry is edited or deleted in the queue; anything else goes to the server.
+  const isQueued = useCallback((id: string) => !!user && loadOutbox(user.id).some((e) => e.id === id), [user]);
+  const updateEntry = useCallback(async (entry: Entry): Promise<Result> => {
+    if (isQueued(entry.id)) { queueEntry({ ...entry, pending: undefined }); return { success: true }; }
+    return write('updating entry', async () => { await saveEntry(entry); });
+  }, [write, saveEntry, isQueued, queueEntry]);
+  const deleteEntry = useCallback(async (id: string): Promise<Result> => {
+    if (user && isQueued(id)) {
+      const next = loadOutbox(user.id).filter((e) => e.id !== id);
+      saveOutbox(user.id, next);
+      setOutbox(next);
+      return { success: true };
+    }
+    return write('deleting entry', async (uid) => ok(await supabase.from('entries').delete().eq('id', id).eq('user_id', uid)));
+  }, [write, isQueued, user]);
+
+  /** Send queued entries. Stops at the first network failure; a server rejection stays queued for the next try. */
+  const flushOutbox = useCallback(async () => {
+    if (!user || !navigator.onLine || flushingRef.current) return;
+    const queued = loadOutbox(user.id);
+    if (!queued.length) return;
+    flushingRef.current = true;
+    let sent = 0;
+    try {
+      for (const e of queued) {
+        try {
+          await saveEntry(e);
+          saveOutbox(user.id, loadOutbox(user.id).filter((x) => x.id !== e.id));
+          sent++;
+        } catch (err) {
+          if (isNetworkError(err)) break;
+          // ponytail: a rejected entry (e.g. its category was deleted) retries forever; add a "discard" action if this happens.
+          console.warn('Queued entry rejected:', err);
+        }
+      }
+    } finally {
+      flushingRef.current = false;
+      setOutbox(loadOutbox(user.id));
+    }
+    if (sent) await loadData();
+  }, [user, saveEntry, loadData]);
+
+  // Track connectivity; on reconnect sync the outbox and refresh. Retry every 30 s while entries wait (flaky signal fires no event).
+  useEffect(() => {
+    const up = () => { setOnline(true); void flushOutbox().then(() => loadData()); };
+    const down = () => setOnline(false);
+    window.addEventListener('online', up);
+    window.addEventListener('offline', down);
+    return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down); };
+  }, [flushOutbox, loadData]);
+
+  useEffect(() => {
+    if (!outbox.length) return;
+    void flushOutbox();
+    const t = setInterval(() => void flushOutbox(), 30_000);
+    return () => clearInterval(t);
+  }, [outbox.length, flushOutbox]);
+
 
   // ---- Accounts ----
   const addAccount = useCallback<AppContextType['addAccount']>(
@@ -347,14 +449,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const getFriendById = useCallback((friendId: string) => friends.find((f) => f.id === friendId), [friends]);
 
   const value = useMemo<AppContextType>(() => ({
-    friends, accounts, categories, entries, subscriptions, loading, error, isProcessing, refetch: loadData,
+    friends, accounts, categories, entries: allEntries, subscriptions, loading, error, isProcessing, refetch: loadData,
+    online, pendingCount: outbox.length,
     addEntry, updateEntry, deleteEntry,
     addAccount, updateAccount, deleteAccount,
     addCategory, updateCategory, deleteCategory,
     addSubscription, updateSubscription, deleteSubscription,
     addFriend, updateFriend, deleteFriend, getFriendById,
   }), [
-    friends, accounts, categories, entries, subscriptions, loading, error, isProcessing, loadData,
+    friends, accounts, categories, allEntries, subscriptions, loading, error, isProcessing, loadData, online, outbox.length,
     addEntry, updateEntry, deleteEntry, addAccount, updateAccount, deleteAccount,
     addCategory, updateCategory, deleteCategory, addSubscription, updateSubscription, deleteSubscription,
     addFriend, updateFriend, deleteFriend, getFriendById,

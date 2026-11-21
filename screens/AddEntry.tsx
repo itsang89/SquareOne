@@ -150,7 +150,9 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
       ? await updateEntry({ ...built, id: entry.id, requestId: entry.requestId, subscriptionId: entry.subscriptionId })
       : await addEntry(built);
     if (r.success) {
-      success(entry ? 'Entry updated' : 'Saved', `${KIND_LABEL[kind]} ${formatCurrency(total, currency)}`);
+      const queued = 'queued' in r && r.queued;
+      success(entry ? 'Entry updated' : queued ? 'Saved offline' : 'Saved',
+        `${KIND_LABEL[kind]} ${formatCurrency(total, currency)}${queued ? ' · syncs when back online' : ''}`);
       back();
     } else {
       showError('Could not save', r.error?.message);

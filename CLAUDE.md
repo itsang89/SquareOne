@@ -48,6 +48,7 @@ Four React Context providers hold all global state:
 - Holds `friends` (with computed `balance`), `accounts`, `categories`, `entries` (each with `shares`), `subscriptions`, `loading`, `error`, `isProcessing`.
 - Pages through five tables, with shares nested under entries. Six Realtime channels feed one 400 ms debounced `loadData()`.
 - `loadedUserIdRef` prevents the loading skeleton on background refreshes. On partial query failure `error` is set but good snapshots are kept.
+- Offline (`utils/offline.ts`, `public/sw.js`): the last good load is cached per user in `localStorage`; new entries saved offline go to an outbox with a client-made `id` (`save_entry` upserts on `id`, so replay is idempotent) and sync on reconnect / every 30 s. All other writes are blocked offline. The service worker (production only) precaches every chunk from `dist/asset-manifest.json`.
 - Entry writes go through the `save_entry(p_entry, p_shares)` RPC (atomic entry + shares). CRUD methods return `{ success: boolean; error?: Error }`. Saving an entry or adding an account, category, or subscription can also return an ID.
 
 **`SearchContext`** (`context/SearchContext.tsx`) — single `open` flag + `openSearch()`/`closeSearch()` for the global command palette (`components/GlobalSearch.tsx`).

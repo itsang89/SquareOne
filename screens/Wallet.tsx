@@ -15,7 +15,7 @@ import { formatCurrency } from '../utils/formatters';
 import type { Account } from '../types';
 
 export const Wallet: React.FC = () => {
-  const { accounts, entries, loading, error, refetch, addAccount, updateAccount, addEntry, isProcessing, online } = useAppContext();
+  const { accounts, entries, loading, error, refetch, addAccount, updateAccount, addEntry, deleteEntry, isProcessing, online } = useAppContext();
   const { success, error: showError } = useToast();
   const [showArchived, setShowArchived] = useState(false);
   const [editing, setEditing] = useState<Account | 'new' | null>(null);
@@ -52,17 +52,23 @@ export const Wallet: React.FC = () => {
   // Balance without this session's own adjustment, so a retried upsert of the same id still lands on the target.
   const reconBase = useMemo(() => accountBalances(accounts, entries.filter((e) => e.id !== reconId)), [accounts, entries, reconId]);
   const reconDiff = recon && reconValid ? round2(target - (reconBase.get(recon.id) ?? 0)) : 0;
+  const reconSaved = entries.some((e) => e.id === reconId); // this session's adjustment already landed (e.g. lost response)
   const reconPending = !!recon && entries.some((e) => e.pending && (e.accountId === recon.id || e.toAccountId === recon.id));
   const reconFx = recon?.currency === 'HKD' ? 1 : recon ? latestFx(entries.filter((e) => !e.pending))[recon.currency] : undefined;
   const reconReason = !online ? 'You are offline. Reconcile needs a connection.'
     : reconPending ? 'Wait for pending entries on this account to sync.'
-    : !reconFx ? `No ${recon?.currency} rate yet. Log an entry in ${recon?.currency} first.` : !reconValid ? 'Enter the actual balance.' : reconDiff === 0 ? 'Matches the app balance.' : '';
+    : !reconFx ? `No ${recon?.currency} rate yet. Log an entry in ${recon?.currency} first.` : !reconValid ? 'Enter the actual balance.' : reconDiff === 0 && !reconSaved ? 'Matches the app balance.' : '';
 
   // The difference is a transfer with a hidden archived "Balance adjustments" account (one per currency):
   // transfers are not income/spending, archived accounts are outside net worth, so only net worth moves.
   // ponytail: online-only; two devices reconciling at once can overshoot (single-user app, accepted).
   const reconcile = async () => {
     if (!recon || reconReason) return;
+    if (reconDiff === 0) { // target equals the balance without our saved adjustment: remove it
+      const d = await deleteEntry(reconId);
+      if (d.success) { success('Balance adjusted', 'Previous adjustment removed'); setRecon(null); } else showError('Could not adjust balance', d.error?.message);
+      return;
+    }
     const adjName = adjustmentAccountName(recon.currency);
     let adj = accounts.find((a) => isAdjustmentAccount(a) && a.currency === recon.currency)?.id;
     if (!adj) {

@@ -2,6 +2,7 @@ import type { Account, Entry } from '../types';
 import { round2 } from './calculations';
 
 export function settlementAmount(balanceHkd: number, rate: number): number {
+  balanceHkd = round2(balanceHkd); // edit mode adds floats: 0.01 + 0.06 = 0.06999…
   if (balanceHkd <= 0 || rate <= 0) return 0;
   const nearest = round2(balanceHkd / rate);
   return round2(nearest * rate) <= balanceHkd ? nearest : round2(nearest - 0.01);
@@ -11,10 +12,12 @@ export function offsetAmount(amount: number, rate: number): number {
   return round2(amount * rate);
 }
 
+/** Wallet reconcile's hidden counter-account ("Balance adjustments", "Balance adjustments USD"). ponytail: name-based, no migration. */
+export const isAdjustmentAccount = (a: Account): boolean => a.archived && /^Balance adjustments( [A-Z]{3})?$/.test(a.name);
+
 export function canRepeatEntry(entry: Entry, accounts: Account[]): boolean {
-  return entry.title !== 'Balance adjustment' && !(entry.kind === 'transfer' && accounts.some((account) =>
-    account.archived && account.name.startsWith('Balance adjustments')
-    && (account.id === entry.accountId || account.id === entry.toAccountId)
+  return !(entry.kind === 'transfer' && accounts.some((a) =>
+    isAdjustmentAccount(a) && (a.id === entry.accountId || a.id === entry.toAccountId)
   ));
 }
 

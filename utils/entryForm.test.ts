@@ -20,6 +20,7 @@ describe('settlementAmount', () => {
     expect(settlementAmount(0.04, 7.8)).toBe(0);
     expect(settlementAmount(1, 1.005)).toBe(0.99);
     expect(settlementAmount(-1, 7.8)).toBe(0);
+    expect(settlementAmount(0.01 + 0.06, 1)).toBe(0.07); // editing a repayment re-adds it as a float
   });
 });
 
@@ -51,7 +52,10 @@ describe('recentEntryTemplates', () => {
       entry('legit', { kind: 'transfer', toAccountId: 'old' }),
       entry('import', { categoryId: undefined }),
     ];
-    expect(recentEntryTemplates(entries, accounts).map((item) => item.id)).toEqual(['legit', 'import']);
+    // An ordinary entry titled "Balance adjustment" stays; only transfers with the adjustment account are hidden.
+    expect(recentEntryTemplates(entries, accounts).map((item) => item.id)).toEqual(['title', 'legit', 'import']);
+    expect(canRepeatEntry(entry('usd', { kind: 'transfer', accountId: 'u' }), [{ ...adjustment, id: 'u', name: 'Balance adjustments USD' }])).toBe(false);
+    expect(canRepeatEntry(entry('sav', { kind: 'transfer', accountId: 's' }), [{ ...adjustment, id: 's', name: 'Balance adjustments savings' }])).toBe(true);
     expect(canRepeatEntry(entries[2], [{ ...adjustment, archived: false }])).toBe(true);
   });
 });

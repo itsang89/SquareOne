@@ -10,6 +10,7 @@ import { useAppContext } from '../context/AppContext';
 import { useToast } from '../components/ToastContext';
 import { accountBalances, netWorth, round2, totalOwed } from '../utils/calculations';
 import { latestFx } from '../utils/entryUi';
+import { isAdjustmentAccount } from '../utils/entryForm';
 import { formatCurrency } from '../utils/formatters';
 import type { Account } from '../types';
 
@@ -27,7 +28,7 @@ export const Wallet: React.FC = () => {
   const worth = useMemo(() => netWorth(accounts, entries, latestFx(entries)), [accounts, entries]);
   const owed = useMemo(() => totalOwed(entries), [entries]);
   const live = accounts.filter((a) => !a.archived);
-  const archived = accounts.filter((a) => a.archived);
+  const archived = accounts.filter((a) => a.archived && !isAdjustmentAccount(a)); // adjustment accounts are never restorable
 
   const open = (a: Account | 'new') => {
     setEditing(a);
@@ -47,7 +48,11 @@ export const Wallet: React.FC = () => {
   const target = Number(actual);
   const reconValid = actual.trim() !== '' && Number.isFinite(target);
   const reconDiff = recon && reconValid ? round2(target - (balances.get(recon.id) ?? 0)) : 0;
-  const reconReason = !online ? 'You are offline. Reconcile needs a connection.' : !reconValid ? 'Enter the actual balance.' : reconDiff === 0 ? 'Matches the app balance.' : '';
+  const reconPending = !!recon && entries.some((e) => e.pending && (e.accountId === recon.id || e.toAccountId === recon.id));
+  const reconFx = recon?.currency === 'HKD' ? 1 : recon ? latestFx(entries)[recon.currency] : undefined;
+  const reconReason = !online ? 'You are offline. Reconcile needs a connection.'
+    : reconPending ? 'Wait for pending entries on this account to sync.'
+    : !reconFx ? `No ${recon?.currency} rate yet. Log an entry in ${recon?.currency} first.` : !reconValid ? 'Enter the actual balance.' : reconDiff === 0 ? 'Matches the app balance.' : '';
 
   // The difference is a transfer with a hidden archived "Balance adjustments" account (one per currency):
   // transfers are not income/spending, archived accounts are outside net worth, so only net worth moves.
@@ -55,7 +60,7 @@ export const Wallet: React.FC = () => {
   const reconcile = async () => {
     if (!recon || reconReason) return;
     const adjName = recon.currency === 'HKD' ? 'Balance adjustments' : `Balance adjustments ${recon.currency}`;
-    let adj = accounts.find((a) => a.archived && a.currency === recon.currency && a.name === adjName)?.id;
+    let adj = accounts.find((a) => isAdjustmentAccount(a) && a.currency === recon.currency && a.name === adjName)?.id;
     if (!adj) {
       const c = await addAccount({ name: adjName, currency: recon.currency, sort: accounts.length, archived: true });
       if (!c.success || !c.id) { showError('Could not adjust balance', c.error?.message); return; }
@@ -63,10 +68,11 @@ export const Wallet: React.FC = () => {
     }
     const up = reconDiff > 0;
     const r = await addEntry({
-      kind: 'transfer', amount: Math.abs(reconDiff), title: 'Balance adjustment', currency: recon.currency,
+      kind: 'transfer', amount: Math.abs(reconDiff), title: 'Balance adjustment', currency: recon.currency, fxRate: reconFx,
       accountId: up ? adj : recon.id, toAccountId: up ? recon.id : adj,
     });
-    if (r.success) { success('Balance adjusted', `${up ? '+' : '−'}${formatCurrency(Math.abs(reconDiff), recon.currency)}`); setRecon(null); }
+    if (r.success && r.queued) { success('Adjustment queued', 'It syncs when you are back online.'); setRecon(null); }
+    else if (r.success) { success('Balance adjusted', `${up ? '+' : '−'}${formatCurrency(Math.abs(reconDiff), recon.currency)}`); setRecon(null); }
     else showError('Could not adjust balance', r.error?.message);
   };
 

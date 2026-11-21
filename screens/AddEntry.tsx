@@ -307,7 +307,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
               className="w-11 h-11 bg-white dark:bg-zinc-900 border-2 border-black shadow-neo-sm grid place-items-center text-black dark:text-zinc-100">
               <CopyPlus size={20} aria-hidden="true" />
             </button>
-            <DeleteConfirmButton size="expanded" onConfirm={() => void remove()} ariaLabel="Delete entry" />
+            <DeleteConfirmButton size="header" onConfirm={() => void remove()} ariaLabel="Delete entry" />
           </div>
         ) : <div className="w-10" />}
       </header>

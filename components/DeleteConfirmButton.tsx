@@ -9,8 +9,8 @@ interface DeleteConfirmButtonProps {
   onConfirm: () => void;
   /** Auto-disarm timeout in ms. Default 3000. */
   timeoutMs?: number;
-  /** Compact (icon-sized chip) vs expanded (matches button row). Default 'compact'. */
-  size?: 'compact' | 'expanded';
+  /** Compact (icon-sized chip), expanded (matches button row), or header (44px square like other header buttons). Default 'compact'. */
+  size?: 'compact' | 'expanded' | 'header';
   /** Optional icon size override; defaults to 14 (compact) or 16 (expanded). */
   iconSize?: number;
   /** Accessible label for the trash button. */
@@ -99,10 +99,10 @@ export const DeleteConfirmButton: React.FC<DeleteConfirmButtonProps> = ({
   };
 
   const sizing =
-    size === 'compact'
-      ? 'px-2 py-1.5 text-[10px] gap-1.5'
-      : 'px-3 py-2 text-xs gap-2';
-  const ic = iconSize ?? (size === 'compact' ? 14 : 16);
+    size === 'compact' ? 'px-2 py-1.5 text-[10px] gap-1.5'
+    : size === 'header' ? `h-11 text-xs gap-2 ${armed ? 'px-3' : 'w-11'}`
+    : 'px-3 py-2 text-xs gap-2';
+  const ic = iconSize ?? (size === 'compact' ? 14 : size === 'header' ? 20 : 16);
 
   return (
     <motion.button
@@ -110,10 +110,10 @@ export const DeleteConfirmButton: React.FC<DeleteConfirmButtonProps> = ({
       onClick={handleClick}
       aria-label={armed ? 'Confirm delete' : ariaLabel}
       aria-pressed={armed}
-      className={`relative overflow-hidden rounded-md border-2 border-black font-bold uppercase tracking-wide whitespace-nowrap inline-flex items-center justify-center transition-colors ${sizing} ${
+      className={`relative overflow-hidden border-2 border-black shadow-neo-sm font-bold uppercase tracking-wide whitespace-nowrap inline-flex items-center justify-center transition-colors ${sizing} ${
         armed
-          ? 'bg-neo-red text-white shadow-neo-sm'
-          : 'bg-white dark:bg-zinc-800 text-black dark:text-zinc-100 hover:bg-neo-red/20'
+          ? 'bg-neo-red text-white'
+          : 'bg-white dark:bg-zinc-900 text-black dark:text-zinc-100 hover:bg-neo-red/20'
       }`}
       whileHover={armed ? {} : { scale: 1.05 }}
       whileTap={{ scale: 0.94, x: 1, y: 1 }}
@@ -134,10 +134,10 @@ export const DeleteConfirmButton: React.FC<DeleteConfirmButtonProps> = ({
         {armed ? (
           <>
             <X size={ic} strokeWidth={2.5} />
-            <span>Confirm Delete</span>
+            <span>{size === "header" ? "Delete?" : "Confirm Delete"}</span>
           </>
         ) : (
-          <Trash2 size={ic} strokeWidth={2} />
+          <Trash2 size={ic} strokeWidth={size === "header" ? 2.5 : 2} />
         )}
       </span>
     </motion.button>

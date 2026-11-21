@@ -22,7 +22,7 @@ export interface UseFocusTrapOptions {
 
 /**
  * Trap keyboard focus inside `dialogRef` while `open` is true.
- * - Focuses the first focusable element on open (per `initialFocusDelay`).
+ * - Focuses the first text field (else first focusable) on open (per `initialFocusDelay`).
  * - Wraps Tab / Shift+Tab around the first/last focusables.
  * - Closes on Escape.
  * - Restores focus to whatever had it before opening on close.
@@ -34,6 +34,9 @@ export function useFocusTrap(
   { initialFocusDelay = 'immediate' }: UseFocusTrapOptions = {},
 ): void {
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  // Callers pass inline arrows; a ref keeps the effect from re-running (and stealing focus) on every render.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; });
 
   useEffect(() => {
     if (!open) return;
@@ -41,7 +44,9 @@ export function useFocusTrap(
     previousFocusRef.current = document.activeElement as HTMLElement;
     const dialog = dialogRef.current;
     if (dialog) {
-      const first = dialog.querySelector<HTMLElement>(FOCUSABLE);
+      // Prefer the first text field so the user can type straight away; else the first focusable.
+      const first = dialog.querySelector<HTMLElement>('input:not([disabled]),textarea:not([disabled])')
+        ?? dialog.querySelector<HTMLElement>(FOCUSABLE);
       if (initialFocusDelay === 'raf') {
         requestAnimationFrame(() => first?.focus());
       } else {
@@ -52,7 +57,7 @@ export function useFocusTrap(
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== 'Tab' || !dialog) return;
@@ -77,5 +82,5 @@ export function useFocusTrap(
       document.removeEventListener('keydown', handleKeyDown);
       previousFocusRef.current?.focus();
     };
-  }, [open, onClose, dialogRef, initialFocusDelay]);
+  }, [open, dialogRef, initialFocusDelay]);
 }

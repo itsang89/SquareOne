@@ -130,6 +130,13 @@ export const AmountInput: React.FC<AmountInputProps> = ({
               {label}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => handleNumpad('=')}
+            className="col-span-4 h-12 border-2 border-black bg-neo-yellow text-black font-black uppercase tracking-widest shadow-neo-sm active:translate-y-0.5 active:shadow-none transition-transform"
+          >
+            {isExpr ? '= Done' : 'Done'}
+          </button>
         </div>
       )}
     </div>

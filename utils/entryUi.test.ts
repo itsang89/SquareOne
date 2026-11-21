@@ -47,6 +47,7 @@ describe('entryUi', () => {
     const lookups = { accounts, categories, friends };
     const split = entryView(e({ accountId: 'a1', shares: [{ friendId: 'f1', amount: 40 }] }), lookups);
     expect([split.amount, split.sign]).toEqual([60, '-']);
+    expect(split.sub).toContain('total');
     const owed = entryView(e({ shares: [{ friendId: 'f1', amount: 100 }] }), lookups);
     expect([owed.amount, owed.sign, owed.tone]).toEqual([100, '', 'muted']);
     const theirs = entryView(e({ shares: [{ friendId: 'f1', amount: 40 }] }), lookups, 'f1');

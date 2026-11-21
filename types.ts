@@ -62,6 +62,7 @@ export interface Entry {
   subscriptionId?: string;
   requestId?: string;
   shares: EntryShare[]; // expense only
+  pending?: boolean; // saved offline, not yet on the server
 }
 
 /** Fields the caller supplies; defaults: currency HKD, fxRate 1, occurredAt now, shares []. */

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { UserPlus, ArrowUpRight, ArrowDownLeft, Check, Search } from 'lucide-react';
 import { NeoButton } from '../components/NeoButton';
 import { NeoModal } from '../components/NeoModal';
@@ -16,7 +16,6 @@ import { formatCurrency } from '../utils/formatters';
 type FilterType = 'A-Z' | 'High-Low' | 'Recent';
 
 export const Friends: React.FC = () => {
-  const navigate = useNavigate();
   const { friends, entries, addFriend, loading, error, refetch } = useAppContext();
   const { openSearch } = useSearch();
   const { success, error: showError } = useToast();
@@ -136,17 +135,12 @@ export const Friends: React.FC = () => {
           </div>
         ) : filteredFriends.length > 0 ? (
           filteredFriends.map((friend) => (
-              <div 
+              <Link
                   key={friend.id}
-                  onClick={() => navigate(`/friends/${friend.id}`)}
-                  className="group relative bg-white dark:bg-zinc-900 border-2 border-black p-4 transition-all cursor-pointer hover:-translate-y-1 hover:shadow-neo-lg active:translate-y-0 active:shadow-neo-sm shadow-neo"
+                  to={`/friends/${friend.id}`}
+                  className="group block bg-white dark:bg-zinc-900 border-2 border-black p-4 transition-all hover:-translate-y-1 hover:shadow-neo-lg active:translate-y-0 active:shadow-neo-sm shadow-neo"
               >
-                  {/* Colored accent line */}
-                  <div className={`absolute left-0 top-0 bottom-0 w-1.5 border-r-2 border-black ${
-                       friend.balance > 0 ? 'bg-neo-orange' : friend.balance < 0 ? 'bg-neo-red' : 'bg-gray-200 dark:bg-zinc-800'
-                  }`}></div>
-
-                  <div className="flex items-center justify-between gap-3 pl-2">
+                  <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
                           <Avatar src={friend.avatar} alt={friend.name} size="md" />
                           <div className="flex flex-col min-w-0">
@@ -177,7 +171,7 @@ export const Friends: React.FC = () => {
                           )}
                       </div>
                   </div>
-              </div>
+              </Link>
           ))
         ) : (
           <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">

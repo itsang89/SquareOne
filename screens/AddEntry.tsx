@@ -17,6 +17,7 @@ import { evaluateExpression } from '../utils/calculator';
 import { isValidAmount } from '../utils/validation';
 import { categoriesByUse, dayToIso, KIND_LABEL, lastUsedAccountId, latestFx, splitEqual, tooSmallToSplit } from '../utils/entryUi';
 import { formatCurrency } from '../utils/formatters';
+import { PRESET_AVATARS } from '../constants';
 import type { Entry, EntryKind } from '../types';
 
 const KINDS: { kind: EntryKind; color: string }[] = [
@@ -47,7 +48,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
   const nav = useNavigate();
   const loc = useLocation();
   const preset = (loc.state as Preset | null) ?? {};
-  const { entries, accounts, categories, friends, addEntry, updateEntry, deleteEntry, addCategory, isProcessing } = useAppContext();
+  const { entries, accounts, categories, friends, addEntry, updateEntry, deleteEntry, addCategory, addFriend, isProcessing } = useAppContext();
   const { success, error: showError } = useToast();
 
   const [kind, setKind] = useState<EntryKind>(entry?.kind ?? preset.kind ?? 'expense');
@@ -101,6 +102,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
     : (kind === 'income' || kind === 'transfer' || (kind === 'expense' && accountId !== null)) && !fromId ? 'Add an account in Wallet first'
     : kind === 'transfer' && accounts.find((a) => a.id === toId)?.currency !== account?.currency ? 'Transfers need two accounts in the same currency'
     : splitOn && kind === 'expense' && mode === 'equal' && tooSmallToSplit(total, shareIds.length) ? 'Too small to split equally'
+    : splitOn && kind === 'expense' && shares.length === 0 ? 'Pick who to split with, or turn split off'
     : mine < 0 ? 'Friends\' shares exceed the total'
     : null;
 
@@ -123,6 +125,13 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
     return r.id;
   };
 
+  const createFriend = async (name: string) => {
+    const r = await addFriend({ name, avatar: PRESET_AVATARS[0] });
+    if (!r.success) showError('Could not add friend', r.error?.message);
+    else if (r.id) setShareIds((ids) => [...ids, r.id!]);
+    return r.success;
+  };
+
   const back = () => (loc.key === 'default' ? nav('/dashboard', { replace: true }) : nav(-1));
 
   const save = async () => {
@@ -141,7 +150,9 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
       ? await updateEntry({ ...built, id: entry.id, requestId: entry.requestId, subscriptionId: entry.subscriptionId })
       : await addEntry(built);
     if (r.success) {
-      success(entry ? 'Entry updated' : 'Saved', `${KIND_LABEL[kind]} ${formatCurrency(total, currency)}`);
+      const queued = 'queued' in r && r.queued;
+      success(entry ? 'Entry updated' : queued ? 'Saved offline' : 'Saved',
+        `${KIND_LABEL[kind]} ${formatCurrency(total, currency)}${queued ? ' · syncs when back online' : ''}`);
       back();
     } else {
       showError('Could not save', r.error?.message);
@@ -199,7 +210,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
         {kind === 'settlement' && (
           <div>
             <FieldLabel>Who paid you back?</FieldLabel>
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+            <div className="flex flex-wrap gap-2">
               {owing.map((f) => (
                 <Chip key={f.id} active={f.id === friendId} onClick={() => pickFriend(f.id)} color="bg-neo-yellow">
                   <Avatar src={f.avatar} alt={f.name} size="sm" />
@@ -270,7 +281,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
                 <SplitEditor
                   friends={friends} ids={shareIds} onToggle={toggleShare} mode={mode} onMode={switchMode}
                   custom={custom} onCustom={(fid, v) => setCustom((c) => ({ ...c, [fid]: v }))}
-                  each={each} mine={mine} owe={owe} currency={currency}
+                  each={each} mine={mine} owe={owe} currency={currency} onAddFriend={createFriend}
                 />
               </div>
             )}

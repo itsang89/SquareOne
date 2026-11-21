@@ -54,7 +54,8 @@ describe('recentEntryTemplates', () => {
     ];
     // An ordinary entry titled "Balance adjustment" stays; only transfers with the adjustment account are hidden.
     expect(recentEntryTemplates(entries, accounts).map((item) => item.id)).toEqual(['title', 'legit', 'import']);
-    expect(canRepeatEntry(entry('usd', { kind: 'transfer', accountId: 'u' }), [{ ...adjustment, id: 'u', name: 'Balance adjustments USD' }])).toBe(false);
+    expect(canRepeatEntry(entry('usd', { kind: 'transfer', accountId: 'u' }), [{ ...adjustment, id: 'u', name: 'Balance adjustments USD', currency: 'USD' }])).toBe(false);
+    expect(canRepeatEntry(entry('hkd', { kind: 'transfer', accountId: 'h' }), [{ ...adjustment, id: 'h', name: 'Balance adjustments USD' }])).toBe(true);
     expect(canRepeatEntry(entry('sav', { kind: 'transfer', accountId: 's' }), [{ ...adjustment, id: 's', name: 'Balance adjustments savings' }])).toBe(true);
     expect(canRepeatEntry(entries[2], [{ ...adjustment, archived: false }])).toBe(true);
   });

@@ -10,7 +10,7 @@ import { useAppContext } from '../context/AppContext';
 import { useToast } from '../components/ToastContext';
 import { accountBalances, netWorth, round2, totalOwed } from '../utils/calculations';
 import { latestFx } from '../utils/entryUi';
-import { isAdjustmentAccount } from '../utils/entryForm';
+import { adjustmentAccountName, isAdjustmentAccount } from '../utils/entryForm';
 import { formatCurrency } from '../utils/formatters';
 import type { Account } from '../types';
 
@@ -49,7 +49,7 @@ export const Wallet: React.FC = () => {
   const reconValid = actual.trim() !== '' && Number.isFinite(target);
   const reconDiff = recon && reconValid ? round2(target - (balances.get(recon.id) ?? 0)) : 0;
   const reconPending = !!recon && entries.some((e) => e.pending && (e.accountId === recon.id || e.toAccountId === recon.id));
-  const reconFx = recon?.currency === 'HKD' ? 1 : recon ? latestFx(entries)[recon.currency] : undefined;
+  const reconFx = recon?.currency === 'HKD' ? 1 : recon ? latestFx(entries.filter((e) => !e.pending))[recon.currency] : undefined;
   const reconReason = !online ? 'You are offline. Reconcile needs a connection.'
     : reconPending ? 'Wait for pending entries on this account to sync.'
     : !reconFx ? `No ${recon?.currency} rate yet. Log an entry in ${recon?.currency} first.` : !reconValid ? 'Enter the actual balance.' : reconDiff === 0 ? 'Matches the app balance.' : '';
@@ -59,8 +59,8 @@ export const Wallet: React.FC = () => {
   // ponytail: online-only; two devices reconciling at once can overshoot (single-user app, accepted).
   const reconcile = async () => {
     if (!recon || reconReason) return;
-    const adjName = recon.currency === 'HKD' ? 'Balance adjustments' : `Balance adjustments ${recon.currency}`;
-    let adj = accounts.find((a) => isAdjustmentAccount(a) && a.currency === recon.currency && a.name === adjName)?.id;
+    const adjName = adjustmentAccountName(recon.currency);
+    let adj = accounts.find((a) => isAdjustmentAccount(a) && a.currency === recon.currency)?.id;
     if (!adj) {
       const c = await addAccount({ name: adjName, currency: recon.currency, sort: accounts.length, archived: true });
       if (!c.success || !c.id) { showError('Could not adjust balance', c.error?.message); return; }
@@ -70,9 +70,8 @@ export const Wallet: React.FC = () => {
     const r = await addEntry({
       kind: 'transfer', amount: Math.abs(reconDiff), title: 'Balance adjustment', currency: recon.currency, fxRate: reconFx,
       accountId: up ? adj : recon.id, toAccountId: up ? recon.id : adj,
-    });
-    if (r.success && r.queued) { success('Adjustment queued', 'It syncs when you are back online.'); setRecon(null); }
-    else if (r.success) { success('Balance adjusted', `${up ? '+' : '−'}${formatCurrency(Math.abs(reconDiff), recon.currency)}`); setRecon(null); }
+    }, { onlineOnly: true });
+    if (r.success) { success('Balance adjusted', `${up ? '+' : '−'}${formatCurrency(Math.abs(reconDiff), recon.currency)}`); setRecon(null); }
     else showError('Could not adjust balance', r.error?.message);
   };
 

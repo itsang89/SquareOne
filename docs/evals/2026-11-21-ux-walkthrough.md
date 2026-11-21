@@ -67,8 +67,10 @@ Import Money+ with a real CSV (screen only), manual agent token creation, Google
 | Item | State |
 |---|---|
 | P0 #1, P1 #2–#9 | Done 2026-11-21 on `feature/uiux-polish`, Codex-reviewed, verified in demo |
-| P2 #10–#22 | Open |
-| Feature ideas 1–8 | Open |
+| P2 #10, #12–#18, #21, #22 | Done 2026-11-21 (batch 2) |
+| P2 #11, #19, #20 | Open |
+| Features 2, 3, 5, 6, 8 (auto FX, Repeat/Recent, recap, reconcile, undo) | Done 2026-11-21 (batch 2) |
+| Features 1 (budgets), 4 (nudge), 7 (receipt) | Open (1 and 4 skipped by Isaac for now) |
 | Unknown writer of demo `Bank` + `Salary` rows | Explained: the recurring-income work (`16e9821`) ran against the same demo |
 
 ## Follow-ups from Codex review (2026-11-21, not fixed)
@@ -94,3 +96,11 @@ Order: wrong numbers first, then speed of daily logging, then polish.
 9. **Polish batch:** #13, #14, #15, #16, #17, #18, #21, #22, `NeoInput` label a11y.
 10. **Nudge friend** (feature 4).
 11. **Later:** desktop layout (#20), Agent access CLI text (#19), amount cap (#11), receipt photo (feature 7).
+
+## Accepted trade-offs (batch 2, Codex-reviewed)
+
+- Reconcile adjustment accounts are identified by name (`utils/entryForm.ts` `isAdjustmentAccount`), no migration. The CLI can still unarchive one (`accounts archive --unarchive`); if that happens its balance enters net worth.
+- Two devices reconciling the same account at once can overshoot (single user).
+- Offline delete vs outbox replay race is pre-existing; Undo is only offered for synced entries deleted online.
+- Undo restores with a new `created_at`.
+- Full-chip settlement in a foreign currency can leave a sub-cent residual; the UI shows "Up to … · leaves HK$x".

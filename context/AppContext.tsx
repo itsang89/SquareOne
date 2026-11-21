@@ -30,7 +30,8 @@ interface AppContextType {
   rejectedCount: number;
   refetch: () => Promise<void>;
   // Entries
-  addEntry: (input: EntryInput) => Promise<IdResult & { queued?: boolean }>;
+  /** onlineOnly: never queue offline (e.g. a reconcile delta computed from a balance that may go stale). */
+  addEntry: (input: EntryInput, opts?: { onlineOnly?: boolean }) => Promise<IdResult & { queued?: boolean }>;
   updateEntry: (entry: Entry) => Promise<Result>;
   deleteEntry: (id: string) => Promise<Result & { undoable?: boolean }>;
   restoreEntry: (entry: Entry, ownerId: string) => Promise<Result>;
@@ -302,14 +303,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [user]);
 
 
-  const addEntry = useCallback<AppContextType['addEntry']>(async (input) => {
+  const addEntry = useCallback<AppContextType['addEntry']>(async (input, opts) => {
     // Client-made id: save_entry upserts on id, so a retried or replayed save never duplicates.
     const entry: Entry = {
       occurredAt: new Date().toISOString(), title: '', currency: 'HKD', fxRate: 1, shares: [],
       ...input, id: input.id ?? crypto.randomUUID(),
     };
     const r = await write('adding entry', async () => ({ id: await saveEntry(entry) }));
-    if (r.success || !user || !(r.error === OFFLINE_ERROR || isNetworkError(r.error))) return r;
+    if (r.success || opts?.onlineOnly || !user || !(r.error === OFFLINE_ERROR || isNetworkError(r.error))) return r;
     if (!queueEntry(entry)) return { success: false, error: STORAGE_ERROR };
     return { success: true, id: entry.id, queued: true };
   }, [write, saveEntry, queueEntry, user]);

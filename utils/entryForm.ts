@@ -12,8 +12,10 @@ export function offsetAmount(amount: number, rate: number): number {
   return round2(amount * rate);
 }
 
-/** Wallet reconcile's hidden counter-account ("Balance adjustments", "Balance adjustments USD"). ponytail: name-based, no migration. */
-export const isAdjustmentAccount = (a: Account): boolean => a.archived && /^Balance adjustments( [A-Z]{3})?$/.test(a.name);
+/** Name of Wallet reconcile's hidden counter-account for a currency. */
+export const adjustmentAccountName = (currency: string): string => currency === 'HKD' ? 'Balance adjustments' : `Balance adjustments ${currency}`;
+/** ponytail: name-based identity, no migration; the CLI can still unarchive it (accepted, single user). */
+export const isAdjustmentAccount = (a: Account): boolean => a.archived && a.name === adjustmentAccountName(a.currency);
 
 export function canRepeatEntry(entry: Entry, accounts: Account[]): boolean {
   return !(entry.kind === 'transfer' && accounts.some((a) =>

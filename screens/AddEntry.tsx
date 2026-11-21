@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { CalendarDays } from 'lucide-react';
 import { BackButton } from '../components/BackButton';
@@ -11,6 +11,7 @@ import { FullPageLoading } from '../components/LoadingSpinner';
 import { AmountInput } from '../components/AddEntry/AmountInput';
 import { CategoryGrid } from '../components/AddEntry/CategoryGrid';
 import { SplitEditor, type SplitMode } from '../components/AddEntry/SplitEditor';
+import { DatePicker } from '../components/AddEntry/DatePicker';
 import { useAppContext } from '../context/AppContext';
 import { useToast } from '../components/ToastContext';
 import { localDay, round2 } from '../utils/calculations';
@@ -133,12 +134,9 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
     return r.success;
   };
 
-  const dateRef = useRef<HTMLInputElement>(null);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   // Fixed when the form opens; a form left open past midnight keeps its original "today".
   const [[today, yesterday]] = useState(() => [localDay(new Date().toISOString()), localDay(new Date(Date.now() - 864e5).toISOString())]);
-  const openPicker = () => {
-    try { dateRef.current?.showPicker(); } catch { dateRef.current?.focus(); } // showPicker: Safari 16.4+, Chrome 99+
-  };
 
   const back = () => (loc.key === 'default' ? nav('/dashboard', { replace: true }) : nav(-1));
 
@@ -298,24 +296,15 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
 
         <div>
           <FieldLabel>Date</FieldLabel>
-          <div className="relative flex flex-wrap gap-2">
-            <Chip active={day === today} onClick={() => setDay(today)}>Today</Chip>
-            <Chip active={day === yesterday} onClick={() => setDay(yesterday)}>Yesterday</Chip>
-            <Chip active={day !== today && day !== yesterday} onClick={openPicker}>
+          <div className="flex flex-wrap gap-2">
+            <Chip active={day === today} onClick={() => { setDay(today); setCalendarOpen(false); }}>Today</Chip>
+            <Chip active={day === yesterday} onClick={() => { setDay(yesterday); setCalendarOpen(false); }}>Yesterday</Chip>
+            <Chip active={day !== today && day !== yesterday} onClick={() => setCalendarOpen((v) => !v)}>
               <CalendarDays size={16} aria-hidden="true" />
               {day !== today && day !== yesterday ? dayLabel(day) : 'Pick date'}
             </Chip>
-            {/* The phone's own date picker, opened by the chip above. */}
-            <input
-              ref={dateRef}
-              type="date"
-              tabIndex={-1}
-              aria-label="Pick date"
-              value={day}
-              onChange={(e) => e.target.value && setDay(e.target.value)}
-              className="sr-only"
-            />
           </div>
+          {calendarOpen && <DatePicker value={day} today={today} onPick={(d) => { setDay(d); setCalendarOpen(false); }} />}
         </div>
 
         <div>

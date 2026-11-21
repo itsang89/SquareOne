@@ -69,7 +69,7 @@ Import Money+ with a real CSV (screen only), manual agent token creation, Google
 | P0 #1, P1 #2–#9 | Done 2026-11-21 on `feature/uiux-polish`, Codex-reviewed, verified in demo |
 | P2 #10–#22 | Open |
 | Feature ideas 1–8 | Open |
-| Unknown writer of demo `Bank` + `Salary` rows | Open, investigate |
+| Unknown writer of demo `Bank` + `Salary` rows | Explained: the recurring-income work (`16e9821`) ran against the same demo |
 
 ## Follow-ups from Codex review (2026-11-21, not fixed)
 
@@ -78,3 +78,19 @@ Import Money+ with a real CSV (screen only), manual agent token creation, Google
 - Settle prefill from Friend detail (initial `amount` state) still uses the HKD balance even if the default account is non-HKD. Chip and friend-pick autofill are fixed.
 - Editing a non-HKD settlement and switching to Offset keeps the old currency.
 - A11y: `NeoInput` labels are not linked to inputs (no `htmlFor`/`id`), app-wide.
+
+## Next-up ranking (2026-11-21)
+
+Order: wrong numbers first, then speed of daily logging, then polish.
+
+1. **Correctness batch (small):** settle prefill currency, Offset keeps old currency, friend-history sign mismatch (#12), `1÷0` Done wipes input, toast timer.
+2. **Auto FX rate** for the entry date (feature 2).
+3. **Repeat last entry / templates** (feature 3).
+4. **Keep draft on Back** (#10).
+5. **Budgets per category** (feature 1).
+6. **Undo after delete** (feature 8).
+7. **Monthly recap** (feature 5).
+8. **Account reconcile** (feature 6).
+9. **Polish batch:** #13, #14, #15, #16, #17, #18, #21, #22, `NeoInput` label a11y.
+10. **Nudge friend** (feature 4).
+11. **Later:** desktop layout (#20), Agent access CLI text (#19), amount cap (#11), receipt photo (feature 7).

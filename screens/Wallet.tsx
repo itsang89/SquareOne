@@ -49,7 +49,9 @@ export const Wallet: React.FC = () => {
 
   const target = Number(actual);
   const reconValid = actual.trim() !== '' && Number.isFinite(target);
-  const reconDiff = recon && reconValid ? round2(target - (balances.get(recon.id) ?? 0)) : 0;
+  // Balance without this session's own adjustment, so a retried upsert of the same id still lands on the target.
+  const reconBase = useMemo(() => accountBalances(accounts, entries.filter((e) => e.id !== reconId)), [accounts, entries, reconId]);
+  const reconDiff = recon && reconValid ? round2(target - (reconBase.get(recon.id) ?? 0)) : 0;
   const reconPending = !!recon && entries.some((e) => e.pending && (e.accountId === recon.id || e.toAccountId === recon.id));
   const reconFx = recon?.currency === 'HKD' ? 1 : recon ? latestFx(entries.filter((e) => !e.pending))[recon.currency] : undefined;
   const reconReason = !online ? 'You are offline. Reconcile needs a connection.'

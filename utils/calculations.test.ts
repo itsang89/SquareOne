@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   accountBalances, categoryEntries, dailySeries, friendBalance, friendBalancesMap, getLastActivity, monthlySeries, monthRange,
-  myExpense, pctChange, subscriptionsDue, netWorth, netWorthSeries, rangeTotals, totalOwed, totalOwing, totalsByCategory, weekRange, yearRange,
+  myExpense, pctChange, netWorth, netWorthSeries, rangeTotals, totalOwed, totalOwing, totalsByCategory, weekRange, yearRange,
 } from './calculations';
-import type { Account, Entry, Subscription } from '../types';
+import type { Account, Entry } from '../types';
 
 let n = 0;
 const at = (y: number, m: number, d: number, h = 12) => new Date(y, m - 1, d, h).toISOString();
@@ -195,14 +195,5 @@ describe('pctChange', () => {
     expect(pctChange(150, 100)).toBe(50);
     expect(pctChange(50, 200)).toBe(-75);
     expect(pctChange(10, 0)).toBeNull();
-  });
-});
-
-describe('subscriptionsDue', () => {
-  const sub = (id: string, nextDate: string, active = true) => ({ id, nextDate, active } as Subscription);
-  it('keeps active subs due within 7 days, soonest first', () => {
-    const now = new Date(2026, 10, 21, 15);
-    const r = subscriptionsDue([sub('late', '2026-11-28'), sub('past', '2026-11-20'), sub('far', '2026-11-29'), sub('off', '2026-11-22', false), sub('today', '2026-11-21')], now);
-    expect(r.map((s) => s.id)).toEqual(['today', 'late']);
   });
 });

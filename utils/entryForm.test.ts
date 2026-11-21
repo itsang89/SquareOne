@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { Account, Entry } from '../types';
-import { canRepeatEntry, offsetAmount, recentEntryTemplates, settlementAmount } from './entryForm';
+import type { Entry } from '../types';
+import { offsetAmount, recentEntryTemplates, settlementAmount } from './entryForm';
 
 const entry = (id: string, data: Partial<Entry> = {}): Entry => ({
   id, kind: 'expense', occurredAt: '2026-11-21', title: 'Lunch', amount: 50,
@@ -37,26 +37,8 @@ describe('recentEntryTemplates', () => {
       entry('1'), entry('2', { note: 'Different note' }), entry('3', { categoryId: 'travel' }),
       entry('4', { amount: 60 }), entry('5', { title: 'Dinner' }),
     ];
-    expect(recentEntryTemplates(entries, []).map((item) => item.id)).toEqual(['1', '3', '4']);
-    expect(recentEntryTemplates(entries.slice(0, 2), [])).toEqual([entries[0]]);
-    expect(recentEntryTemplates([], [])).toEqual([]);
-  });
-
-  it('filters adjustments before picking Recent and allows other archived transfer accounts', () => {
-    const adjustment: Account = { id: 'hidden', name: 'Balance adjustments', currency: 'HKD', archived: true, sort: 0 };
-    const accounts = [adjustment, { ...adjustment, id: 'old', name: 'Old bank' }];
-    const entries = [
-      entry('title', { title: 'Balance adjustment' }),
-      entry('in', { kind: 'transfer', accountId: 'hidden' }),
-      entry('out', { kind: 'transfer', toAccountId: 'hidden' }),
-      entry('legit', { kind: 'transfer', toAccountId: 'old' }),
-      entry('import', { categoryId: undefined }),
-    ];
-    // An ordinary entry titled "Balance adjustment" stays; only transfers with the adjustment account are hidden.
-    expect(recentEntryTemplates(entries, accounts).map((item) => item.id)).toEqual(['title', 'legit', 'import']);
-    expect(canRepeatEntry(entry('usd', { kind: 'transfer', accountId: 'u' }), [{ ...adjustment, id: 'u', name: 'Balance adjustments USD', currency: 'USD' }])).toBe(false);
-    expect(canRepeatEntry(entry('hkd', { kind: 'transfer', accountId: 'h' }), [{ ...adjustment, id: 'h', name: 'Balance adjustments USD' }])).toBe(true);
-    expect(canRepeatEntry(entry('sav', { kind: 'transfer', accountId: 's' }), [{ ...adjustment, id: 's', name: 'Balance adjustments savings' }])).toBe(true);
-    expect(canRepeatEntry(entries[2], [{ ...adjustment, archived: false }])).toBe(true);
+    expect(recentEntryTemplates(entries, 3).map((item) => item.id)).toEqual(['1', '3', '4']);
+    expect(recentEntryTemplates(entries.slice(0, 2))).toEqual([entries[0]]);
+    expect(recentEntryTemplates([])).toEqual([]);
   });
 });

@@ -1,4 +1,4 @@
-import type { Account, Category, CategoryKind, Entry, Subscription } from '../types';
+import type { Account, Category, CategoryKind, Entry } from '../types';
 
 /**
  * Pure functions over the entries model. Conventions:
@@ -272,13 +272,6 @@ export function monthlySeries(entries: Entry[], year: number): SeriesPoint[] {
 
 /** % change from prev to cur, rounded. null when there is no previous amount to compare. */
 export const pctChange = (cur: number, prev: number): number | null => (prev > 0 ? Math.round(((cur - prev) / prev) * 100) : null);
-
-/** Active subscriptions whose next date falls today..today+days (local), soonest first. */
-export function subscriptionsDue(subs: Subscription[], now = new Date(), days = 7): Subscription[] {
-  const from = localDay(now.toISOString());
-  const to = localDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() + days, 12).toISOString());
-  return subs.filter((s) => s.active && s.nextDate >= from && s.nextDate <= to).sort((a, b) => a.nextDate.localeCompare(b.nextDate));
-}
 
 /** Category lookup helper for UIs. */
 export const categoryName = (categories: Category[], id?: string | null): string =>

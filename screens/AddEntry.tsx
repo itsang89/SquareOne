@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, CalendarDays } from 'lucide-react';
+import { ArrowLeft, CalendarDays, CopyPlus } from 'lucide-react';
 import { NeoButton } from '../components/NeoButton';
 import { NeoModal } from '../components/NeoModal';
 import { NeoInput } from '../components/NeoInput';
@@ -19,7 +19,7 @@ import { useToast } from '../components/ToastContext';
 import { localDay, round2 } from '../utils/calculations';
 import { calculateExpression } from '../utils/calculator';
 import { entryFxKey, fetchEntryFx, parseEntryFxRate, type EntryFx } from '../utils/entryFx';
-import { canRepeatEntry, offsetAmount, recentEntryTemplates, settlementAmount } from '../utils/entryForm';
+import { offsetAmount, recentEntryTemplates, settlementAmount } from '../utils/entryForm';
 import { categoriesByUse, dayLabel, dayToIso, KIND_LABEL, lastUsedAccountId, latestFx, splitEqual, tooSmallToSplit } from '../utils/entryUi';
 import { formatCurrency } from '../utils/formatters';
 import { PRESET_AVATARS } from '../constants';
@@ -59,7 +59,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
   const { entries, accounts, categories, friends, addEntry, updateEntry, deleteEntry, restoreEntry, addCategory, addFriend, isProcessing } = useAppContext();
   const { success, show, error: showError } = useToast();
 
-  const source = entry ?? entries.find((e) => e.id === preset.templateId && canRepeatEntry(e, accounts));
+  const source = entry ?? entries.find((e) => e.id === preset.templateId);
   const [kind, setKind] = useState<EntryKind>(source?.kind ?? preset.kind ?? 'expense');
   const presetBalance = friends.find((f) => f.id === preset.friendId)?.balance ?? 0;
   const [amountText, setAmount] = useState(() => String(source
@@ -227,7 +227,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
   );
   const { back, leave, confirming, keepEditing } = useDraftBack(dirty);
   const recent = !entry && !dirty && !preset.friendId && !preset.splitFriendId && !preset.kind
-    ? recentEntryTemplates(entries, accounts) : [];
+    ? recentEntryTemplates(entries) : [];
   const repeat = (source: Entry, replace = false) => void nav('/add', { replace, state: { templateId: source.id } });
 
   const save = async () => {
@@ -301,22 +301,27 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
           <ArrowLeft size={24} aria-hidden="true" />
         </button>
         <h1 className="text-lg font-black uppercase tracking-widest dark:text-zinc-100">{entry ? 'Edit entry' : 'New entry'}</h1>
-        {entry ? <DeleteConfirmButton size="expanded" onConfirm={() => void remove()} ariaLabel="Delete entry" /> : <div className="w-10" />}
+        {entry ? (
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => repeat(entry)} aria-label="Repeat as new entry" title="Repeat as new entry"
+              className="w-11 h-11 bg-white dark:bg-zinc-900 border-2 border-black shadow-neo-sm grid place-items-center text-black dark:text-zinc-100">
+              <CopyPlus size={20} aria-hidden="true" />
+            </button>
+            <DeleteConfirmButton size="expanded" onConfirm={() => void remove()} ariaLabel="Delete entry" />
+          </div>
+        ) : <div className="w-10" />}
       </header>
 
       <main className="p-5 space-y-6 max-w-md mx-auto">
-        {entry && canRepeatEntry(entry, accounts) && <Chip onClick={() => repeat(entry)}>Repeat</Chip>}
         {recent.length > 0 && (
-          <div>
-            <FieldLabel>Recent</FieldLabel>
-            <div className="flex flex-wrap gap-2">
-              {recent.map((item) => (
-                <Chip key={item.id} onClick={() => repeat(item, true)} className="min-w-0 max-w-full">
-                  <span className="truncate">{item.title || KIND_LABEL[item.kind]}</span>
-                  <span className="shrink-0">{formatCurrency(item.amount, item.currency)}</span>
-                </Chip>
-              ))}
-            </div>
+          // One swipeable line so the form stays near the top; hidden once you start typing.
+          <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5" aria-label="Recent entries">
+            {recent.map((item) => (
+              <Chip key={item.id} onClick={() => repeat(item, true)} className="!py-1 text-xs">
+                <span className="max-w-[9rem] truncate">{item.title || KIND_LABEL[item.kind]}</span>
+                <span className="text-gray-600 dark:text-zinc-400">{formatCurrency(item.amount, item.currency)}</span>
+              </Chip>
+            ))}
           </div>
         )}
         <div className="grid grid-cols-4 gap-2" role="group" aria-label="Entry type">

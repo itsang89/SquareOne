@@ -10,12 +10,13 @@ import { useAppContext } from '../context/AppContext';
 import { useToast } from '../components/ToastContext';
 import { accountBalances, netWorth, round2, totalOwed } from '../utils/calculations';
 import { latestFx } from '../utils/entryUi';
-import { adjustmentAccountName, isAdjustmentAccount } from '../utils/entryForm';
 import { formatCurrency } from '../utils/formatters';
 import type { Account } from '../types';
 
+const UNTRACKED = 'Untracked';
+
 export const Wallet: React.FC = () => {
-  const { accounts, entries, loading, error, refetch, addAccount, updateAccount, addEntry, deleteEntry, isProcessing, online } = useAppContext();
+  const { accounts, categories, entries, loading, error, refetch, addAccount, updateAccount, addCategory, addEntry, deleteEntry, isProcessing, online } = useAppContext();
   const { success, error: showError } = useToast();
   const [showArchived, setShowArchived] = useState(false);
   const [editing, setEditing] = useState<Account | 'new' | null>(null);
@@ -30,7 +31,7 @@ export const Wallet: React.FC = () => {
   const worth = useMemo(() => netWorth(accounts, entries, latestFx(entries)), [accounts, entries]);
   const owed = useMemo(() => totalOwed(entries), [entries]);
   const live = accounts.filter((a) => !a.archived);
-  const archived = accounts.filter((a) => a.archived && !isAdjustmentAccount(a)); // adjustment accounts are never restorable
+  const archived = accounts.filter((a) => a.archived);
 
   const open = (a: Account | 'new') => {
     setEditing(a);
@@ -59,8 +60,6 @@ export const Wallet: React.FC = () => {
     : reconPending ? 'Wait for pending entries on this account to sync.'
     : !reconFx ? `No ${recon?.currency} rate yet. Log an entry in ${recon?.currency} first.` : !reconValid ? 'Enter the actual balance.' : reconDiff === 0 && !reconSaved ? 'Matches the app balance.' : '';
 
-  // The difference is a transfer with a hidden archived "Balance adjustments" account (one per currency):
-  // transfers are not income/spending, archived accounts are outside net worth, so only net worth moves.
   // ponytail: online-only; two devices reconciling at once can overshoot (single-user app, accepted).
   const reconcile = async () => {
     if (!recon || reconReason) return;
@@ -69,17 +68,18 @@ export const Wallet: React.FC = () => {
       if (d.success) { success('Balance adjusted', 'Previous adjustment removed'); setRecon(null); } else showError('Could not adjust balance', d.error?.message);
       return;
     }
-    const adjName = adjustmentAccountName(recon.currency);
-    let adj = accounts.find((a) => isAdjustmentAccount(a) && a.currency === recon.currency)?.id;
-    if (!adj) {
-      const c = await addAccount({ name: adjName, currency: recon.currency, sort: accounts.length, archived: true });
-      if (!c.success || !c.id) { showError('Could not adjust balance', c.error?.message); return; }
-      adj = c.id;
-    }
+    // The gap is real money you didn't log: more than expected = income, less = spending, under "Untracked".
     const up = reconDiff > 0;
+    const kind = up ? 'income' : 'expense';
+    let categoryId = categories.find((c) => c.kind === kind && c.name === UNTRACKED)?.id;
+    if (!categoryId) {
+      const c = await addCategory({ name: UNTRACKED, kind, icon: '❓', color: '#D4D4D8' });
+      if (!c.success || !c.id) { showError('Could not adjust balance', c.error?.message); return; }
+      categoryId = c.id;
+    }
     const r = await addEntry({
-      id: reconId, kind: 'transfer', amount: Math.abs(reconDiff), title: 'Balance adjustment', currency: recon.currency, fxRate: reconFx,
-      accountId: up ? adj : recon.id, toAccountId: up ? recon.id : adj,
+      id: reconId, kind, amount: Math.abs(reconDiff), title: up ? 'Untracked income' : 'Untracked spending',
+      currency: recon.currency, fxRate: reconFx, accountId: recon.id, categoryId,
     }, { onlineOnly: true });
     if (r.success) { success('Balance adjusted', `${up ? '+' : '−'}${formatCurrency(Math.abs(reconDiff), recon.currency)}`); setRecon(null); }
     else showError('Could not adjust balance', r.error?.message);
@@ -169,7 +169,7 @@ export const Wallet: React.FC = () => {
       <NeoModal isOpen={recon !== null} onClose={() => setRecon(null)} title={`Reconcile ${recon?.name ?? ''}`}>
         <NeoInput label={`Actual balance (${recon?.currency ?? ''})`} type="number" inputMode="decimal" step="any" value={actual} onChange={(e) => setActual(e.target.value)} autoFocus />
         <p className="text-xs font-bold uppercase text-gray-600 dark:text-zinc-400">
-          {reconReason || (reconDiff === 0 ? 'Removes the adjustment you just saved.' : `Moves ${formatCurrency(Math.abs(reconDiff), recon?.currency)} ${reconDiff > 0 ? 'in' : 'out'} via “Balance adjustments” (not income or spending).`)}
+          {reconReason || (reconDiff === 0 ? 'Removes the adjustment you just saved.' : `Logs ${formatCurrency(Math.abs(reconDiff), recon?.currency)} of untracked ${reconDiff > 0 ? 'income' : 'spending'}.`)}
         </p>
         <NeoButton fullWidth variant="primary" isLoading={isProcessing} disabled={!!reconReason} onClick={() => void reconcile()}>Save</NeoButton>
       </NeoModal>

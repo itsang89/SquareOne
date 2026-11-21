@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Friend } from '../../types';
 import { Avatar } from '../Avatar';
 import { Chip } from '../Chip';
 import { formatCurrency } from '../../utils/formatters';
+import { UserPlus } from 'lucide-react';
 
 export type SplitMode = 'equal' | 'custom';
 
@@ -20,21 +21,64 @@ interface Props {
   mine: number;
   owe: number;
   currency: string;
+  /** Create a friend by name; resolves true on success. */
+  onAddFriend: (name: string) => Promise<boolean>;
 }
 
-export const SplitEditor: React.FC<Props> = ({ friends, ids, onToggle, mode, onMode, custom, onCustom, each, mine, owe, currency }) => (
+const COLLAPSED = 8; // friends shown before "show all"
+
+export const SplitEditor: React.FC<Props> = ({ friends, ids, onToggle, mode, onMode, custom, onCustom, each, mine, owe, currency, onAddFriend }) => {
+  const [expanded, setExpanded] = useState(false);
+  const [newName, setNewName] = useState<string | null>(null); // null = add field closed
+  const [saving, setSaving] = useState(false);
+  // Collapsed: first N plus anything already picked, so a selection never hides.
+  const shown = expanded ? friends : friends.filter((f, i) => i < COLLAPSED || ids.includes(f.id));
+  const hidden = friends.length - shown.length;
+
+  const add = async () => {
+    const name = newName?.trim();
+    if (!name || saving) return;
+    setSaving(true);
+    if (await onAddFriend(name)) setNewName(null);
+    setSaving(false);
+  };
+
+  return (
   <div className="border-2 border-black bg-white dark:bg-zinc-900 p-3 space-y-3 shadow-neo-sm">
-    {friends.length === 0 ? (
-      <p className="text-xs font-bold uppercase text-gray-600">No friends yet. Add one in Friends first.</p>
-    ) : (
-      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-        {friends.map((f) => (
-          <Chip key={f.id} active={ids.includes(f.id)} onClick={() => onToggle(f.id)} color="bg-neo-orange">
-            <Avatar src={f.avatar} alt={f.name} size="sm" />
-            {f.name.split(' ')[0]}
-          </Chip>
-        ))}
-      </div>
+    <div className="flex flex-wrap gap-2">
+      {shown.map((f) => (
+        <Chip key={f.id} active={ids.includes(f.id)} onClick={() => onToggle(f.id)} color="bg-neo-orange">
+          <Avatar src={f.avatar} alt={f.name} size="sm" />
+          {f.name.split(' ')[0]}
+        </Chip>
+      ))}
+      {(hidden > 0 || expanded) && friends.length > COLLAPSED && (
+        <Chip onClick={() => setExpanded((v) => !v)} className="border-dashed">
+          {expanded ? 'Show less' : `+${hidden} more`}
+        </Chip>
+      )}
+      {newName === null && (
+        <Chip onClick={() => setNewName('')} className="border-dashed">
+          <UserPlus size={16} aria-hidden="true" /> New friend
+        </Chip>
+      )}
+    </div>
+    {newName !== null && (
+      <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); void add(); }}>
+        <input
+          autoFocus
+          aria-label="New friend name"
+          placeholder="Friend's name"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Escape' && setNewName(null)}
+          className="flex-1 min-w-0 border-2 border-black p-2 font-bold bg-white dark:bg-zinc-800 dark:text-zinc-100"
+        />
+        <button type="submit" disabled={!newName.trim() || saving} className="px-3 border-2 border-black bg-neo-orange font-black uppercase text-xs disabled:opacity-50">
+          {saving ? '…' : 'Add'}
+        </button>
+        <button type="button" onClick={() => setNewName(null)} aria-label="Cancel" className="px-2 border-2 border-black font-black dark:text-zinc-100">×</button>
+      </form>
     )}
     {ids.length > 0 && (
       <>
@@ -76,4 +120,5 @@ export const SplitEditor: React.FC<Props> = ({ friends, ids, onToggle, mode, onM
       </>
     )}
   </div>
-);
+  );
+};

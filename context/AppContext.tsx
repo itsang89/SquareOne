@@ -39,7 +39,7 @@ interface AppContextType {
   updateSubscription: (id: string, updates: Partial<Omit<Subscription, 'id'>>) => Promise<Result>;
   deleteSubscription: (id: string) => Promise<Result>;
   // Friends
-  addFriend: (friend: Omit<Friend, 'id' | 'balance' | 'lastActivity' | 'status'>) => Promise<Result>;
+  addFriend: (friend: Omit<Friend, 'id' | 'balance' | 'lastActivity' | 'status'>) => Promise<IdResult>;
   updateFriend: (friendId: string, updates: Partial<Friend>) => Promise<Result>;
   deleteFriend: (friendId: string) => Promise<Result>;
   getFriendById: (friendId: string) => Friend | undefined;
@@ -323,7 +323,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // ---- Friends ----
   const addFriend = useCallback<AppContextType['addFriend']>(
-    (f) => write('adding friend', async (uid) => ok(await supabase.from('friends').insert({ user_id: uid, name: f.name, avatar: f.avatar || null }))),
+    (f) => write('adding friend', async (uid) => {
+      const { data, error } = await supabase.from('friends').insert({ user_id: uid, name: f.name, avatar: f.avatar || null }).select('id').single();
+      if (error) throw error;
+      return { id: data.id as string };
+    }),
     [write]
   );
   const updateFriend = useCallback<AppContextType['updateFriend']>(

@@ -1,36 +1,58 @@
-/** True if the expression has no trailing binary operator (complete for evaluation as a number). */
-export function isCompleteNumericExpression(expr: string): boolean {
-  const sanitized = expr.replace(/[^-0-9+*/.]/g, '');
-  if (!sanitized) return false;
-  return !/[+*/-]$/.test(sanitized);
+const sanitize = (expr: string) => expr.replaceAll('÷', '/').replaceAll('×', '*').replaceAll('−', '-').replace(/[^-0-9+*/.]/g, '');
+
+export type ExpressionResult =
+  | { status: 'valid'; value: number }
+  | { status: 'incomplete' }
+  | { status: 'invalid'; reason: 'division-by-zero' | 'syntax' };
+
+export function calculateExpression(expr: string): ExpressionResult {
+  const input = sanitize(expr);
+  if (!input || /[+*/-]$/.test(input)) return { status: 'incomplete' };
+
+  const invalid = { status: 'invalid', reason: 'syntax' } as const;
+  const number = /[+-]?(?:\d+(?:\.\d*)?|\.\d+)/y;
+  const readNumber = (start: number) => {
+    number.lastIndex = start;
+    const match = number.exec(input);
+    return match ? Number(match[0]) : NaN;
+  };
+
+  let term = readNumber(0);
+  let sum = 0;
+  let sign = 1;
+  let cursor = number.lastIndex;
+  if (!Number.isFinite(term)) return invalid;
+
+  while (cursor < input.length) {
+    const op = input[cursor];
+    if (!'+-*/'.includes(op)) return invalid;
+    const next = readNumber(cursor + 1);
+    if (!Number.isFinite(next)) return invalid;
+    cursor = number.lastIndex;
+
+    if (op === '/' && next === 0) return { status: 'invalid', reason: 'division-by-zero' };
+    if (op === '*') term *= next;
+    else if (op === '/') term /= next;
+    else {
+      sum += sign * term;
+      sign = op === '+' ? 1 : -1;
+      term = next;
+    }
+  }
+
+  const value = Math.round((sum + sign * term) * 100) / 100;
+  return Number.isFinite(value) ? { status: 'valid', value } : invalid;
 }
 
-/**
- * Safely evaluates a mathematical expression string.
- * Supports basic operators: +, -, *, /
- */
+/** True if the expression has no trailing binary operator (complete for evaluation as a number). */
+export function isCompleteNumericExpression(expr: string): boolean {
+  const input = sanitize(expr);
+  return !!input && !/[+*/-]$/.test(input);
+}
+
+/** Legacy string result used by amount validation. */
 export function evaluateExpression(expr: string): string {
-  try {
-    // Sanitize to only allow numbers and operators
-    const sanitized = expr.replace(/[^-0-9+*/.]/g, '');
-    if (!sanitized) return '0';
-    
-    // Don't evaluate if it ends with an operator (it's incomplete)
-    if (/[+*/-]$/.test(sanitized)) {
-      // For incomplete expressions, we can still try to evaluate the part before the operator
-      // but it's safer to just return as is if we expect a number.
-      // However, for the final submission, we should try to evaluate or return 0.
-      return sanitized;
-    }
-    
-    // Use Function constructor for evaluation
-    const result = new Function(`return ${sanitized}`)();
-    
-    if (!isFinite(result) || isNaN(result)) return '0';
-    
-    // Format to max 2 decimal places
-    return (Math.round(result * 100) / 100).toString();
-  } catch {
-    return '0';
-  }
+  const result = calculateExpression(expr);
+  if (result.status === 'valid') return String(result.value);
+  return result.status === 'incomplete' ? sanitize(expr) || '0' : '0';
 }

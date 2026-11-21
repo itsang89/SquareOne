@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Delete, Divide, X, Minus, Plus } from 'lucide-react';
-import { evaluateExpression } from '../../utils/calculator';
+import { calculateExpression } from '../../utils/calculator';
 import { formatCurrency } from '../../utils/formatters';
 
 interface AmountInputProps {
@@ -18,6 +18,7 @@ export const AmountInput: React.FC<AmountInputProps> = ({
   onToggleNumpad,
   currency,
 }) => {
+  const result = calculateExpression(amount);
   const handleNumpad = (val: string) => {
     if (val === 'back') {
       if (amount.length <= 1) {
@@ -26,7 +27,8 @@ export const AmountInput: React.FC<AmountInputProps> = ({
         onAmountChange(amount.slice(0, -1));
       }
     } else if (val === '=') {
-      onAmountChange(evaluateExpression(amount));
+      if (result.status !== 'valid') return;
+      if (amount !== String(result.value)) onAmountChange(String(result.value));
       if (showNumpad) onToggleNumpad();
     } else if (['+', '-', '*', '/'].includes(val)) {
       // Don't add operator if last char is already an operator
@@ -60,7 +62,7 @@ export const AmountInput: React.FC<AmountInputProps> = ({
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+      if (target.closest?.('[role=dialog]') || target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
 
       if (/^[0-9]$/.test(e.key) || e.key === '.') {
         if (!showNumpadRef.current) onToggleNumpadRef.current();
@@ -110,8 +112,8 @@ export const AmountInput: React.FC<AmountInputProps> = ({
           <span className="text-2xl font-bold text-gray-600 dark:text-zinc-400">{symbol}</span>
           <span className="text-5xl font-black tracking-tight tabular-nums">{shown}</span>
         </span>
-        {isExpr && (
-          <span className="mt-1 text-sm font-bold text-gray-600 dark:text-zinc-400 tabular-nums">= {formatCurrency(parseFloat(evaluateExpression(amount)) || 0, currency)}</span>
+        {isExpr && result.status === 'valid' && (
+          <span className="mt-1 text-sm font-bold text-gray-600 dark:text-zinc-400 tabular-nums">= {formatCurrency(result.value, currency)}</span>
         )}
       </button>
 

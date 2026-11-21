@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { CalendarDays } from 'lucide-react';
-import { BackButton } from '../components/BackButton';
+import { ArrowLeft, CalendarDays } from 'lucide-react';
 import { NeoButton } from '../components/NeoButton';
+import { NeoModal } from '../components/NeoModal';
 import { NeoInput } from '../components/NeoInput';
 import { Avatar } from '../components/Avatar';
 import { Chip, FieldLabel } from '../components/Chip';
@@ -12,11 +12,13 @@ import { AmountInput } from '../components/AddEntry/AmountInput';
 import { CategoryGrid } from '../components/AddEntry/CategoryGrid';
 import { SplitEditor, type SplitMode } from '../components/AddEntry/SplitEditor';
 import { DatePicker } from '../components/AddEntry/DatePicker';
+import { useDraftBack } from '../components/AddEntry/useDraftBack';
 import { useAppContext } from '../context/AppContext';
 import { useToast } from '../components/ToastContext';
 import { localDay, round2 } from '../utils/calculations';
-import { evaluateExpression } from '../utils/calculator';
-import { isValidAmount } from '../utils/validation';
+import { calculateExpression } from '../utils/calculator';
+import { fetchEntryFx, type EntryFx } from '../utils/entryFx';
+import { offsetAmount, recentEntryTemplates, settlementAmount } from '../utils/entryForm';
 import { categoriesByUse, dayLabel, dayToIso, KIND_LABEL, lastUsedAccountId, latestFx, splitEqual, tooSmallToSplit } from '../utils/entryUi';
 import { formatCurrency } from '../utils/formatters';
 import { PRESET_AVATARS } from '../constants';
@@ -30,12 +32,13 @@ const KINDS: { kind: EntryKind; color: string }[] = [
 ];
 
 /** Router state other screens can pass: open on a kind, settle a friend, or pre-split with one. */
-interface Preset { kind?: EntryKind; friendId?: string; splitFriendId?: string }
+interface Preset { kind?: EntryKind; friendId?: string; splitFriendId?: string; templateId?: string }
 
 export const AddEntry: React.FC = () => {
   const { id } = useParams();
   const { entries, loading } = useAppContext();
   const entry = id ? entries.find((e) => e.id === id) : undefined;
+  const loc = useLocation();
   if (id && !entry) {
     return loading ? <FullPageLoading /> : (
       <div className="min-h-screen grid place-items-center p-6">
@@ -43,7 +46,7 @@ export const AddEntry: React.FC = () => {
       </div>
     );
   }
-  return <EntryForm key={entry?.id ?? 'new'} entry={entry} />;
+  return <EntryForm key={loc.key} entry={entry} />;
 };
 
 const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
@@ -53,44 +56,73 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
   const { entries, accounts, categories, friends, addEntry, updateEntry, deleteEntry, addCategory, addFriend, isProcessing } = useAppContext();
   const { success, error: showError } = useToast();
 
-  const [kind, setKind] = useState<EntryKind>(entry?.kind ?? preset.kind ?? 'expense');
+  const source = entry ?? entries.find((e) => e.id === preset.templateId);
+  const [kind, setKind] = useState<EntryKind>(source?.kind ?? preset.kind ?? 'expense');
   const presetBalance = friends.find((f) => f.id === preset.friendId)?.balance ?? 0;
-  const [amount, setAmount] = useState(entry ? String(entry.amount) : presetBalance > 0 ? String(round2(presetBalance)) : '0');
-  const [amountAuto, setAmountAuto] = useState(!entry); // true until the user types: lets picking a friend prefill
-  const [showNumpad, setShowNumpad] = useState(!entry && presetBalance <= 0);
-  const [categoryId, setCategoryId] = useState(entry?.categoryId);
+  const [amountText, setAmount] = useState(() => String(source
+    ? source.kind === 'settlement' && !source.accountId ? offsetAmount(source.amount, source.fxRate) : source.amount
+    : 0));
+  const [amountAuto, setAmountAuto] = useState(!source); // true until the user types: lets picking a friend prefill
+  const [showNumpad, setShowNumpad] = useState(!source && presetBalance <= 0);
+  const [categoryId, setCategoryId] = useState(source?.categoryId);
   // accountId: undefined = not chosen yet (use last used), null = explicitly none
-  const [accountId, setAccountId] = useState<string | null | undefined>(entry ? entry.accountId ?? null : undefined);
-  const [toAccountId, setToAccountId] = useState(entry?.toAccountId);
-  const [friendId, setFriendId] = useState(entry?.friendId ?? preset.friendId);
-  const [day, setDay] = useState(localDay(entry?.occurredAt ?? new Date().toISOString()));
-  const [title, setTitle] = useState(entry?.title ?? '');
-  const [note, setNote] = useState(entry?.note ?? '');
-  // A typed rate belongs to one currency; switching currency drops it. undefined = untouched: show the last known rate.
-  const [fx, setFx] = useState<{ cur: string; val: string } | undefined>(entry ? { cur: entry.currency, val: String(entry.fxRate) } : undefined);
+  const [accountId, setAccountId] = useState<string | null | undefined>(source ? source.accountId ?? null : undefined);
+  const [toAccountId, setToAccountId] = useState(source?.toAccountId);
+  const [friendId, setFriendId] = useState(source?.friendId ?? preset.friendId);
+  // A form left open past midnight keeps its original "today".
+  const [[today, yesterday]] = useState(() => [localDay(new Date().toISOString()), localDay(new Date(Date.now() - 864e5).toISOString())]);
+  const [day, setDay] = useState(entry ? localDay(entry.occurredAt) : today);
+  const [title, setTitle] = useState(source?.title ?? '');
+  const [note, setNote] = useState(source?.note ?? '');
+  const [fx, setFx] = useState<{ currency: string; text: string }>();
+  const [rateLookup, setRateLookup] = useState<{ key: string; rate?: EntryFx }>();
 
-  const [splitOn, setSplitOn] = useState(!!entry?.shares.length || !!preset.splitFriendId);
-  const [shareIds, setShareIds] = useState<string[]>(entry?.shares.map((s) => s.friendId) ?? (preset.splitFriendId ? [preset.splitFriendId] : []));
-  const [mode, setMode] = useState<SplitMode>(entry?.shares.length ? 'custom' : 'equal');
+  const [splitOn, setSplitOn] = useState(!!source?.shares.length || !!preset.splitFriendId);
+  const [shareIds, setShareIds] = useState<string[]>(source?.shares.map((s) => s.friendId) ?? (preset.splitFriendId ? [preset.splitFriendId] : []));
+  const [mode, setMode] = useState<SplitMode>(source?.shares.length ? 'custom' : 'equal');
   const [custom, setCustom] = useState<Record<string, string>>(
-    Object.fromEntries((entry?.shares ?? []).map((s) => [s.friendId, String(s.amount)]))
+    Object.fromEntries((source?.shares ?? []).map((s) => [s.friendId, String(s.amount)]))
   );
 
-  const liveAccounts = accounts.filter((a) => !a.archived || a.id === entry?.accountId || a.id === entry?.toAccountId);
+  const liveAccounts = accounts.filter((a) => !a.archived || a.id === source?.accountId || a.id === source?.toAccountId);
   const fromId = accountId === undefined ? lastUsedAccountId(accounts, entries) : accountId ?? undefined;
   const account = accounts.find((a) => a.id === fromId);
   // Transfers only move money between accounts in the same currency.
   const sameCurrency = liveAccounts.filter((a) => a.id !== fromId && a.currency === account?.currency);
   const toId = toAccountId ?? sameCurrency[0]?.id;
-  const currency = account && !(entry && entry.accountId === account.id) ? account.currency : entry?.currency ?? account?.currency ?? 'HKD';
+  const currency = kind === 'settlement' && !account ? 'HKD'
+    : source && source.accountId === fromId ? source.currency
+    : account?.currency ?? 'HKD';
   const lastFx = latestFx(entries)[currency];
-  const fxDraft = fx?.cur === currency ? fx.val : undefined;
-  const fxText = fxDraft ?? (lastFx ? String(lastFx) : '');
-  const fxPrefilled = fxDraft === undefined && !!lastFx;
+  const savedFx = entry && currency === entry.currency && fromId === entry.accountId && day === localDay(entry.occurredAt)
+    ? String(entry.fxRate) : undefined;
+  const fxKey = `${currency}:${day}`;
+  const fxDraft = fx?.currency === currency ? fx.text : undefined;
+  const autoFx = rateLookup?.key === fxKey ? rateLookup.rate : undefined;
+  const lookingUpFx = currency !== 'HKD' && fxDraft === undefined && savedFx === undefined && rateLookup?.key !== fxKey;
+  const fxText = fxDraft ?? savedFx ?? (autoFx ? String(autoFx.rate) : lastFx ? String(lastFx) : '');
+  const fxLabel = fxDraft !== undefined || savedFx !== undefined ? null
+    : autoFx ? `(ECB ${autoFx.date})` : lastFx ? '(last used)' : null;
   // Whole input must be a plain decimal within fx_rate numeric(14,6); else 0 = not set, blocks save.
   const fxRate = currency === 'HKD' ? 1 : /^\d{1,8}(\.\d{1,6})?$/.test(fxText.trim()) ? parseFloat(fxText) || 0 : 0;
 
-  const total = isValidAmount(amount) ? parseFloat(evaluateExpression(amount)) : 0;
+  useEffect(() => {
+    if (currency === 'HKD' || fxDraft !== undefined || savedFx !== undefined) return;
+    let current = true;
+    void fetchEntryFx(currency, day).then((rate) => {
+      if (current) setRateLookup({ key: fxKey, rate });
+    });
+    return () => { current = false; };
+  }, [currency, day, fxDraft, fxKey, savedFx]);
+
+  // When editing a repayment, add it back: the balance already includes it.
+  const friend = friends.find((f) => f.id === friendId);
+  const balance = (friend?.balance ?? 0)
+    + (entry?.kind === 'settlement' && entry.friendId === friendId ? entry.amount * entry.fxRate : 0);
+  const fullOwed = settlementAmount(balance, fxRate);
+  const amount = kind === 'settlement' && amountAuto && friendId ? String(Math.max(0, fullOwed)) : amountText;
+  const evaluated = calculateExpression(amount);
+  const total = evaluated.status === 'valid' ? evaluated.value : 0;
   const each = splitEqual(total, shareIds.length);
   const shares = splitOn && kind === 'expense'
     ? shareIds.map((fid) => ({ friendId: fid, amount: mode === 'equal' ? each : round2(parseFloat(custom[fid]) || 0) })).filter((s) => s.amount > 0)
@@ -99,20 +131,20 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
   const mine = round2(total - owe);
 
   const category = categories.find((c) => c.id === categoryId && c.kind === kind);
-  const friend = friends.find((f) => f.id === friendId);
   const defaultTitle =
     kind === 'settlement' ? `${friend?.name ?? 'Friend'} repaid` : kind === 'transfer' ? 'Transfer' : category?.name ?? KIND_LABEL[kind];
 
-  const evaluated = parseFloat(evaluateExpression(amount));
   const amountProblem =
-    /[+*/-]$/.test(amount) ? 'Finish the expression'
-    : /\/\s*0(?![.\d]|\s*[1-9])/.test(amount) && total <= 0 ? 'Can\'t divide by zero'
-    : evaluated < 0 ? 'Amount must be positive'
+    evaluated.status === 'incomplete' ? 'Finish the expression'
+    : evaluated.status === 'invalid' ? evaluated.reason === 'division-by-zero' ? "Can't divide by zero" : 'Check the expression'
+    : evaluated.value < 0 ? 'Amount must be positive'
     : 'Enter an amount';
 
   const problem =
-    total <= 0 ? amountProblem
+    total <= 0 && !(amountAuto && balance > 0 && kind === 'settlement') ? amountProblem
+    : lookingUpFx ? 'Looking up exchange rate…'
     : currency !== 'HKD' && !fxRate ? `Enter the ${currency} → HKD rate`
+    : total <= 0 ? amountProblem
     : (kind === 'expense' || kind === 'income') && !entry && !category ? 'Pick a category'
     : splitOn && kind === 'expense' && mode === 'custom' && shareIds.some((fid) => /^\s*[-−]/.test(custom[fid] ?? '')) ? 'Shares can\'t be negative'
     : splitOn && kind === 'expense' && mode === 'custom' && shareIds.some((fid) => (custom[fid] ?? '').trim() !== '' && !/^\d+(\.\d{1,2})?$/.test(custom[fid].trim())) ? 'Check friends\' shares'
@@ -125,17 +157,12 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
     : mine < 0 ? 'Friends\' shares exceed the total'
     : null;
 
-  // What a friend owes in this entry's currency. When editing a repayment, add it back: the balance already includes it.
-  const owedIn = (fid: string) => {
-    const bal = (friends.find((f) => f.id === fid)?.balance ?? 0) + (entry?.kind === 'settlement' && entry.friendId === fid ? entry.amount * entry.fxRate : 0);
-    return fxRate ? round2(bal / fxRate) : 0;
-  };
-  const fullOwed = friend ? owedIn(friend.id) : 0;
-
-  const pickFriend = (fid: string) => {
-    setFriendId(fid);
-    const owed = owedIn(fid);
-    if (amountAuto && owed > 0) setAmount(String(owed));
+  const pickAccount = (id: string | null) => {
+    if (id === null && kind === 'settlement' && currency !== 'HKD' && !amountAuto && evaluated.status === 'valid') {
+      setAmount(String(offsetAmount(total, fxRate)));
+    }
+    if ((id ? accounts.find((a) => a.id === id)?.currency : 'HKD') !== currency) setFx(undefined);
+    setAccountId(id);
   };
 
   const switchMode = (m: SplitMode) => {
@@ -159,10 +186,17 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
   };
 
   const [calendarOpen, setCalendarOpen] = useState(false);
-  // Fixed when the form opens; a form left open past midnight keeps its original "today".
-  const [[today, yesterday]] = useState(() => [localDay(new Date().toISOString()), localDay(new Date(Date.now() - 864e5).toISOString())]);
 
-  const back = () => (loc.key === 'default' ? nav('/dashboard', { replace: true }) : nav(-1));
+  const dirty = !entry && (
+    !!source || amount !== '0' || kind !== (preset.kind ?? 'expense') || categoryId !== undefined
+    || accountId !== undefined || toAccountId !== undefined || friendId !== preset.friendId
+    || day !== today || title !== '' || note !== '' || fx !== undefined || splitOn !== !!preset.splitFriendId
+    || shareIds.join(',') !== (preset.splitFriendId ?? '') || mode !== 'equal' || Object.keys(custom).length > 0
+  );
+  const { back, leave, confirming, keepEditing } = useDraftBack(dirty);
+  const recent = !entry && !dirty && !preset.friendId && !preset.splitFriendId && !preset.kind
+    ? recentEntryTemplates(entries) : [];
+  const repeat = (source: Entry, replace = false) => void nav('/add', { replace, state: { templateId: source.id } });
 
   const save = async () => {
     if (problem) return;
@@ -183,7 +217,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
       const queued = 'queued' in r && r.queued;
       success(entry ? 'Entry updated' : queued ? 'Saved offline' : 'Saved',
         `${KIND_LABEL[kind]} ${formatCurrency(total, currency)}${queued ? ' · syncs when back online' : ''}`);
-      back();
+      leave();
     } else {
       showError('Could not save', r.error?.message);
     }
@@ -194,14 +228,14 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
     const r = await deleteEntry(entry.id);
     if (r.success) {
       success('Entry deleted');
-      back();
+      leave();
     } else {
       showError('Could not delete', r.error?.message);
     }
   };
 
   const accountChips = ({ value, onPick, none, from = liveAccounts }: { value?: string; onPick: (id: string | null) => void; none?: string; from?: typeof liveAccounts }) => (
-    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+    <div className={`flex gap-2 pb-1 ${kind === 'settlement' ? 'flex-wrap' : 'overflow-x-auto no-scrollbar'}`}>
       {from.map((a) => (
         <Chip key={a.id} active={a.id === value} onClick={() => onPick(a.id)} color="bg-neo-yellow">{a.name}</Chip>
       ))}
@@ -217,12 +251,33 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
   return (
     <div className="min-h-screen pb-32 bg-neo-bg dark:bg-zinc-950">
       <header className="sticky top-0 z-30 bg-neo-bg/95 dark:bg-zinc-950/95 backdrop-blur-sm border-b-2 border-black px-5 py-3 flex items-center justify-between">
-        <BackButton />
+        <button
+          type="button"
+          onClick={back}
+          aria-label="Go back"
+          className="w-11 h-11 bg-white dark:bg-zinc-900 border-2 border-black shadow-neo-sm grid place-items-center text-black dark:text-zinc-100"
+        >
+          <ArrowLeft size={24} aria-hidden="true" />
+        </button>
         <h1 className="text-lg font-black uppercase tracking-widest dark:text-zinc-100">{entry ? 'Edit entry' : 'New entry'}</h1>
         {entry ? <DeleteConfirmButton size="expanded" onConfirm={() => void remove()} ariaLabel="Delete entry" /> : <div className="w-10" />}
       </header>
 
       <main className="p-5 space-y-6 max-w-md mx-auto">
+        {entry && <Chip onClick={() => repeat(entry)}>Repeat</Chip>}
+        {recent.length > 0 && (
+          <div>
+            <FieldLabel>Recent</FieldLabel>
+            <div className="flex flex-wrap gap-2">
+              {recent.map((item) => (
+                <Chip key={item.id} onClick={() => repeat(item, true)} className="min-w-0 max-w-full">
+                  <span className="truncate">{item.title || KIND_LABEL[item.kind]}</span>
+                  <span className="shrink-0">{formatCurrency(item.amount, item.currency)}</span>
+                </Chip>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-4 gap-2" role="group" aria-label="Entry type">
           {KINDS.map(({ kind: k, color }) => (
             <Chip key={k} active={kind === k} color={color} onClick={() => setKind(k)} className="justify-center !px-1 text-[11px] uppercase">
@@ -244,7 +299,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
             <FieldLabel>Who paid you back?</FieldLabel>
             <div className="flex flex-wrap gap-2">
               {owing.map((f) => (
-                <Chip key={f.id} active={f.id === friendId} onClick={() => pickFriend(f.id)} color="bg-neo-yellow">
+                <Chip key={f.id} active={f.id === friendId} onClick={() => setFriendId(f.id)} color="bg-neo-yellow">
                   <Avatar src={f.avatar} alt={f.name} size="sm" />
                   <span className="text-left leading-tight">{f.name.split(' ')[0]}
                     <span className={`block text-[10px] ${f.balance > 0 ? 'text-neo-greenDark' : 'text-gray-600'}`}>
@@ -255,7 +310,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
               ))}
               {friends.length === 0 && <p className="text-xs font-bold uppercase text-gray-600">No friends yet.</p>}
             </div>
-            {fullOwed > 0 && (
+            {fullOwed > 0 && !lookingUpFx && (
               <div className="mt-2">
                 <Chip active={total === fullOwed} color="bg-neo-green" onClick={() => { setAmount(String(fullOwed)); setAmountAuto(false); }}>
                   Full {formatCurrency(fullOwed, currency)}
@@ -269,7 +324,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
           <div>
             <FieldLabel>Category</FieldLabel>
             <CategoryGrid
-              categories={categoriesByUse(categories, entries, kind === 'income' ? 'income' : 'expense')}
+              categories={categoriesByUse(categories, entries, kind === 'income' ? 'income' : 'expense').concat(category?.archived ? [category] : [])}
               selectedId={category?.id}
               onSelect={setCategoryId}
               onCreate={createCategory}
@@ -281,22 +336,22 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
           <FieldLabel>{kind === 'transfer' ? 'From account' : kind === 'settlement' ? 'Paid into' : 'Account'}</FieldLabel>
           {accountChips({
             value: fromId,
-            onPick: (id) => setAccountId(id),
-            none: kind === 'settlement' ? 'Offset (no money moved)' : kind === 'expense' && entry && !entry.accountId ? 'No account' : undefined,
+            onPick: pickAccount,
+            none: kind === 'settlement' ? 'Offset (no money moved)' : kind === 'expense' && source && !source.accountId ? 'No account' : undefined,
           })}
           {currency !== 'HKD' && (
-            <label className="flex items-center gap-2 mt-2 text-xs font-bold uppercase dark:text-zinc-100">
+            <label className="flex flex-wrap items-center gap-2 mt-2 text-xs font-bold uppercase dark:text-zinc-100">
               1 {currency} =
               <input
                 inputMode="decimal"
                 aria-label={`${currency} to HKD rate`}
                 placeholder="rate"
                 value={fxText}
-                onChange={(e) => setFx({ cur: currency, val: e.target.value })}
+                onChange={(e) => setFx({ currency, text: e.target.value })}
                 className="w-24 border-2 border-black p-1 text-right bg-white dark:bg-zinc-900"
               />
               HKD
-              {fxPrefilled && <span className="text-gray-600 dark:text-zinc-400">(last used)</span>}
+              {fxLabel && <span className="text-gray-600 dark:text-zinc-400">{fxLabel}</span>}
             </label>
           )}
         </div>
@@ -350,6 +405,20 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
           <NeoInput aria-label="Note" placeholder="Anything to remember" value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
       </main>
+
+      <NeoModal
+        isOpen={confirming}
+        onClose={keepEditing}
+        title="Discard this entry?"
+        footer={
+          <>
+            <NeoButton className="!px-3" variant="neutral" onClick={keepEditing}>Keep editing</NeoButton>
+            <NeoButton className="!px-3" onClick={leave}>Discard</NeoButton>
+          </>
+        }
+      >
+        <p>Your unsaved changes will be lost.</p>
+      </NeoModal>
 
       <div className="fixed bottom-0 inset-x-0 z-40 bg-neo-bg dark:bg-zinc-950 border-t-2 border-black p-4">
         <div className="max-w-md mx-auto">

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isCompleteNumericExpression, evaluateExpression } from './calculator';
+import { calculateExpression, isCompleteNumericExpression, evaluateExpression } from './calculator';
 
 describe('isCompleteNumericExpression', () => {
   it('accepts a plain integer', () => {
@@ -76,5 +76,20 @@ describe('evaluateExpression', () => {
 
   it('handles chained operations', () => {
     expect(evaluateExpression('2+3*4')).toBe('14');
+  });
+});
+
+describe('calculateExpression', () => {
+  it.each(['1÷0.0', '1÷.0', '0/0', '2 + 1 / -0'])('reports division by zero in %s', (input) => {
+    expect(calculateExpression(input)).toEqual({ status: 'invalid', reason: 'division-by-zero' });
+  });
+
+  it('distinguishes an unfinished expression from invalid syntax', () => {
+    expect(calculateExpression('1÷')).toEqual({ status: 'incomplete' });
+    expect(calculateExpression('1..2')).toEqual({ status: 'invalid', reason: 'syntax' });
+  });
+
+  it('handles the displayed symbols, operator precedence and fractional divisors', () => {
+    expect(calculateExpression('1 + 2 × 3 − 2 ÷ .5')).toEqual({ status: 'valid', value: 3 });
   });
 });

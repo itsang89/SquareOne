@@ -117,6 +117,9 @@ export const SplitEditor: React.FC<Props> = ({ friends, ids, onToggle, mode, onM
             <p className="font-black text-neo-greenDark">{formatCurrency(owe, currency)}</p>
           </div>
         </div>
+        {mode === 'equal' && owe > 0 && mine !== each && (
+          <p className="text-xs text-center text-gray-600 dark:text-zinc-400">Your share includes the rounding adjustment.</p>
+        )}
       </>
     )}
   </div>

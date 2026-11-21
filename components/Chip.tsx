@@ -23,7 +23,7 @@ export const Chip: React.FC<ChipProps> = ({ active, onClick, children, color = '
 );
 
 export const FieldLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <label className="block text-xs font-bold uppercase tracking-widest text-gray-600 dark:text-zinc-400 mb-2 pl-1">{children}</label>
+  <label className="block text-xs font-bold uppercase tracking-widest text-gray-600 dark:text-zinc-400 mb-2">{children}</label>
 );
 
 export const SELECT_CLASS =

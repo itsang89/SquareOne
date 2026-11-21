@@ -299,8 +299,10 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
         </div>
 
         <div>
-          <NeoInput label="Title (optional)" placeholder={defaultTitle} value={title} onChange={(e) => setTitle(e.target.value)} />
-          <NeoInput label="Note" placeholder="Anything to remember" value={note} onChange={(e) => setNote(e.target.value)} />
+          <FieldLabel>Title (optional)</FieldLabel>
+          <NeoInput aria-label="Title" placeholder={defaultTitle} value={title} onChange={(e) => setTitle(e.target.value)} />
+          <FieldLabel>Note</FieldLabel>
+          <NeoInput aria-label="Note" placeholder="Anything to remember" value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
       </main>
 

@@ -43,3 +43,14 @@ body {
 .dark :is(.bg-neo-yellow, .bg-neo-orange, .bg-neo-green, .bg-neo-blue, .bg-neo-purple, .bg-neo-pink) { color: #171513; }
 /* Muted text without its own dark: variant stays readable in dark mode (explicit dark: classes still win). */
 .dark :where(.text-gray-600) { color: #a1a1aa; }
+
+/* iOS Safari: date inputs ignore width: 100% (they overflow) and center their value. */
+input[type='date'] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  display: block;
+}
+input[type='date']::-webkit-date-and-time-value {
+  text-align: left;
+}

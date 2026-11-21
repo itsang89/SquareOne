@@ -13,12 +13,13 @@ import { CategoryGrid } from '../components/AddEntry/CategoryGrid';
 import { SplitEditor, type SplitMode } from '../components/AddEntry/SplitEditor';
 import { DatePicker } from '../components/AddEntry/DatePicker';
 import { useDraftBack } from '../components/AddEntry/useDraftBack';
+import { useAuth } from '../context/AuthContext';
 import { useAppContext } from '../context/AppContext';
 import { useToast } from '../components/ToastContext';
 import { localDay, round2 } from '../utils/calculations';
 import { calculateExpression } from '../utils/calculator';
-import { fetchEntryFx, type EntryFx } from '../utils/entryFx';
-import { offsetAmount, recentEntryTemplates, settlementAmount } from '../utils/entryForm';
+import { entryFxKey, fetchEntryFx, parseEntryFxRate, type EntryFx } from '../utils/entryFx';
+import { canRepeatEntry, offsetAmount, recentEntryTemplates, settlementAmount } from '../utils/entryForm';
 import { categoriesByUse, dayLabel, dayToIso, KIND_LABEL, lastUsedAccountId, latestFx, splitEqual, tooSmallToSplit } from '../utils/entryUi';
 import { formatCurrency } from '../utils/formatters';
 import { PRESET_AVATARS } from '../constants';
@@ -53,10 +54,11 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
   const nav = useNavigate();
   const loc = useLocation();
   const preset = (loc.state as Preset | null) ?? {};
-  const { entries, accounts, categories, friends, addEntry, updateEntry, deleteEntry, addCategory, addFriend, isProcessing } = useAppContext();
+  const { user } = useAuth();
+  const { entries, accounts, categories, friends, addEntry, updateEntry, deleteEntry, restoreEntry, addCategory, addFriend, isProcessing } = useAppContext();
   const { success, show, error: showError } = useToast();
 
-  const source = entry ?? entries.find((e) => e.id === preset.templateId);
+  const source = entry ?? entries.find((e) => e.id === preset.templateId && canRepeatEntry(e, accounts));
   const [kind, setKind] = useState<EntryKind>(source?.kind ?? preset.kind ?? 'expense');
   const presetBalance = friends.find((f) => f.id === preset.friendId)?.balance ?? 0;
   const [amountText, setAmount] = useState(() => String(source
@@ -74,7 +76,8 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
   const [day, setDay] = useState(entry ? localDay(entry.occurredAt) : today);
   const [title, setTitle] = useState(source?.title ?? '');
   const [note, setNote] = useState(source?.note ?? '');
-  const [fx, setFx] = useState<{ currency: string; text: string }>();
+  const [fx, setFx] = useState<{ key: string; text: string }>();
+  const [offsetPending, setOffsetPending] = useState(false);
   const [rateLookup, setRateLookup] = useState<{ key: string; rate?: EntryFx }>();
 
   const [splitOn, setSplitOn] = useState(!!source?.shares.length || !!preset.splitFriendId);
@@ -96,15 +99,16 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
   const lastFx = latestFx(entries)[currency];
   const savedFx = entry && currency === entry.currency && fromId === entry.accountId && day === localDay(entry.occurredAt)
     ? String(entry.fxRate) : undefined;
-  const fxKey = `${currency}:${day}`;
-  const fxDraft = fx?.currency === currency ? fx.text : undefined;
+  const fxKey = entryFxKey(currency, day);
+  const fxDraft = fx?.key === fxKey ? fx.text : undefined;
   const autoFx = rateLookup?.key === fxKey ? rateLookup.rate : undefined;
   const lookingUpFx = currency !== 'HKD' && fxDraft === undefined && savedFx === undefined && rateLookup?.key !== fxKey;
-  const fxText = fxDraft ?? savedFx ?? (autoFx ? String(autoFx.rate) : lastFx ? String(lastFx) : '');
+  const resolvedFxText = fxDraft ?? savedFx ?? (autoFx ? String(autoFx.rate) : undefined);
+  const fxText = resolvedFxText ?? (lastFx ? String(lastFx) : '');
   const fxLabel = fxDraft !== undefined || savedFx !== undefined ? null
     : autoFx ? `(ECB ${autoFx.date})` : lastFx ? '(last used)' : null;
-  // Whole input must be a plain decimal within fx_rate numeric(14,6); else 0 = not set, blocks save.
-  const fxRate = currency === 'HKD' ? 1 : /^\d{1,8}(\.\d{1,6})?$/.test(fxText.trim()) ? parseFloat(fxText) || 0 : 0;
+  const fxRate = currency === 'HKD' ? 1 : parseEntryFxRate(fxText);
+  const offsetRate = currency === 'HKD' ? 1 : parseEntryFxRate(resolvedFxText ?? '');
 
   useEffect(() => {
     if (currency === 'HKD' || fxDraft !== undefined || savedFx !== undefined) return;
@@ -118,11 +122,20 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
   // When editing a repayment, add it back: the balance already includes it.
   const friend = friends.find((f) => f.id === friendId);
   const balance = (friend?.balance ?? 0)
-    + (entry?.kind === 'settlement' && entry.friendId === friendId ? entry.amount * entry.fxRate : 0);
+    + (entry?.kind === 'settlement' && entry.friendId === friendId ? offsetAmount(entry.amount, entry.fxRate) : 0);
   const fullOwed = settlementAmount(balance, fxRate);
-  const amount = kind === 'settlement' && amountAuto && friendId ? String(Math.max(0, fullOwed)) : amountText;
+  const residual = round2(balance - offsetAmount(fullOwed, fxRate));
+  const amount = !offsetPending && kind === 'settlement' && amountAuto && friendId ? String(Math.max(0, fullOwed)) : amountText;
   const evaluated = calculateExpression(amount);
   const total = evaluated.status === 'valid' ? evaluated.value : 0;
+  // A fetched rate can complete the conversion immediately. Confirm a typed rate by tapping Offset again.
+  if (offsetPending && offsetRate > 0 && fxDraft === undefined && evaluated.status === 'valid') {
+    setOffsetPending(false);
+    setAccountId(null);
+    setAmount(String(offsetAmount(total, offsetRate)));
+    setFx(undefined);
+  }
+
   const each = splitEqual(total, shareIds.length);
   const shares = splitOn && kind === 'expense'
     ? shareIds.map((fid) => ({ friendId: fid, amount: mode === 'equal' ? each : round2(parseFloat(custom[fid]) || 0) })).filter((s) => s.amount > 0)
@@ -141,11 +154,15 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
     : 'Enter an amount';
 
   const problem =
-    total <= 0 && !(amountAuto && balance > 0 && kind === 'settlement') ? amountProblem
+    offsetPending && lookingUpFx ? 'Looking up exchange rate for Offset…'
+    : offsetPending && !offsetRate ? `Enter the ${currency} → HKD rate to use Offset`
+    : offsetPending && evaluated.status === 'valid' ? 'Tap Offset to convert at this rate'
+    : offsetPending ? amountProblem
+    : total <= 0 && !(amountAuto && balance > 0 && kind === 'settlement') ? amountProblem
     : lookingUpFx ? 'Looking up exchange rate…'
     : currency !== 'HKD' && !fxRate ? `Enter the ${currency} → HKD rate`
     : total <= 0 ? amountProblem
-    : (kind === 'expense' || kind === 'income') && !entry && !category ? 'Pick a category'
+    : (kind === 'expense' || kind === 'income') && !entry && !category && !(source?.kind === kind && !source.categoryId) ? 'Pick a category'
     : splitOn && kind === 'expense' && mode === 'custom' && shareIds.some((fid) => /^\s*[-−]/.test(custom[fid] ?? '')) ? 'Shares can\'t be negative'
     : splitOn && kind === 'expense' && mode === 'custom' && shareIds.some((fid) => (custom[fid] ?? '').trim() !== '' && !/^\d+(\.\d{1,2})?$/.test(custom[fid].trim())) ? 'Check friends\' shares'
     : kind === 'settlement' && !friendId ? 'Pick a friend'
@@ -158,9 +175,15 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
     : null;
 
   const pickAccount = (id: string | null) => {
-    if (id === null && kind === 'settlement' && currency !== 'HKD' && !amountAuto && evaluated.status === 'valid') {
-      setAmount(String(offsetAmount(total, fxRate)));
+    if (id === null && kind === 'settlement' && currency !== 'HKD') {
+      if (!offsetRate || evaluated.status !== 'valid') {
+        setAmount(amount);
+        setOffsetPending(true);
+        return;
+      }
+      setAmount(String(offsetAmount(total, offsetRate)));
     }
+    setOffsetPending(false);
     if ((id ? accounts.find((a) => a.id === id)?.currency : 'HKD') !== currency) setFx(undefined);
     setAccountId(id);
   };
@@ -186,16 +209,24 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
   };
 
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const pickDay = (next: string) => {
+    if (next !== day) {
+      setFx(undefined);
+      setRateLookup(undefined);
+      setDay(next);
+    }
+    setCalendarOpen(false);
+  };
 
   const dirty = !entry && (
     !!source || amount !== '0' || kind !== (preset.kind ?? 'expense') || categoryId !== undefined
     || accountId !== undefined || toAccountId !== undefined || friendId !== preset.friendId
-    || day !== today || title !== '' || note !== '' || fx !== undefined || splitOn !== !!preset.splitFriendId
+    || offsetPending || day !== today || title !== '' || note !== '' || fx !== undefined || splitOn !== !!preset.splitFriendId
     || shareIds.join(',') !== (preset.splitFriendId ?? '') || mode !== 'equal' || Object.keys(custom).length > 0
   );
   const { back, leave, confirming, keepEditing } = useDraftBack(dirty);
   const recent = !entry && !dirty && !preset.friendId && !preset.splitFriendId && !preset.kind
-    ? recentEntryTemplates(entries) : [];
+    ? recentEntryTemplates(entries, accounts) : [];
   const repeat = (source: Entry, replace = false) => void nav('/add', { replace, state: { templateId: source.id } });
 
   const save = async () => {
@@ -224,13 +255,18 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
   };
 
   const remove = async () => {
-    if (!entry) return;
+    if (!entry || !user) return;
+    const ownerId = user.id;
     const r = await deleteEntry(entry.id);
     if (r.success) {
-      const { pending: _p, ...restore } = entry; // same id: save_entry upserts, so Undo brings it back as it was
       show({
         type: 'success', title: 'Entry deleted', duration: 7000,
-        action: { label: 'Undo', onClick: () => void addEntry(restore).then((u) => { if (!u.success) showError('Could not undo', u.error?.message); }) },
+        action: r.undoable && !entry.pending && navigator.onLine ? {
+          label: 'Undo',
+          onClick: () => void restoreEntry(entry, ownerId).then((u) => {
+            if (!u.success) showError('Could not undo', u.error?.message);
+          }),
+        } : undefined,
       });
       leave();
     } else {
@@ -268,7 +304,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
       </header>
 
       <main className="p-5 space-y-6 max-w-md mx-auto">
-        {entry && <Chip onClick={() => repeat(entry)}>Repeat</Chip>}
+        {entry && canRepeatEntry(entry, accounts) && <Chip onClick={() => repeat(entry)}>Repeat</Chip>}
         {recent.length > 0 && (
           <div>
             <FieldLabel>Recent</FieldLabel>
@@ -284,7 +320,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
         )}
         <div className="grid grid-cols-4 gap-2" role="group" aria-label="Entry type">
           {KINDS.map(({ kind: k, color }) => (
-            <Chip key={k} active={kind === k} color={color} onClick={() => setKind(k)} className="justify-center !px-1 text-[11px] uppercase">
+            <Chip key={k} active={kind === k} color={color} onClick={() => { if (k !== kind) setOffsetPending(false); setKind(k); }} className="justify-center !px-1 text-[11px] uppercase">
               {KIND_LABEL[k]}
             </Chip>
           ))}
@@ -314,11 +350,18 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
               ))}
               {friends.length === 0 && <p className="text-xs font-bold uppercase text-gray-600">No friends yet.</p>}
             </div>
-            {fullOwed > 0 && !lookingUpFx && (
+            {friend && balance > 0 && offsetRate > 0 && !offsetPending && (
               <div className="mt-2">
-                <Chip active={total === fullOwed} color="bg-neo-green" onClick={() => { setAmount(String(fullOwed)); setAmountAuto(false); }}>
-                  Full {formatCurrency(fullOwed, currency)}
-                </Chip>
+                {fullOwed > 0 && (
+                  <Chip active={total === fullOwed} color="bg-neo-green" onClick={() => { setAmount(String(fullOwed)); setAmountAuto(false); }}>
+                    {residual > 0 ? 'Up to' : 'Full'} {formatCurrency(fullOwed, currency)}
+                  </Chip>
+                )}
+                {residual > 0 && (
+                  <p className="mt-1 text-xs font-bold text-gray-600 dark:text-zinc-400">
+                    {fullOwed > 0 ? `Leaves ${formatCurrency(residual)}` : `Smallest ${currency} amount would overpay`}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -351,7 +394,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
                 aria-label={`${currency} to HKD rate`}
                 placeholder="rate"
                 value={fxText}
-                onChange={(e) => setFx({ currency, text: e.target.value })}
+                onChange={(e) => setFx({ key: fxKey, text: e.target.value })}
                 className="w-24 border-2 border-black p-1 text-right bg-white dark:bg-zinc-900"
               />
               HKD
@@ -392,14 +435,14 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
         <div>
           <FieldLabel>Date</FieldLabel>
           <div className="flex flex-wrap gap-2">
-            <Chip active={!calendarOpen && day === today} onClick={() => { setDay(today); setCalendarOpen(false); }}>Today</Chip>
-            <Chip active={!calendarOpen && day === yesterday} onClick={() => { setDay(yesterday); setCalendarOpen(false); }}>Yesterday</Chip>
+            <Chip active={!calendarOpen && day === today} onClick={() => pickDay(today)}>Today</Chip>
+            <Chip active={!calendarOpen && day === yesterday} onClick={() => pickDay(yesterday)}>Yesterday</Chip>
             <Chip active={calendarOpen || (day !== today && day !== yesterday)} onClick={() => setCalendarOpen((v) => !v)}>
               <CalendarDays size={16} aria-hidden="true" />
               {day !== today && day !== yesterday ? dayLabel(day) : 'Pick date'}
             </Chip>
           </div>
-          {calendarOpen && <DatePicker value={day} today={today} onPick={(d) => { setDay(d); setCalendarOpen(false); }} />}
+          {calendarOpen && <DatePicker value={day} today={today} onPick={pickDay} />}
         </div>
 
         <div>

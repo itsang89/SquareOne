@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import type {
   Account, Category, Entry, EntryInput, Friend, Subscription, SubscriptionInput,
 } from '../types';
 import { friendBalancesMap, getLastActivity } from '../utils/calculations';
 import { supabase } from '../utils/supabase';
 import { isNetworkError, loadCache, loadOutbox, mergePending, saveCache, saveOutbox } from '../utils/offline';
+import { useToast } from '../components/ToastContext';
 import { AuthContext } from './AuthContext';
 
 export type Result = { success: boolean; error?: Error };
@@ -31,7 +32,8 @@ interface AppContextType {
   // Entries
   addEntry: (input: EntryInput) => Promise<IdResult & { queued?: boolean }>;
   updateEntry: (entry: Entry) => Promise<Result>;
-  deleteEntry: (id: string) => Promise<Result>;
+  deleteEntry: (id: string) => Promise<Result & { undoable?: boolean }>;
+  restoreEntry: (entry: Entry, ownerId: string) => Promise<Result>;
   // Accounts
   addAccount: (input: { name: string; currency?: string; sort?: number }) => Promise<IdResult>;
   updateAccount: (id: string, updates: Partial<Omit<Account, 'id'>>) => Promise<Result>;
@@ -134,6 +136,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isProcessing, setIsProcessing] = useState(false);
   const [online, setOnline] = useState(() => navigator.onLine);
   const [outbox, setOutbox] = useState<Entry[]>([]);
+  const { clearActions } = useToast();
+  const userId = user?.id;
+  const activeUserId = useRef(userId);
+  useLayoutEffect(() => {
+    activeUserId.current = userId;
+    clearActions();
+  }, [userId, clearActions]);
   const flushingRef = useRef(false);
   const [rejectedCount, setRejectedCount] = useState(0);
   /** Tracks which user ID has already had its first data load, so background refreshes don't show skeletons. */
@@ -270,11 +279,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // ---- Entries ----
   const saveEntry = useCallback(
-    async (input: EntryInput): Promise<string> => {
-      const { data, error } = await supabase.rpc('save_entry', {
+    async (input: EntryInput, accessToken?: string): Promise<string> => {
+      const request = supabase.rpc('save_entry', {
         p_entry: entryPayload(input),
         p_shares: (input.shares ?? []).map((s) => ({ friend_id: s.friendId, amount: s.amount })),
       });
+      if (accessToken) request.setHeader('Authorization', `Bearer ${accessToken}`);
+      const { data, error } = await request;
       if (error) throw error;
       return data as string;
     },
@@ -311,7 +322,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return write('updating entry', async () => { await saveEntry(entry); });
   }, [write, saveEntry, isQueued, queueEntry]);
-  const deleteEntry = useCallback(async (id: string): Promise<Result> => {
+  const deleteEntry = useCallback<AppContextType['deleteEntry']>(async (id) => {
     if (user && isQueued(id)) {
       const next = loadOutbox(user.id).filter((e) => e.id !== id);
       if (!saveOutbox(user.id, next)) return { success: false, error: STORAGE_ERROR };
@@ -320,8 +331,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (navigator.onLine) await supabase.from('entries').delete().eq('id', id).eq('user_id', user.id);
       return { success: true };
     }
-    return write('deleting entry', async (uid) => ok(await supabase.from('entries').delete().eq('id', id).eq('user_id', uid)));
+    const result = await write('deleting entry', async (uid) => {
+      ok(await supabase.from('entries').delete().eq('id', id).eq('user_id', uid));
+    });
+    return { ...result, undoable: result.success && activeUserId.current === user?.id };
   }, [write, isQueued, user]);
+
+  const restoreEntry = useCallback<AppContextType['restoreEntry']>((entry, ownerId) => {
+    const wrongUser = new Error('Sign in as the user who deleted this entry');
+    if (activeUserId.current !== ownerId) return Promise.resolve({ success: false, error: wrongUser });
+    return write('restoring entry', async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user.id !== ownerId || activeUserId.current !== ownerId) throw wrongUser;
+      // Pin the verified session for this request even if auth changes before fetch.
+      await saveEntry(entry, session.access_token);
+    });
+  }, [write, saveEntry]);
 
   /** Send queued entries. Stops at the first network failure; a server rejection stays queued for the next try. */
   const flushOutbox = useCallback(async () => {
@@ -471,14 +496,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const value = useMemo<AppContextType>(() => ({
     friends, accounts, categories, entries: allEntries, subscriptions, loading, error, isProcessing, refetch: loadData,
     online, pendingCount: outbox.length, rejectedCount,
-    addEntry, updateEntry, deleteEntry,
+    addEntry, updateEntry, deleteEntry, restoreEntry,
     addAccount, updateAccount, deleteAccount,
     addCategory, updateCategory, deleteCategory,
     addSubscription, updateSubscription, deleteSubscription,
     addFriend, updateFriend, deleteFriend, getFriendById,
   }), [
     friends, accounts, categories, allEntries, subscriptions, loading, error, isProcessing, loadData, online, outbox.length, rejectedCount,
-    addEntry, updateEntry, deleteEntry, addAccount, updateAccount, deleteAccount,
+    addEntry, updateEntry, deleteEntry, restoreEntry, addAccount, updateAccount, deleteAccount,
     addCategory, updateCategory, deleteCategory, addSubscription, updateSubscription, deleteSubscription,
     addFriend, updateFriend, deleteFriend, getFriendById,
   ]);

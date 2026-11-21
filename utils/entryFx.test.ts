@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchEntryFx } from './entryFx';
+import { fetchEntryFx, parseEntryFxRate } from './entryFx';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -28,5 +28,14 @@ describe('fetchEntryFx', () => {
 
     await expect(fetchEntryFx('GBP', '2026-11-20')).resolves.toBeUndefined();
     await expect(fetchEntryFx('GBP', '2026-11-20')).resolves.toEqual({ date: '2026-11-20', rate: 10 });
+  });
+});
+
+describe('parseEntryFxRate', () => {
+  it('accepts a valid decimal rate and rejects missing, partial, and out-of-range rates', () => {
+    expect(parseEntryFxRate(' 7.812345 ')).toBe(7.812345);
+    for (const text of ['', '0', '7.', '7.8123456', '-7.8', '1e2', '100000000']) {
+      expect(parseEntryFxRate(text)).toBe(0);
+    }
   });
 });

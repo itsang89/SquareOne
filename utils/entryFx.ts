@@ -3,10 +3,17 @@ export interface EntryFx {
   rate: number;
 }
 
+export const entryFxKey = (currency: string, day: string): string => `${currency}:${day}`;
+
+// Whole input must be a plain decimal within fx_rate numeric(14,6).
+export function parseEntryFxRate(text: string): number {
+  return /^\d{1,8}(\.\d{1,6})?$/.test(text.trim()) ? Number(text) : 0;
+}
+
 const cache = new Map<string, Promise<EntryFx | undefined>>();
 
 export function fetchEntryFx(currency: string, day: string): Promise<EntryFx | undefined> {
-  const key = `${currency}:${day}`;
+  const key = entryFxKey(currency, day);
   const cached = cache.get(key);
   if (cached) return cached;
 

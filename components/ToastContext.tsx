@@ -14,6 +14,7 @@ export interface Toast {
 interface ToastContextType {
   toasts: Toast[];
   show: (toast: Omit<Toast, 'id'>) => void;
+  clearActions: () => void;
   shorten: (ms: number) => void; // cut every plain toast's remaining life to at most ms, once
   success: (title: string, description?: string) => void;
   error: (title: string, description?: string) => void;
@@ -45,6 +46,12 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     schedule(id, toast.duration ?? 5000, !!toast.action);
   }, [schedule]);
 
+  const clearActions = useCallback(() => {
+    for (const [id, { fixed }] of timers.current) {
+      if (fixed) remove(id);
+    }
+  }, [remove]);
+
   const shorten = useCallback((ms: number) => {
     for (const [id, { expiresAt, fixed }] of timers.current) {
       if (!fixed && expiresAt - Date.now() > ms) schedule(id, ms);
@@ -60,7 +67,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [show]);
 
   return (
-    <ToastContext.Provider value={{ toasts, show, shorten, success, error, remove }}>
+    <ToastContext.Provider value={{ toasts, show, clearActions, shorten, success, error, remove }}>
       {children}
     </ToastContext.Provider>
   );

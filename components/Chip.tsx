@@ -15,7 +15,7 @@ export const Chip: React.FC<ChipProps> = ({ active, onClick, children, color = '
     onClick={onClick}
     aria-pressed={active}
     className={`shrink-0 px-3 py-2 border-2 border-black text-sm font-bold flex items-center gap-2 transition-all ${
-      active ? `${color} shadow-neo-sm text-black` : 'bg-white dark:bg-zinc-900 text-gray-600 dark:text-zinc-400 hover:border-black'
+      active ? `${color} shadow-neo-sm text-black` : 'bg-white dark:bg-zinc-900 text-gray-700 dark:text-zinc-200 dark:border-zinc-500 hover:border-black'
     } ${className}`}
   >
     {children}

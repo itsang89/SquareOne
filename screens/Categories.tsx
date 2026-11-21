@@ -80,12 +80,13 @@ export const Categories: React.FC = () => {
       </main>
 
       <NeoModal isOpen={editing !== null} onClose={() => setEditing(null)} title={editing === 'new' ? `New ${kind} category` : 'Edit category'}>
-        <NeoInput label="Name" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
-        <FieldLabel>Icon (name or emoji)</FieldLabel>
+        <NeoInput label="Name" placeholder="e.g. Groceries" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+        <FieldLabel>Icon (pick below, or type an emoji)</FieldLabel>
         <input
           value={icon}
           onChange={(e) => setIcon(e.target.value)}
           aria-label="Icon"
+          placeholder="🍜"
           maxLength={8}
           className="w-full border-2 border-black p-3 font-bold text-xl bg-white dark:bg-zinc-900 mb-2"
         />

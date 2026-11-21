@@ -22,7 +22,7 @@ export const NeoButton: React.FC<NeoButtonProps> = ({
 }) => {
   const { getTransition } = useAnimations();
   
-  const baseStyle = "border-2 border-black font-bold uppercase tracking-wider disabled:!bg-gray-200 disabled:!text-gray-600 dark:disabled:!bg-zinc-800 dark:disabled:!text-zinc-400 disabled:!shadow-none disabled:cursor-not-allowed flex items-center justify-center gap-2";
+  const baseStyle = "border-2 border-black font-bold uppercase tracking-wider disabled:!bg-gray-200 disabled:!text-gray-600 dark:disabled:!bg-zinc-700 dark:disabled:!text-zinc-300 dark:disabled:!border-zinc-500 disabled:!shadow-none disabled:cursor-not-allowed flex items-center justify-center gap-2";
   
   const variants = {
     primary: "bg-neo-yellow hover:bg-[#f5c518] shadow-neo text-black",

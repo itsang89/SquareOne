@@ -12,6 +12,9 @@ interface Props {
   days: number;
 }
 
+// Keep tiny non-zero values visible next to a huge one, and stop a lone bar from spanning the chart.
+const minBar = (v: unknown) => (v ? 4 : 0);
+
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export const TrendChart: React.FC<Props> = ({ series, daily, days }) => {
@@ -46,7 +49,7 @@ export const TrendChart: React.FC<Props> = ({ series, daily, days }) => {
       </NeoCard>
       <NeoCard className="h-64 px-1 text-black dark:text-zinc-300">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={series} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
+          <BarChart data={series} maxBarSize={28} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" strokeOpacity={0.2} />
             <XAxis
               dataKey="key"
@@ -61,8 +64,8 @@ export const TrendChart: React.FC<Props> = ({ series, daily, days }) => {
               labelFormatter={(k) => String(k)}
               contentStyle={{ border: '2px solid #000', borderRadius: 0, color: '#000' }}
             />
-            <Bar dataKey="income" name="Income" fill={INCOME_COLOR} stroke="#000" isAnimationActive={!reduced} />
-            <Bar dataKey="expense" name="Spent" fill={EXPENSE_COLOR} stroke="#000" isAnimationActive={!reduced} />
+            <Bar dataKey="income" name="Income" fill={INCOME_COLOR} stroke="#000" minPointSize={minBar} isAnimationActive={!reduced} />
+            <Bar dataKey="expense" name="Spent" fill={EXPENSE_COLOR} stroke="#000" minPointSize={minBar} isAnimationActive={!reduced} />
           </BarChart>
         </ResponsiveContainer>
       </NeoCard>

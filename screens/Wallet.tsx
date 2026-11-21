@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Pencil, Plus } from 'lucide-react';
+import { Pencil, Plus, Scale } from 'lucide-react';
 import { NeoButton } from '../components/NeoButton';
 import { NeoInput } from '../components/NeoInput';
 import { NeoModal } from '../components/NeoModal';
@@ -8,18 +8,20 @@ import { AnimatedNumber } from '../components/AnimatedNumber';
 import { DataLoadErrorBanner } from '../components/DataLoadErrorBanner';
 import { useAppContext } from '../context/AppContext';
 import { useToast } from '../components/ToastContext';
-import { accountBalances, netWorth, totalOwed } from '../utils/calculations';
+import { accountBalances, ADJUSTMENT_TITLE, netWorth, round2, totalOwed } from '../utils/calculations';
 import { latestFx } from '../utils/entryUi';
 import { formatCurrency } from '../utils/formatters';
 import type { Account } from '../types';
 
 export const Wallet: React.FC = () => {
-  const { accounts, entries, loading, error, refetch, addAccount, updateAccount, isProcessing } = useAppContext();
+  const { accounts, entries, loading, error, refetch, addAccount, updateAccount, addEntry, isProcessing } = useAppContext();
   const { success, error: showError } = useToast();
   const [showArchived, setShowArchived] = useState(false);
   const [editing, setEditing] = useState<Account | 'new' | null>(null);
   const [name, setName] = useState('');
   const [currency, setCurrency] = useState('HKD');
+  const [recon, setRecon] = useState<Account | null>(null);
+  const [actual, setActual] = useState('');
 
   const balances = useMemo(() => accountBalances(accounts, entries), [accounts, entries]);
   const worth = useMemo(() => netWorth(accounts, entries, latestFx(entries)), [accounts, entries]);
@@ -42,6 +44,23 @@ export const Wallet: React.FC = () => {
     else showError('Could not save account', r.error?.message);
   };
 
+  // Rate for a non-HKD account: last one used for that currency; none = can't value the adjustment.
+  const reconRate = recon ? (recon.currency === 'HKD' ? 1 : latestFx(entries)[recon.currency]) : undefined;
+  const target = Number(actual);
+  const reconValid = actual.trim() !== '' && Number.isFinite(target);
+  const reconDiff = recon && reconValid ? round2(target - (balances.get(recon.id) ?? 0)) : 0;
+  const reconReason = !reconValid ? 'Enter the actual balance.' : reconDiff === 0 ? 'Matches the app balance.' : reconRate === undefined ? `No ${recon?.currency} rate yet. Log an entry in ${recon?.currency} first.` : '';
+
+  const reconcile = async () => {
+    if (!recon || reconReason) return;
+    const r = await addEntry({
+      kind: reconDiff > 0 ? 'income' : 'expense', amount: Math.abs(reconDiff), title: ADJUSTMENT_TITLE,
+      accountId: recon.id, currency: recon.currency, fxRate: reconRate,
+    });
+    if (r.success) { success('Balance adjusted', `${reconDiff > 0 ? '+' : '−'}${formatCurrency(Math.abs(reconDiff), recon.currency)}`); setRecon(null); }
+    else showError('Could not adjust balance', r.error?.message);
+  };
+
   const setArchived = async (a: Account, value: boolean) => {
     const r = await updateAccount(a.id, { archived: value });
     if (r.success) { success(value ? 'Account archived' : 'Account restored'); setEditing(null); }
@@ -61,6 +80,9 @@ export const Wallet: React.FC = () => {
       </Link>
       <button type="button" onClick={() => open(a)} aria-label={`Edit ${a.name}`} className="w-12 grid place-items-center border-l-2 border-black dark:text-zinc-100 hover:bg-neo-yellow/40">
         <Pencil size={16} />
+      </button>
+      <button type="button" onClick={() => { setRecon(a); setActual(String(balances.get(a.id) ?? 0)); }} aria-label={`Reconcile ${a.name}`} className="w-12 grid place-items-center border-l-2 border-black dark:text-zinc-100 hover:bg-neo-yellow/40">
+        <Scale size={16} />
       </button>
     </li>
   );
@@ -118,6 +140,14 @@ export const Wallet: React.FC = () => {
           )}
           <NeoButton fullWidth variant="primary" isLoading={isProcessing} disabled={!name.trim()} onClick={() => void save()}>Save</NeoButton>
         </div>
+      </NeoModal>
+
+      <NeoModal isOpen={recon !== null} onClose={() => setRecon(null)} title={`Reconcile ${recon?.name ?? ''}`}>
+        <NeoInput label={`Actual balance (${recon?.currency ?? ''})`} type="number" inputMode="decimal" step="any" value={actual} onChange={(e) => setActual(e.target.value)} autoFocus />
+        <p className="text-xs font-bold uppercase text-gray-600 dark:text-zinc-400">
+          {reconReason || `Adds a ${reconDiff > 0 ? 'income' : 'expense'} of ${formatCurrency(Math.abs(reconDiff), recon?.currency)} (not counted in Charts).`}
+        </p>
+        <NeoButton fullWidth variant="primary" isLoading={isProcessing} disabled={!!reconReason} onClick={() => void reconcile()}>Save</NeoButton>
       </NeoModal>
     </div>
   );

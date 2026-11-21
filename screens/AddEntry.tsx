@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { CalendarDays } from 'lucide-react';
 import { BackButton } from '../components/BackButton';
 import { NeoButton } from '../components/NeoButton';
 import { NeoInput } from '../components/NeoInput';
@@ -15,7 +16,7 @@ import { useToast } from '../components/ToastContext';
 import { localDay, round2 } from '../utils/calculations';
 import { evaluateExpression } from '../utils/calculator';
 import { isValidAmount } from '../utils/validation';
-import { categoriesByUse, dayToIso, KIND_LABEL, lastUsedAccountId, latestFx, splitEqual, tooSmallToSplit } from '../utils/entryUi';
+import { categoriesByUse, dayLabel, dayToIso, KIND_LABEL, lastUsedAccountId, latestFx, splitEqual, tooSmallToSplit } from '../utils/entryUi';
 import { formatCurrency } from '../utils/formatters';
 import { PRESET_AVATARS } from '../constants';
 import type { Entry, EntryKind } from '../types';
@@ -130,6 +131,13 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
     if (!r.success) showError('Could not add friend', r.error?.message);
     else if (r.id) setShareIds((ids) => [...ids, r.id!]);
     return r.success;
+  };
+
+  const dateRef = useRef<HTMLInputElement>(null);
+  // Fixed when the form opens; a form left open past midnight keeps its original "today".
+  const [[today, yesterday]] = useState(() => [localDay(new Date().toISOString()), localDay(new Date(Date.now() - 864e5).toISOString())]);
+  const openPicker = () => {
+    try { dateRef.current?.showPicker(); } catch { dateRef.current?.focus(); } // showPicker: Safari 16.4+, Chrome 99+
   };
 
   const back = () => (loc.key === 'default' ? nav('/dashboard', { replace: true }) : nav(-1));
@@ -290,12 +298,24 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
 
         <div>
           <FieldLabel>Date</FieldLabel>
-          <input
-            type="date"
-            value={day}
-            onChange={(e) => e.target.value && setDay(e.target.value)}
-            className="w-full border-2 border-black p-3 font-bold bg-white dark:bg-zinc-900 dark:text-zinc-100"
-          />
+          <div className="relative flex flex-wrap gap-2">
+            <Chip active={day === today} onClick={() => setDay(today)}>Today</Chip>
+            <Chip active={day === yesterday} onClick={() => setDay(yesterday)}>Yesterday</Chip>
+            <Chip active={day !== today && day !== yesterday} onClick={openPicker}>
+              <CalendarDays size={16} aria-hidden="true" />
+              {day !== today && day !== yesterday ? dayLabel(day) : 'Pick date'}
+            </Chip>
+            {/* The phone's own date picker, opened by the chip above. */}
+            <input
+              ref={dateRef}
+              type="date"
+              tabIndex={-1}
+              aria-label="Pick date"
+              value={day}
+              onChange={(e) => e.target.value && setDay(e.target.value)}
+              className="sr-only"
+            />
+          </div>
         </div>
 
         <div>

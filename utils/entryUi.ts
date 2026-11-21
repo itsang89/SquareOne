@@ -86,10 +86,13 @@ export function entryView(e: Entry, { categories, accounts, friends }: Lookups, 
 
   if (forFriend) {
     const delta = friendDeltas(e).find(([id]) => id === forFriend)?.[1] ?? 0;
+    // Money in is "+" (a repayment, same as Ledger); a share they owe me is not money moved, so no sign.
+    const repay = e.kind === 'settlement';
+    const sign = repay && e.accountId ? '+' : '';
     return {
       ...base, title: e.title || cat?.name || KIND_LABEL[e.kind],
       sub: e.kind === 'settlement' ? (acc(e.accountId) ?? 'Offset') : `of ${e.amount.toFixed(2)}${acc(e.accountId) ? ` · ${acc(e.accountId)}` : ''}`,
-      currency: 'HKD', amount: Math.abs(delta), sign: delta >= 0 ? '+' : '-', tone: delta >= 0 ? 'out' : 'in',
+      currency: 'HKD', amount: Math.abs(delta), sign, tone: repay ? (e.accountId ? 'in' : 'muted') : 'out',
     };
   }
 

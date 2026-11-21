@@ -36,10 +36,10 @@ const commands = {
   'entries.delete': { required: ['id'], write: true },
   'subscriptions.list': { bools: ['all'] },
   'subscriptions.add': {
-    required: ['title', 'amount', 'cadence', 'next-date'], strings: ['category', 'account', 'currency', 'fx-rate'], write: true,
+    required: ['title', 'amount', 'cadence', 'next-date'], strings: ['kind', 'category', 'account', 'currency', 'fx-rate'], write: true,
   },
   'subscriptions.edit': {
-    required: ['id'], strings: ['title', 'amount', 'cadence', 'next-date', 'category', 'account', 'currency', 'fx-rate'],
+    required: ['id'], strings: ['kind', 'title', 'amount', 'cadence', 'next-date', 'category', 'account', 'currency', 'fx-rate'],
     change: true, write: true,
   },
   'subscriptions.pause': { required: ['id'], bools: ['resume'], write: true },
@@ -86,7 +86,7 @@ MANAGE
   accounts add --name N [--currency HKD] | edit --id A [--name N] [--currency C] | archive --id A [--unarchive]
   accounts delete --id A                    Needs browser approval; only for accounts with no entries
   categories add --name N [--kind expense|income] [--icon E] [--color #hex] | edit --id C [--name] [--icon] [--color] [--archive|--unarchive]
-  subscriptions add --title T --amount N --cadence weekly|monthly|yearly --next-date D [--category C] [--account A]
+  subscriptions add --title T --amount N --cadence weekly|monthly|yearly --next-date D [--kind expense|income] [--category C] [--account A]
                                             --next-date = date of the next charge (today if the user gave none)
   subscriptions edit --id S [fields] | pause --id S [--resume]
   friends add --name N | edit --id F [--name N] | delete --id F (needs browser approval)

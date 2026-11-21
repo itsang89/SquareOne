@@ -71,6 +71,7 @@ export type EntryInput = Pick<Entry, 'kind' | 'amount'> &
 
 export interface Subscription {
   id: string;
+  kind: 'expense' | 'income';
   title: string;
   amount: number;
   currency: string;

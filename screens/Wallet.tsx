@@ -8,13 +8,13 @@ import { AnimatedNumber } from '../components/AnimatedNumber';
 import { DataLoadErrorBanner } from '../components/DataLoadErrorBanner';
 import { useAppContext } from '../context/AppContext';
 import { useToast } from '../components/ToastContext';
-import { accountBalances, ADJUSTMENT_TITLE, netWorth, round2, totalOwed } from '../utils/calculations';
+import { accountBalances, netWorth, round2, totalOwed } from '../utils/calculations';
 import { latestFx } from '../utils/entryUi';
 import { formatCurrency } from '../utils/formatters';
 import type { Account } from '../types';
 
 export const Wallet: React.FC = () => {
-  const { accounts, entries, loading, error, refetch, addAccount, updateAccount, addEntry, isProcessing } = useAppContext();
+  const { accounts, entries, loading, error, refetch, addAccount, updateAccount, addEntry, isProcessing, online } = useAppContext();
   const { success, error: showError } = useToast();
   const [showArchived, setShowArchived] = useState(false);
   const [editing, setEditing] = useState<Account | 'new' | null>(null);
@@ -44,20 +44,29 @@ export const Wallet: React.FC = () => {
     else showError('Could not save account', r.error?.message);
   };
 
-  // Rate for a non-HKD account: last one used for that currency; none = can't value the adjustment.
-  const reconRate = recon ? (recon.currency === 'HKD' ? 1 : latestFx(entries)[recon.currency]) : undefined;
   const target = Number(actual);
   const reconValid = actual.trim() !== '' && Number.isFinite(target);
   const reconDiff = recon && reconValid ? round2(target - (balances.get(recon.id) ?? 0)) : 0;
-  const reconReason = !reconValid ? 'Enter the actual balance.' : reconDiff === 0 ? 'Matches the app balance.' : reconRate === undefined ? `No ${recon?.currency} rate yet. Log an entry in ${recon?.currency} first.` : '';
+  const reconReason = !online ? 'You are offline. Reconcile needs a connection.' : !reconValid ? 'Enter the actual balance.' : reconDiff === 0 ? 'Matches the app balance.' : '';
 
+  // The difference is a transfer with a hidden archived "Balance adjustments" account (one per currency):
+  // transfers are not income/spending, archived accounts are outside net worth, so only net worth moves.
+  // ponytail: online-only; two devices reconciling at once can overshoot (single-user app, accepted).
   const reconcile = async () => {
     if (!recon || reconReason) return;
+    const adjName = recon.currency === 'HKD' ? 'Balance adjustments' : `Balance adjustments ${recon.currency}`;
+    let adj = accounts.find((a) => a.archived && a.currency === recon.currency && a.name === adjName)?.id;
+    if (!adj) {
+      const c = await addAccount({ name: adjName, currency: recon.currency, sort: accounts.length, archived: true });
+      if (!c.success || !c.id) { showError('Could not adjust balance', c.error?.message); return; }
+      adj = c.id;
+    }
+    const up = reconDiff > 0;
     const r = await addEntry({
-      kind: reconDiff > 0 ? 'income' : 'expense', amount: Math.abs(reconDiff), title: ADJUSTMENT_TITLE,
-      accountId: recon.id, currency: recon.currency, fxRate: reconRate,
+      kind: 'transfer', amount: Math.abs(reconDiff), title: 'Balance adjustment', currency: recon.currency,
+      accountId: up ? adj : recon.id, toAccountId: up ? recon.id : adj,
     });
-    if (r.success) { success('Balance adjusted', `${reconDiff > 0 ? '+' : '−'}${formatCurrency(Math.abs(reconDiff), recon.currency)}`); setRecon(null); }
+    if (r.success) { success('Balance adjusted', `${up ? '+' : '−'}${formatCurrency(Math.abs(reconDiff), recon.currency)}`); setRecon(null); }
     else showError('Could not adjust balance', r.error?.message);
   };
 
@@ -145,7 +154,7 @@ export const Wallet: React.FC = () => {
       <NeoModal isOpen={recon !== null} onClose={() => setRecon(null)} title={`Reconcile ${recon?.name ?? ''}`}>
         <NeoInput label={`Actual balance (${recon?.currency ?? ''})`} type="number" inputMode="decimal" step="any" value={actual} onChange={(e) => setActual(e.target.value)} autoFocus />
         <p className="text-xs font-bold uppercase text-gray-600 dark:text-zinc-400">
-          {reconReason || `Adds a ${reconDiff > 0 ? 'income' : 'expense'} of ${formatCurrency(Math.abs(reconDiff), recon?.currency)} (not counted in Charts).`}
+          {reconReason || `Moves ${formatCurrency(Math.abs(reconDiff), recon?.currency)} ${reconDiff > 0 ? 'in' : 'out'} via “Balance adjustments” (not income or spending).`}
         </p>
         <NeoButton fullWidth variant="primary" isLoading={isProcessing} disabled={!!reconReason} onClick={() => void reconcile()}>Save</NeoButton>
       </NeoModal>

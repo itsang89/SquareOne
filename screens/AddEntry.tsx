@@ -54,7 +54,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
   const loc = useLocation();
   const preset = (loc.state as Preset | null) ?? {};
   const { entries, accounts, categories, friends, addEntry, updateEntry, deleteEntry, addCategory, addFriend, isProcessing } = useAppContext();
-  const { success, error: showError } = useToast();
+  const { success, show, error: showError } = useToast();
 
   const source = entry ?? entries.find((e) => e.id === preset.templateId);
   const [kind, setKind] = useState<EntryKind>(source?.kind ?? preset.kind ?? 'expense');
@@ -227,7 +227,11 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
     if (!entry) return;
     const r = await deleteEntry(entry.id);
     if (r.success) {
-      success('Entry deleted');
+      const { pending: _p, ...restore } = entry; // same id: save_entry upserts, so Undo brings it back as it was
+      show({
+        type: 'success', title: 'Entry deleted', duration: 7000,
+        action: { label: 'Undo', onClick: () => void addEntry(restore).then((u) => { if (!u.success) showError('Could not undo', u.error?.message); }) },
+      });
       leave();
     } else {
       showError('Could not delete', r.error?.message);

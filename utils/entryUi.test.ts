@@ -51,7 +51,9 @@ describe('entryUi', () => {
     const owed = entryView(e({ shares: [{ friendId: 'f1', amount: 100 }] }), lookups);
     expect([owed.amount, owed.sign, owed.tone]).toEqual([100, '', 'muted']);
     const theirs = entryView(e({ shares: [{ friendId: 'f1', amount: 40 }] }), lookups, 'f1');
-    expect([theirs.amount, theirs.sign]).toEqual([40, '+']);
+    expect([theirs.amount, theirs.sign]).toEqual([40, '']);
+    const repaid = entryView(e({ kind: 'settlement', friendId: 'f1', accountId: 'a1' }), lookups, 'f1');
+    expect([repaid.sign, repaid.tone]).toEqual(['+', 'in']);
   });
 
   it('does not repeat the category in the subtitle when it is already the title', () => {

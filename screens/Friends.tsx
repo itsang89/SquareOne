@@ -220,9 +220,11 @@ export const Friends: React.FC = () => {
             </div>
           </div>
           
+          {!newFriendName.trim() && <p className="text-xs font-bold uppercase text-gray-600 dark:text-zinc-400">Enter a name to save.</p>}
           <NeoButton
             onClick={handleAddFriend}
             fullWidth
+            disabled={!newFriendName.trim()}
             isLoading={isAdding}
             variant="primary"
           >

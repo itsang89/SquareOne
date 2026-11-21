@@ -27,6 +27,7 @@ export const Profile: React.FC = () => {
   
   const [theme, setTheme] = useState<Theme>(getStoredTheme);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [clearText, setClearText] = useState('');
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showHowToUse, setShowHowToUse] = useState(false);
   const [profileName, setProfileName] = useState(user?.name || '');
@@ -132,6 +133,7 @@ export const Profile: React.FC = () => {
       await refetch();
       success('Data cleared', 'Entries, subscriptions and friends have been removed.');
       setShowClearConfirm(false);
+      setClearText('');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       showError('Failed to clear data', message);
@@ -394,15 +396,16 @@ export const Profile: React.FC = () => {
 
         <NeoModal
           isOpen={showClearConfirm}
-          onClose={() => setShowClearConfirm(false)}
+          onClose={() => { setShowClearConfirm(false); setClearText(''); }}
           title="Clear All Data?"
         >
           <p className="font-bold text-gray-600 mb-6 uppercase text-sm tracking-tight">
             This will permanently delete ALL your entries and friends. This action cannot be undone.
           </p>
-          <div className="flex gap-3">
-            <NeoButton fullWidth onClick={() => setShowClearConfirm(false)} variant="neutral">Cancel</NeoButton>
-            <NeoButton fullWidth onClick={handleClearAllData} variant="accent" isLoading={isUpdating}>Yes, Clear All</NeoButton>
+          <NeoInput label="Type DELETE to confirm" value={clearText} onChange={(e) => setClearText(e.target.value)} autoCapitalize="characters" autoComplete="off" />
+          <div className="flex gap-3 mt-6">
+            <NeoButton fullWidth onClick={() => { setShowClearConfirm(false); setClearText(''); }} variant="neutral">Cancel</NeoButton>
+            <NeoButton fullWidth onClick={handleClearAllData} variant="accent" disabled={clearText.trim() !== 'DELETE'} isLoading={isUpdating}>Yes, Clear All</NeoButton>
           </div>
         </NeoModal>
 

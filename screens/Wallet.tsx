@@ -109,6 +109,7 @@ export const Wallet: React.FC = () => {
         {editing === 'new' && (
           <NeoInput label="Currency" value={currency} maxLength={3} onChange={(e) => setCurrency(e.target.value.toUpperCase())} />
         )}
+        {!name.trim() && <p className="text-xs font-bold uppercase text-gray-600 dark:text-zinc-400">Enter a name to save.</p>}
         <div className="flex gap-3">
           {editing && editing !== 'new' && (
             <NeoButton fullWidth variant="neutral" isLoading={isProcessing} onClick={() => void setArchived(editing, !editing.archived)}>

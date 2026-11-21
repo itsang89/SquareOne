@@ -63,9 +63,11 @@ export const EditFriendModal: React.FC<EditFriendModalProps> = ({
           </div>
         </div>
         
+        {!name.trim() && <p className="text-xs font-bold uppercase text-gray-600 dark:text-zinc-400">Enter a name to save.</p>}
         <NeoButton
           onClick={handleSave}
           fullWidth
+          disabled={!name.trim()}
           isLoading={isLoading}
           variant="primary"
         >

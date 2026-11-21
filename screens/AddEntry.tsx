@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { CalendarDays } from 'lucide-react';
 import { BackButton } from '../components/BackButton';
 import { NeoButton } from '../components/NeoButton';
@@ -66,7 +66,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
   const [day, setDay] = useState(localDay(entry?.occurredAt ?? new Date().toISOString()));
   const [title, setTitle] = useState(entry?.title ?? '');
   const [note, setNote] = useState(entry?.note ?? '');
-  const [fx, setFx] = useState(entry ? String(entry.fxRate) : '');
+  const [fx, setFx] = useState<string | undefined>(entry ? String(entry.fxRate) : undefined); // undefined = untouched: show the last known rate
 
   const [splitOn, setSplitOn] = useState(!!entry?.shares.length || !!preset.splitFriendId);
   const [shareIds, setShareIds] = useState<string[]>(entry?.shares.map((s) => s.friendId) ?? (preset.splitFriendId ? [preset.splitFriendId] : []));
@@ -82,7 +82,10 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
   const sameCurrency = liveAccounts.filter((a) => a.id !== fromId && a.currency === account?.currency);
   const toId = toAccountId ?? sameCurrency[0]?.id;
   const currency = account && !(entry && entry.accountId === account.id) ? account.currency : entry?.currency ?? account?.currency ?? 'HKD';
-  const fxRate = currency === 'HKD' ? 1 : parseFloat(fx) || latestFx(entries)[currency] || 1;
+  const lastFx = latestFx(entries)[currency];
+  const fxText = fx ?? (lastFx ? String(lastFx) : '');
+  const fxPrefilled = fx === undefined && !!lastFx;
+  const fxRate = currency === 'HKD' ? 1 : parseFloat(fxText) || 0; // 0 = not set: blocks save
 
   const total = isValidAmount(amount) ? parseFloat(evaluateExpression(amount)) : 0;
   const each = splitEqual(total, shareIds.length);
@@ -97,8 +100,18 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
   const defaultTitle =
     kind === 'settlement' ? `${friend?.name ?? 'Friend'} repaid` : kind === 'transfer' ? 'Transfer' : category?.name ?? KIND_LABEL[kind];
 
+  const evaluated = parseFloat(evaluateExpression(amount));
+  const amountProblem =
+    /[+*/-]$/.test(amount) ? 'Finish the expression'
+    : /\/\s*0(?![.\d]|\s*[1-9])/.test(amount) && total <= 0 ? 'Can\'t divide by zero'
+    : evaluated < 0 ? 'Amount must be positive'
+    : 'Enter an amount';
+
   const problem =
-    total <= 0 ? 'Enter an amount'
+    total <= 0 ? amountProblem
+    : currency !== 'HKD' && !fxRate ? `Enter the ${currency} → HKD rate`
+    : (kind === 'expense' || kind === 'income') && !entry && !category ? 'Pick a category'
+    : splitOn && kind === 'expense' && mode === 'custom' && shareIds.some((fid) => parseFloat(custom[fid]) < 0) ? 'Shares can\'t be negative'
     : kind === 'settlement' && !friendId ? 'Pick a friend'
     : kind === 'transfer' && (!fromId || !toId || fromId === toId) ? 'Pick two different accounts'
     : (kind === 'income' || kind === 'transfer' || (kind === 'expense' && accountId !== null)) && !fromId ? 'Add an account in Wallet first'
@@ -182,7 +195,9 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
         <Chip key={a.id} active={a.id === value} onClick={() => onPick(a.id)} color="bg-neo-yellow">{a.name}</Chip>
       ))}
       {none && <Chip active={value === undefined} onClick={() => onPick(null)} color="bg-neo-orange">{none}</Chip>}
-      {liveAccounts.length === 0 && <p className="text-xs font-bold uppercase text-gray-600">No accounts yet. Add one in Wallet.</p>}
+      {liveAccounts.length === 0 && (
+        <p className="text-xs font-bold uppercase text-gray-600">No accounts yet. <Link to="/wallet" className="underline">Add one in Wallet</Link></p>
+      )}
     </div>
   );
 
@@ -229,6 +244,13 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
               ))}
               {friends.length === 0 && <p className="text-xs font-bold uppercase text-gray-600">No friends yet.</p>}
             </div>
+            {friend && friend.balance > 0 && (
+              <div className="mt-2">
+                <Chip active={total === round2(friend.balance)} color="bg-neo-green" onClick={() => { setAmount(String(round2(friend.balance))); setAmountAuto(false); }}>
+                  Full {formatCurrency(friend.balance)}
+                </Chip>
+              </div>
+            )}
           </div>
         )}
 
@@ -256,11 +278,14 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
               1 {currency} =
               <input
                 inputMode="decimal"
-                value={fx || String(fxRate)}
+                aria-label={`${currency} to HKD rate`}
+                placeholder="rate"
+                value={fxText}
                 onChange={(e) => setFx(e.target.value.replace(/[^0-9.]/g, ''))}
                 className="w-24 border-2 border-black p-1 text-right bg-white dark:bg-zinc-900"
               />
               HKD
+              {fxPrefilled && <span className="text-gray-600 dark:text-zinc-400">(last used)</span>}
             </label>
           )}
         </div>
@@ -297,9 +322,9 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
         <div>
           <FieldLabel>Date</FieldLabel>
           <div className="flex flex-wrap gap-2">
-            <Chip active={day === today} onClick={() => { setDay(today); setCalendarOpen(false); }}>Today</Chip>
-            <Chip active={day === yesterday} onClick={() => { setDay(yesterday); setCalendarOpen(false); }}>Yesterday</Chip>
-            <Chip active={day !== today && day !== yesterday} onClick={() => setCalendarOpen((v) => !v)}>
+            <Chip active={!calendarOpen && day === today} onClick={() => { setDay(today); setCalendarOpen(false); }}>Today</Chip>
+            <Chip active={!calendarOpen && day === yesterday} onClick={() => { setDay(yesterday); setCalendarOpen(false); }}>Yesterday</Chip>
+            <Chip active={calendarOpen || (day !== today && day !== yesterday)} onClick={() => setCalendarOpen((v) => !v)}>
               <CalendarDays size={16} aria-hidden="true" />
               {day !== today && day !== yesterday ? dayLabel(day) : 'Pick date'}
             </Chip>
@@ -317,7 +342,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
 
       <div className="fixed bottom-0 inset-x-0 z-40 bg-neo-bg dark:bg-zinc-950 border-t-2 border-black p-4">
         <div className="max-w-md mx-auto">
-          {problem && total > 0 && <p className="text-xs font-black uppercase text-neo-danger mb-2 text-center">{problem}</p>}
+          {problem && <p className="text-xs font-black uppercase text-neo-danger mb-2 text-center">{problem}</p>}
           <NeoButton fullWidth variant="primary" disabled={!!problem} isLoading={isProcessing} onClick={() => void save()}>
             {entry ? 'Save changes' : `Save ${KIND_LABEL[kind].toLowerCase()}`}
             {total > 0 && ` · ${formatCurrency(total, currency)}`}

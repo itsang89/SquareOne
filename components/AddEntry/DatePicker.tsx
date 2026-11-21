@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -8,6 +8,8 @@ const pad = (n: number) => String(n).padStart(2, '0');
 export const DatePicker: React.FC<{ value: string; today: string; onPick: (day: string) => void }> = ({ value, today, onPick }) => {
   const [year, setYear] = useState(() => Number(value.slice(0, 4)));
   const [month, setMonth] = useState(() => Number(value.slice(5, 7)) - 1); // 0-11
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => { ref.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' }); }, []);
   const first = new Date(year, month, 1);
   const lead = (first.getDay() + 6) % 7; // Monday-first
   const days = new Date(year, month + 1, 0).getDate();
@@ -18,7 +20,7 @@ export const DatePicker: React.FC<{ value: string; today: string; onPick: (day: 
   };
 
   return (
-    <div className="mt-3 border-2 border-black bg-white dark:bg-zinc-900 p-3 shadow-neo-sm">
+    <div ref={ref} className="mt-3 border-2 border-black bg-white dark:bg-zinc-900 p-3 shadow-neo-sm">
       <div className="flex items-center justify-between mb-2">
         <button type="button" onClick={() => shift(-1)} aria-label="Previous month" className="p-1 border-2 border-black dark:text-zinc-100"><ChevronLeft size={18} /></button>
         <span className="font-black uppercase text-sm dark:text-zinc-100">

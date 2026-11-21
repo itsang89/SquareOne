@@ -99,7 +99,7 @@ export const SplitEditor: React.FC<Props> = ({ friends, ids, onToggle, mode, onM
                     inputMode="decimal"
                     aria-label={`${f?.name} owes`}
                     value={custom[id] ?? ''}
-                    onChange={(e) => onCustom(id, e.target.value.replace(/[^0-9.]/g, ''))}
+                    onChange={(e) => onCustom(id, e.target.value.replace(/[^-0-9.]/g, ''))}
                     className="w-28 border-2 border-black p-2 text-right font-bold bg-white dark:bg-zinc-800 dark:text-zinc-100"
                   />
                 )}

@@ -172,17 +172,21 @@ describe('weekRange', () => {
   });
 });
 
-describe('balance adjustments', () => {
-  const acc: Account[] = [{ id: 'a', name: 'Bank', currency: 'HKD', archived: false, sort: 0 } as Account];
-  const adj = (kind: 'income' | 'expense', amount: number) => entry({ kind, amount, title: 'Balance adjustment', accountId: 'a' });
-  it('moves the balance but not spending, income or category totals', () => {
-    const es = [entry({ kind: 'income', amount: 100, accountId: 'a' }), adj('expense', 30), adj('income', 5)];
-    expect(accountBalances(acc, es).get('a')).toBe(75);
+describe('balance adjustments (transfer from archived account)', () => {
+  const accs = [
+    { id: 'a', name: 'Bank', currency: 'HKD', archived: false, sort: 0 },
+    { id: 'adj', name: 'Balance adjustments', currency: 'HKD', archived: true, sort: 1 },
+  ] as Account[];
+  const es = [
+    entry({ kind: 'income', amount: 100, accountId: 'a' }),
+    entry({ kind: 'transfer', amount: 30, accountId: 'adj', toAccountId: 'a' }),
+    entry({ kind: 'transfer', amount: 10, accountId: 'a', toAccountId: 'adj' }),
+  ];
+  it('moves the live balance and net worth but not spending or income', () => {
+    expect(accountBalances(accs, es).get('a')).toBe(120);
+    expect(netWorth(accs, es)).toBe(120);
     expect(rangeTotals(es)).toEqual({ expense: 0, income: 100, net: 100 });
     expect(totalsByCategory(es, 'expense')).toEqual([]);
-  });
-  it('a categorised entry with the same title still counts', () => {
-    expect(myExpense(entry({ kind: 'expense', amount: 9, title: 'Balance adjustment', categoryId: 'c' }))).toBe(9);
   });
 });
 

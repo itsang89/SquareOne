@@ -35,7 +35,7 @@ interface AppContextType {
   deleteEntry: (id: string) => Promise<Result & { undoable?: boolean }>;
   restoreEntry: (entry: Entry, ownerId: string) => Promise<Result>;
   // Accounts
-  addAccount: (input: { name: string; currency?: string; sort?: number }) => Promise<IdResult>;
+  addAccount: (input: { name: string; currency?: string; sort?: number; archived?: boolean }) => Promise<IdResult>;
   updateAccount: (id: string, updates: Partial<Omit<Account, 'id'>>) => Promise<Result>;
   deleteAccount: (id: string) => Promise<Result>; // fails if entries reference it; archive instead
   // Categories
@@ -404,7 +404,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addAccount = useCallback<AppContextType['addAccount']>(
     (input) => write('adding account', async (uid) => {
       const { data, error } = await supabase.from('accounts')
-        .insert({ user_id: uid, name: input.name.trim(), currency: input.currency ?? 'HKD', sort: input.sort ?? 0 })
+        .insert({ user_id: uid, name: input.name.trim(), currency: input.currency ?? 'HKD', sort: input.sort ?? 0, archived: input.archived ?? false })
         .select('id').single();
       if (error) throw error;
       return { id: data.id as string };

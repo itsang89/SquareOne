@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useToast, ToastType } from './ToastContext';
 import { X, CheckCircle, AlertCircle, Info } from 'lucide-react';
 
@@ -20,14 +21,25 @@ const ToastColor = (type: ToastType) => {
 
 export const ToastContainer: React.FC = () => {
   const { toasts, remove } = useToast();
+  const { pathname } = useLocation();
+  const toastsRef = useRef(toasts);
+  toastsRef.current = toasts;
+
+  // Toasts from the previous screen get a short life after navigation (long enough to read "Saved").
+  useEffect(() => {
+    const ids = toastsRef.current.map((t) => t.id);
+    if (!ids.length) return;
+    const timer = setTimeout(() => ids.forEach(remove), 1500);
+    return () => clearTimeout(timer);
+  }, [pathname, remove]);
 
   return (
-    <div className="fixed top-4 right-4 left-4 sm:left-auto z-[9999] flex flex-col gap-3 sm:w-full sm:max-w-[320px]" aria-live="polite">
+    <div className="fixed bottom-24 right-4 left-4 sm:left-auto z-[9999] flex flex-col gap-3 sm:w-full sm:max-w-[320px]" aria-live="polite">
       {toasts.map((toast) => (
         <div
           key={toast.id}
           role={toast.type === 'error' ? 'alert' : 'status'}
-          className={`border-2 border-black shadow-neo-sm p-4 ${ToastColor(toast.type)} flex gap-3 items-start animate-in slide-in-from-right duration-300`}
+          className={`border-2 border-black shadow-neo-sm p-4 ${ToastColor(toast.type)} flex gap-3 items-start animate-in slide-in-from-bottom duration-300`}
         >
           <div className="mt-0.5">
             <ToastIcon type={toast.type} />

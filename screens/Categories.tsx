@@ -100,6 +100,7 @@ export const Categories: React.FC = () => {
             <button key={c} type="button" aria-label={`Color ${c}`} onClick={() => setColor(c)} className={`w-9 h-9 border-2 ${color === c ? 'border-black shadow-neo-sm scale-110' : 'border-black/30'}`} style={{ backgroundColor: c }} />
           ))}
         </div>
+        {!name.trim() && <p className="text-xs font-bold uppercase text-gray-600 dark:text-zinc-400">Enter a name to save.</p>}
         <div className="flex gap-3">
           {editing && editing !== 'new' && (
             <NeoButton fullWidth variant="neutral" isLoading={isProcessing} onClick={async () => done(await updateCategory(editing.id, { archived: !editing.archived }), editing.archived ? 'Category restored' : 'Category archived')}>

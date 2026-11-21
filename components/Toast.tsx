@@ -34,7 +34,7 @@ export const ToastContainer: React.FC = () => {
   }, [pathname, remove]);
 
   return (
-    <div className="fixed bottom-24 right-4 left-4 sm:left-auto z-[9999] flex flex-col gap-3 sm:w-full sm:max-w-[320px]" aria-live="polite">
+    <div className="fixed bottom-32 right-4 left-4 sm:left-auto z-[9999] flex flex-col gap-3 sm:w-full sm:max-w-[320px]" aria-live="polite">
       {toasts.map((toast) => (
         <div
           key={toast.id}

@@ -66,7 +66,8 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
   const [day, setDay] = useState(localDay(entry?.occurredAt ?? new Date().toISOString()));
   const [title, setTitle] = useState(entry?.title ?? '');
   const [note, setNote] = useState(entry?.note ?? '');
-  const [fx, setFx] = useState<string | undefined>(entry ? String(entry.fxRate) : undefined); // undefined = untouched: show the last known rate
+  // A typed rate belongs to one currency; switching currency drops it. undefined = untouched: show the last known rate.
+  const [fx, setFx] = useState<{ cur: string; val: string } | undefined>(entry ? { cur: entry.currency, val: String(entry.fxRate) } : undefined);
 
   const [splitOn, setSplitOn] = useState(!!entry?.shares.length || !!preset.splitFriendId);
   const [shareIds, setShareIds] = useState<string[]>(entry?.shares.map((s) => s.friendId) ?? (preset.splitFriendId ? [preset.splitFriendId] : []));
@@ -83,9 +84,11 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
   const toId = toAccountId ?? sameCurrency[0]?.id;
   const currency = account && !(entry && entry.accountId === account.id) ? account.currency : entry?.currency ?? account?.currency ?? 'HKD';
   const lastFx = latestFx(entries)[currency];
-  const fxText = fx ?? (lastFx ? String(lastFx) : '');
-  const fxPrefilled = fx === undefined && !!lastFx;
-  const fxRate = currency === 'HKD' ? 1 : parseFloat(fxText) || 0; // 0 = not set: blocks save
+  const fxDraft = fx?.cur === currency ? fx.val : undefined;
+  const fxText = fxDraft ?? (lastFx ? String(lastFx) : '');
+  const fxPrefilled = fxDraft === undefined && !!lastFx;
+  // Whole input must be a plain decimal within fx_rate numeric(14,6); else 0 = not set, blocks save.
+  const fxRate = currency === 'HKD' ? 1 : /^\d{1,8}(\.\d{1,6})?$/.test(fxText.trim()) ? parseFloat(fxText) || 0 : 0;
 
   const total = isValidAmount(amount) ? parseFloat(evaluateExpression(amount)) : 0;
   const each = splitEqual(total, shareIds.length);
@@ -111,7 +114,8 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
     total <= 0 ? amountProblem
     : currency !== 'HKD' && !fxRate ? `Enter the ${currency} → HKD rate`
     : (kind === 'expense' || kind === 'income') && !entry && !category ? 'Pick a category'
-    : splitOn && kind === 'expense' && mode === 'custom' && shareIds.some((fid) => parseFloat(custom[fid]) < 0) ? 'Shares can\'t be negative'
+    : splitOn && kind === 'expense' && mode === 'custom' && shareIds.some((fid) => /^\s*[-−]/.test(custom[fid] ?? '')) ? 'Shares can\'t be negative'
+    : splitOn && kind === 'expense' && mode === 'custom' && shareIds.some((fid) => (custom[fid] ?? '').trim() !== '' && !/^\d+(\.\d{1,2})?$/.test(custom[fid].trim())) ? 'Check friends\' shares'
     : kind === 'settlement' && !friendId ? 'Pick a friend'
     : kind === 'transfer' && (!fromId || !toId || fromId === toId) ? 'Pick two different accounts'
     : (kind === 'income' || kind === 'transfer' || (kind === 'expense' && accountId !== null)) && !fromId ? 'Add an account in Wallet first'
@@ -121,10 +125,17 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
     : mine < 0 ? 'Friends\' shares exceed the total'
     : null;
 
+  // What a friend owes in this entry's currency. When editing a repayment, add it back: the balance already includes it.
+  const owedIn = (fid: string) => {
+    const bal = (friends.find((f) => f.id === fid)?.balance ?? 0) + (entry?.kind === 'settlement' && entry.friendId === fid ? entry.amount * entry.fxRate : 0);
+    return fxRate ? round2(bal / fxRate) : 0;
+  };
+  const fullOwed = friend ? owedIn(friend.id) : 0;
+
   const pickFriend = (fid: string) => {
     setFriendId(fid);
-    const bal = friends.find((f) => f.id === fid)?.balance ?? 0;
-    if (amountAuto && bal > 0) setAmount(String(round2(bal)));
+    const owed = owedIn(fid);
+    if (amountAuto && owed > 0) setAmount(String(owed));
   };
 
   const switchMode = (m: SplitMode) => {
@@ -244,10 +255,10 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
               ))}
               {friends.length === 0 && <p className="text-xs font-bold uppercase text-gray-600">No friends yet.</p>}
             </div>
-            {friend && friend.balance > 0 && (
+            {fullOwed > 0 && (
               <div className="mt-2">
-                <Chip active={total === round2(friend.balance)} color="bg-neo-green" onClick={() => { setAmount(String(round2(friend.balance))); setAmountAuto(false); }}>
-                  Full {formatCurrency(friend.balance)}
+                <Chip active={total === fullOwed} color="bg-neo-green" onClick={() => { setAmount(String(fullOwed)); setAmountAuto(false); }}>
+                  Full {formatCurrency(fullOwed, currency)}
                 </Chip>
               </div>
             )}
@@ -281,7 +292,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
                 aria-label={`${currency} to HKD rate`}
                 placeholder="rate"
                 value={fxText}
-                onChange={(e) => setFx(e.target.value.replace(/[^0-9.]/g, ''))}
+                onChange={(e) => setFx({ cur: currency, val: e.target.value })}
                 className="w-24 border-2 border-black p-1 text-right bg-white dark:bg-zinc-900"
               />
               HKD

@@ -66,7 +66,15 @@ Import Money+ with a real CSV (screen only), manual agent token creation, Google
 
 | Item | State |
 |---|---|
-| P0 #1, P1 #2–#9 | In progress 2026-11-21 on `feature/uiux-polish` |
+| P0 #1, P1 #2–#9 | Done 2026-11-21 on `feature/uiux-polish`, Codex-reviewed, verified in demo |
 | P2 #10–#22 | Open |
 | Feature ideas 1–8 | Open |
 | Unknown writer of demo `Bank` + `Salary` rows | Open, investigate |
+
+## Follow-ups from Codex review (2026-11-21, not fixed)
+
+- Amount hints vs calculator: `1÷0.0` / `1÷.0` say "Enter an amount"; Done on `1÷0` replaces the expression with `0` (`components/AddEntry/AmountInput.tsx:28`). Fix: calculator returns valid / incomplete / invalid.
+- Toasts: each route change restarts the 1.5 s timer; same-path navigation keeps the 5 s life (`components/Toast.tsx`). Fix: per-toast expiry.
+- Settle prefill from Friend detail (initial `amount` state) still uses the HKD balance even if the default account is non-HKD. Chip and friend-pick autofill are fixed.
+- Editing a non-HKD settlement and switching to Offset keeps the old currency.
+- A11y: `NeoInput` labels are not linked to inputs (no `htmlFor`/`id`), app-wide.

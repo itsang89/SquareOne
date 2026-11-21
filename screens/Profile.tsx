@@ -122,7 +122,7 @@ export const Profile: React.FC = () => {
   };
 
   const handleClearAllData = async () => {
-    if (!user) return;
+    if (!user || clearText.trim() !== 'DELETE') return;
 
     setIsUpdating(true);
     try {
@@ -396,15 +396,15 @@ export const Profile: React.FC = () => {
 
         <NeoModal
           isOpen={showClearConfirm}
-          onClose={() => { setShowClearConfirm(false); setClearText(''); }}
+          onClose={() => { if (isUpdating) return; setShowClearConfirm(false); setClearText(''); }}
           title="Clear All Data?"
         >
           <p className="font-bold text-gray-600 mb-6 uppercase text-sm tracking-tight">
-            This will permanently delete ALL your entries and friends. This action cannot be undone.
+            This permanently deletes ALL your entries, friends, subscriptions and old imported transactions. Accounts and categories stay. This cannot be undone.
           </p>
           <NeoInput label="Type DELETE to confirm" value={clearText} onChange={(e) => setClearText(e.target.value)} autoCapitalize="characters" autoComplete="off" />
           <div className="flex gap-3 mt-6">
-            <NeoButton fullWidth onClick={() => { setShowClearConfirm(false); setClearText(''); }} variant="neutral">Cancel</NeoButton>
+            <NeoButton fullWidth onClick={() => { setShowClearConfirm(false); setClearText(''); }} variant="neutral" disabled={isUpdating}>Cancel</NeoButton>
             <NeoButton fullWidth onClick={handleClearAllData} variant="accent" disabled={clearText.trim() !== 'DELETE'} isLoading={isUpdating}>Yes, Clear All</NeoButton>
           </div>
         </NeoModal>

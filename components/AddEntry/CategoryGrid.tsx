@@ -46,7 +46,7 @@ export const CategoryGrid: React.FC<Props> = ({ categories, selectedId, onSelect
             }`}
           >
             <CategoryTile category={c} size="sm" />
-            <span className={`text-[10px] font-bold uppercase leading-tight text-center truncate w-full ${c.id === selectedId ? 'text-black' : 'dark:text-zinc-100'}`}>{c.name}</span>
+            <span className={`text-[10px] font-bold uppercase leading-tight text-center line-clamp-2 break-words w-full ${c.id === selectedId ? 'text-black' : 'dark:text-zinc-100'}`}>{c.name}</span>
           </button>
         ))}
         {!all && categories.length > VISIBLE && (

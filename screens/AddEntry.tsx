@@ -101,6 +101,7 @@ const EntryForm: React.FC<{ entry?: Entry }> = ({ entry }) => {
     : (kind === 'income' || kind === 'transfer' || (kind === 'expense' && accountId !== null)) && !fromId ? 'Add an account in Wallet first'
     : kind === 'transfer' && accounts.find((a) => a.id === toId)?.currency !== account?.currency ? 'Transfers need two accounts in the same currency'
     : splitOn && kind === 'expense' && mode === 'equal' && tooSmallToSplit(total, shareIds.length) ? 'Too small to split equally'
+    : splitOn && kind === 'expense' && shares.length === 0 ? 'Pick who to split with, or turn split off'
     : mine < 0 ? 'Friends\' shares exceed the total'
     : null;
 

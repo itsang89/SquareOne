@@ -37,7 +37,12 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return <Navigate to="/login" replace />;
   }
 
-  return <ErrorBoundary>{children}</ErrorBoundary>;
+  // One phone-width column on every screen, so rows and headers don't stretch across a desktop window.
+  return (
+    <div className="max-w-lg mx-auto sm:border-x-2 border-black">
+      <ErrorBoundary>{children}</ErrorBoundary>
+    </div>
+  );
 };
 
 const AppContent: React.FC = () => {

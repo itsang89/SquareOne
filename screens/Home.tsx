@@ -14,7 +14,8 @@ import { rangeTotals, totalOwed, weekRange } from '../utils/calculations';
 import { formatCurrency } from '../utils/formatters';
 
 const iconBtn =
-  'w-11 h-11 bg-white dark:bg-zinc-900 border-2 border-black shadow-neo-sm active:shadow-none active:translate-y-0.5 grid place-items-center text-black dark:text-zinc-100';
+  'w-12 h-12 bg-white dark:bg-zinc-900 border-2 border-black shadow-neo-sm active:shadow-none active:translate-y-0.5 flex flex-col items-center justify-center gap-0.5 text-black dark:text-zinc-100';
+const iconLabel = 'text-[9px] font-black uppercase leading-none';
 
 export const Home: React.FC = () => {
   const { friends, entries, accounts, categories, loading, error, refetch } = useAppContext();
@@ -42,9 +43,9 @@ export const Home: React.FC = () => {
           <p className="text-xs font-bold text-gray-600 dark:text-zinc-400 uppercase tracking-widest mt-1 truncate">Hi, {user?.name || 'there'}</p>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={openSearch} className={iconBtn} aria-label="Search"><Search size={20} strokeWidth={2.5} /></button>
-          <Link to="/friends" className={iconBtn} aria-label="Friends"><Users size={20} strokeWidth={2.5} /></Link>
-          <Link to="/profile" className={iconBtn} aria-label="Settings"><Settings size={20} strokeWidth={2.5} /></Link>
+          <button type="button" onClick={openSearch} className={iconBtn} ><Search size={18} strokeWidth={2.5} aria-hidden="true" /><span className={iconLabel}>Search</span></button>
+          <Link to="/friends" className={iconBtn} ><Users size={18} strokeWidth={2.5} aria-hidden="true" /><span className={iconLabel}>Friends</span></Link>
+          <Link to="/profile" className={iconBtn} ><Settings size={18} strokeWidth={2.5} aria-hidden="true" /><span className={iconLabel}>Settings</span></Link>
         </div>
       </header>
 

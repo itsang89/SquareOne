@@ -16,7 +16,7 @@ import type { Account } from '../types';
 const UNTRACKED = 'Untracked';
 
 export const Wallet: React.FC = () => {
-  const { accounts, categories, entries, loading, error, refetch, addAccount, updateAccount, addCategory, addEntry, deleteEntry, isProcessing, online } = useAppContext();
+  const { accounts, categories, entries, loading, error, refetch, addAccount, updateAccount, addCategory, updateCategory, addEntry, deleteEntry, isProcessing, online } = useAppContext();
   const { success, error: showError } = useToast();
   const [showArchived, setShowArchived] = useState(false);
   const [editing, setEditing] = useState<Account | 'new' | null>(null);
@@ -71,7 +71,12 @@ export const Wallet: React.FC = () => {
     // The gap is real money you didn't log: more than expected = income, less = spending, under "Untracked".
     const up = reconDiff > 0;
     const kind = up ? 'income' : 'expense';
-    let categoryId = categories.find((c) => c.kind === kind && c.name === UNTRACKED)?.id;
+    const existing = categories.find((c) => c.kind === kind && c.name === UNTRACKED);
+    let categoryId = existing?.id;
+    if (existing?.archived) { // name is unique per kind incl. archived rows: restore it rather than create
+      const u = await updateCategory(existing.id, { archived: false });
+      if (!u.success) { showError('Could not adjust balance', u.error?.message); return; }
+    }
     if (!categoryId) {
       const c = await addCategory({ name: UNTRACKED, kind, icon: '❓', color: '#D4D4D8' });
       if (!c.success || !c.id) { showError('Could not adjust balance', c.error?.message); return; }
@@ -82,7 +87,7 @@ export const Wallet: React.FC = () => {
       currency: recon.currency, fxRate: reconFx, accountId: recon.id, categoryId,
     }, { onlineOnly: true });
     if (r.success) { success('Balance adjusted', `${up ? '+' : '−'}${formatCurrency(Math.abs(reconDiff), recon.currency)}`); setRecon(null); }
-    else showError('Could not adjust balance', r.error?.message);
+    else { showError('Could not adjust balance', r.error?.message); void refetch(); } // a lost response may have saved: reload so a retry sees it
   };
 
   const setArchived = async (a: Account, value: boolean) => {

@@ -27,6 +27,7 @@ type AgentEdit = {
 
 const activityLabels: Record<string, string> = {
   'entries.add': 'added an entry', 'entries.edit': 'edited an entry', 'entries.delete': 'deleted an entry',
+  'entries.undo': 'restored a deleted entry', 'accounts.reconcile': 'reconciled an account balance',
   'accounts.add': 'added an account', 'accounts.edit': 'edited an account', 'accounts.archive': 'archived or restored an account',
   'accounts.delete': 'deleted an account', 'categories.add': 'added a category', 'categories.edit': 'edited a category',
   'subscriptions.add': 'added a subscription', 'subscriptions.edit': 'edited a subscription',

@@ -18,6 +18,7 @@ const commands = {
   'accounts.add': { required: ['name'], strings: ['currency'], write: true },
   'accounts.edit': { required: ['id'], strings: ['name', 'currency', 'sort'], change: true, write: true },
   'accounts.archive': { required: ['id'], bools: ['unarchive'], write: true },
+  'accounts.reconcile': { required: ['id', 'balance'], bools: ['dry-run'], write: true },
   'accounts.delete': { required: ['id'], write: true, approval: true },
   'categories.list': { strings: ['kind'], bools: ['all'] },
   'categories.add': { required: ['name'], strings: ['kind', 'icon', 'color'], write: true },
@@ -34,6 +35,7 @@ const commands = {
     multi: ['split'], bools: ['no-split', 'create-category', 'dry-run'],
   },
   'entries.delete': { required: ['id'], write: true },
+  'entries.undo': { required: ['delete-request-id'], write: true },
   'subscriptions.list': { bools: ['all'] },
   'subscriptions.add': {
     required: ['title', 'amount', 'cadence', 'next-date'], strings: ['kind', 'category', 'account', 'currency', 'fx-rate'], write: true,
@@ -66,6 +68,7 @@ LOG MONEY (kinds: expense | income | transfer | settlement; default expense)
               [--currency USD --fx-rate 7.8] [--create-category]
   entries edit --id UUID [same fields] [--clear-note] [--no-split]
   entries delete --id UUID
+  entries undo --delete-request-id UUID      Restore a CLI deletion within 10 minutes, using its request_id
   entries list [--from D] [--to D] [--kind K] [--category C] [--account A] [--friend F] [--search TEXT]
                [--limit 20] [--offset N] [--tz Asia/Hong_Kong]   newest first; dates are inclusive, Hong Kong time unless --tz
 
@@ -84,6 +87,8 @@ REPORTS
 
 MANAGE
   accounts add --name N [--currency HKD] | edit --id A [--name N] [--currency C] | archive --id A [--unarchive]
+  accounts reconcile --id A --balance N [--dry-run]   Set the actual balance in the account currency via an Untracked entry
+                                                      Use --balance=-100 for a negative balance
   accounts delete --id A                    Needs browser approval; only for accounts with no entries
   categories add --name N [--kind expense|income] [--icon E] [--color #hex] | edit --id C [--name] [--icon] [--color] [--archive|--unarchive]
   subscriptions add --title T --amount N --cadence weekly|monthly|yearly --next-date D [--kind expense|income] [--category C] [--account A]
